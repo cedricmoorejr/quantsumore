@@ -53,7 +53,6 @@ The `quantsumore` library is a comprehensive Python package designed for retriev
 - [Using the `treasury` API Client](#using-the-treasury-api-client)
 
 
-<br><br>
 
 # Using the `crypto` API Client
 
