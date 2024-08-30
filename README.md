@@ -53,6 +53,8 @@ The `quantsumore` library is a comprehensive Python package designed for retriev
 - [Using the `treasury` API Client](#using-the-treasury-api-client)
 
 
+<br><br>
+
 # Using the `crypto` API Client
 
 The `crypto` API client provided by the `quantsumore` package allows users to easily fetch both real-time and historical cryptocurrency market data. This guide will walk you through importing the `crypto` API client and using its methods.
