@@ -1,4 +1,7 @@
 ### Summary of the `quantsumore` Library
+[![Downloads](https://static.pepy.tech/badge/quantsumore)](https://pepy.tech/project/quantsumore)
+[![Downloads](https://static.pepy.tech/badge/quantsumore/month)](https://pepy.tech/project/quantsumore)
+[![Downloads](https://static.pepy.tech/badge/quantsumore/week)](https://pepy.tech/project/quantsumore)
 
 The `quantsumore` library is a comprehensive Python package designed for retrieving and analyzing a wide range of financial market data. It provides specialized API clients to fetch data from various financial markets, including cryptocurrencies, equities, Forex, Treasury instruments, and Consumer Price Index (CPI) metrics. The library aims to simplify financial data retrieval and analysis, making it a valuable tool for traders, analysts, researchers, and anyone involved in financial markets. Below is an overview of the key components and functionalities of the `quantsumore` library:
 
