@@ -1,4 +1,9 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cedricmoorejr/quantsumore/main/quantsumore/assets/py_quantsumore_logo.png" alt="quantsumore Logo" width="700"/>
+</p>
+
 ### Summary of the `quantsumore` Library
+
 [![Downloads](https://static.pepy.tech/badge/quantsumore)](https://pepy.tech/project/quantsumore)
 [![Downloads](https://static.pepy.tech/badge/quantsumore/month)](https://pepy.tech/project/quantsumore)
 [![Downloads](https://static.pepy.tech/badge/quantsumore/week)](https://pepy.tech/project/quantsumore)
