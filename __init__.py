@@ -1,8 +1,18 @@
-# -*- coding: utf-8 -*-
-# from .core import cryptoAPI, equityAPI, forexAPI, cpiAPI, treasuryAPI
-# 
-# __version__ = '1.0.0'
-# __all__ = ['cryptoAPI', 'equityAPI', 'forexAPI', 'cpiAPI', 'treasuryAPI']
-
+"""
+###############################################################################
+#                                                                             #
+#  *** ATTENTION ***                                                          #
+#                                                                             #
+#  DO NOT REMOVE OR MODIFY THE LINE BELOW:                                    #
+#                                                                             #
+#  ## -- quantsumore -- ##                                                    #
+#                                                                             #
+#  This line is a critical marker that indicates the root directory.          #
+#  Removing or changing this line will break the script and cause errors.     #
+#                                                                             #
+#  YOU HAVE BEEN WARNED!                                                      #
+#                                                                             #
+###############################################################################
+"""
 
 ## -- quantsumore -- ##

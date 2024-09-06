@@ -3,58 +3,116 @@ import os
 import json
 from datetime import datetime, timedelta
 from functools import lru_cache
+import re
 
 
 class FilePathFinder:
-    def __init__(self, unique_identifier="## -- quantsumore -- ##"):
-        self.unique_identifier = unique_identifier
+    class fPath:
+        def __init__(self, unique_identifier="## -- quantsumore -- ##"):
+            self.unique_identifier = unique_identifier
 
-    @lru_cache(maxsize=None)
-    def _root(self):
-        """Finds the root directory marked by a unique identifier in its __init__.py."""
-        current_directory = os.path.dirname(os.path.abspath(__file__))
-        while current_directory != os.path.dirname(current_directory):
-            init_file_path = os.path.join(current_directory, '__init__.py')
-            if os.path.isfile(init_file_path):
-                with open(init_file_path, 'r') as f:
-                    if self.unique_identifier in f.read():
-                        return current_directory
-            current_directory = os.path.dirname(current_directory)
-        return None
-
-    @lru_cache(maxsize=128)
-    def _find_file(self, directory, file_name):
-        """Searches for a file within the given directory."""
-        if not os.path.splitext(file_name)[1]:
-            file_name += '.py'
-        for dirpath, dirnames, filenames in os.walk(directory):
-            if file_name in filenames:
-                return os.path.join(dirpath, file_name)
-        return None
-
-    @lru_cache(maxsize=128)
-    def _find_directory(self, root_directory, target_directory):
-        """Searches for a directory within the given root directory."""
-        for dirpath, dirnames, _ in os.walk(root_directory):
-            if target_directory in dirnames:
-                return os.path.join(dirpath, target_directory)
-        return None
-
-    def find_path(self, file=None, directory=None):
-        """Public method to find either a file or directory based on input."""
-        if file and not directory:
-            return self._find_file(directory=self._root(), file_name=file)
-        elif directory and not file:
-            return self._find_directory(root_directory=self._root(), target_directory=directory)
-        else:
+        @lru_cache(maxsize=None)
+        def _root(self):
+            """Finds the root directory marked by a unique identifier in its __init__.py."""
+            current_directory = os.path.dirname(os.path.abspath(__file__))
+            while current_directory != os.path.dirname(current_directory):
+                init_file_path = os.path.join(current_directory, '__init__.py')
+                if os.path.isfile(init_file_path):
+                    with open(init_file_path, 'r') as f:
+                        if self.unique_identifier in f.read():
+                            return current_directory
+                current_directory = os.path.dirname(current_directory)
             return None
+
+        @lru_cache(maxsize=128)
+        def _find_file(self, directory, file_name):
+            """Searches for a file within the given directory."""
+            if not os.path.splitext(file_name)[1]:
+                file_name += '.py'
+            for dirpath, dirnames, filenames in os.walk(directory):
+                if file_name in filenames:
+                    return os.path.join(dirpath, file_name)
+            return None
+
+        @lru_cache(maxsize=128)
+        def _find_directory(self, root_directory, target_directory):
+            """Searches for a directory within the given root directory."""
+            for dirpath, dirnames, _ in os.walk(root_directory):
+                if target_directory in dirnames:
+                    return os.path.join(dirpath, target_directory)
+            return None
+
+        def return_path(self, file=None, directory=None):
+            """Public method to find either a file or directory based on input."""
+            if file and not directory:
+                return self._find_file(directory=self._root(), file_name=file)
+            elif directory and not file:
+                return self._find_directory(root_directory=self._root(), target_directory=directory)
+            else:
+                return None
+    
+    def __init__(self, encoding='utf-8'):
+        self.encoding = encoding
+        self.path_handler = self.fPath()
+                
+    def trace(self, file=None, directory=None):
+        return self.path_handler.return_path(file=file, directory=directory)       
+
+    def inscribe(self, file, s, overwrite=True):
+        mode = 'w' if overwrite else 'a'
+        with open(file, mode, encoding=self.encoding) as compose:
+            compose.write(s)
+
+    def extend(self, file, s):
+        if not os.path.exists(file):
+            self.inscribe(file, s)
+        with open(file, 'a', encoding=self.encoding) as compose:
+            compose.write(s)
+
+    def inject(self, file, s, line):
+        lines = []
+        with open(file) as skim:
+            lines = skim.readlines()
+        if line == len(lines) or line == -1:
+            lines.append(s + '\n')
+        else:
+            if line < 0:
+                line += 1
+            lines.insert(line, s + '\n')
+        with open(file, 'w', encoding=self.encoding) as compose:
+            compose.writelines(lines)
+
+    def extract(self, file, silent=False):
+        if not os.path.exists(file):
+            if silent:
+                return ''
+            else:
+                raise FileNotFoundError(str(file))
+        with open(file, encoding=self.encoding) as skim:
+            return skim.read()
+
+    def alter(self, file, new, old=None, pattern=None):
+        if old is None and pattern is None:
+            raise ValueError("Either 'old' or 'pattern' must be provided for replacement.")
+           
+        s = self.extract(file)
+        
+        if old is not None:
+            s = s.replace(old, new)
+            
+        if pattern is not None:
+            s = re.sub(pattern, new, s)
+            
+        self.inscribe(file, s)
+
+
 
 
 
 class JsonFileHandler:
     def __init__(self, filename, directory="configuration"):
         self.filename = filename
-        self.json_dir = filePaths.find_path(directory=directory)
+        self.json_dir = filePaths.trace(directory=directory)
         if self.json_dir is None:
             raise FileNotFoundError(f"Directory '{directory}' not found in the expected paths.")
         self.json_path = os.path.join(self.json_dir, self.filename)
@@ -116,7 +174,7 @@ class JsonFileHandler:
 class SQLiteDBHandler:
     def __init__(self, filename, directory="configuration"):
         self.filename = filename
-        self.db_dir = filePaths.find_path(directory=directory)
+        self.db_dir = filePaths.trace(directory=directory)
         self.db_path = os.path.join(self.db_dir, self.filename)
         self.path = self.Path()        
         self.conn = None

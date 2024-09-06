@@ -1,10 +1,12 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
-from PIL import Image, ImageTk 
+from PIL import Image, ImageTk
 from datetime import datetime
+import threading
+import time
+import queue
 from ...tools.sys_utils import filePaths
-
 
 
 
@@ -16,18 +18,55 @@ class InflationCalculatorApp(tk.Tk):
         super().__init__()
         self.calculator = calculator
         self.withdraw()
+        self.running = True
+        self.init_queue()
+        self.previous_screen_width = None
+        self.previous_screen_height = None
+
+    def init_queue(self):
+        self.queue = queue.Queue()
+        self.monitor_thread = threading.Thread(target=self.monitor_resolution)
+        self.monitor_thread.daemon = True
+        self.monitor_thread.start()
+        self.process_queue()
+
+    def monitor_resolution(self):
+        while self.running:
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
+            if (screen_width != self.previous_screen_width or screen_height != self.previous_screen_height):
+                self.queue.put((screen_width, screen_height))
+                self.previous_screen_width = screen_width
+                self.previous_screen_height = screen_height
+            time.sleep(1)  # Check every 1 second
+
+    def process_queue(self):
+        if self.running:  # Only process the queue if the app is still running
+            try:
+                screen_width, screen_height = self.queue.get_nowait()
+                self.set_window_center(screen_width, screen_height)
+            except queue.Empty:
+                pass
+            self.after(100, self.process_queue)  # Check queue every 100ms
+
+    def set_window_center(self, screen_width, screen_height):
+        window_width = 600
+        window_height = 500
+        center_x = int((screen_width - window_width) / 2)
+        center_y = int((screen_height - window_height) / 2)
+        self.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
 
     def initialize(self):
         self.title("Inflation Calculator")
         self.deiconify()
 
         # Set the window icon using an absolute path
-        script_dir = filePaths.find_path(directory="assets")
+        script_dir = filePaths.trace(directory="assets")
         icon_path = os.path.join(script_dir, 'icon.ico')
         self.iconbitmap(icon_path)
 
         # Set the initial size of the window
-        self.geometry("600x500") 
+        self.geometry("600x500")
         self.minsize(600, 500)
 
         # Load the logo image
@@ -52,7 +91,7 @@ class InflationCalculatorApp(tk.Tk):
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(pady=10, expand=True)
 
-        # Add tabs
+        # Application Tabs   <<-----
         self.create_adjustment_tab()
         self.create_current_year_tab()
         self.create_comparison_tab()
@@ -86,7 +125,8 @@ class InflationCalculatorApp(tk.Tk):
         # Result Label
         self.result_label = ttk.Label(self.adjustment_frame, text="")
         self.result_label.grid(row=4, columnspan=2, pady=10)
-
+        
+        # Add Notebook
         self.notebook.add(self.adjustment_frame, text='Adjusted Value')
 
     def create_current_year_tab(self):
@@ -105,7 +145,8 @@ class InflationCalculatorApp(tk.Tk):
         # Result Label
         self.current_year_result_label = ttk.Label(self.current_year_frame, text="")
         self.current_year_result_label.grid(row=2, columnspan=2, pady=10)
-
+        
+        # Add Notebook
         self.notebook.add(self.current_year_frame, text='Current Year Change')
 
     def create_comparison_tab(self):
@@ -129,7 +170,8 @@ class InflationCalculatorApp(tk.Tk):
         # Result Label
         self.comparison_result_label = ttk.Label(self.comparison_frame, text="")
         self.comparison_result_label.grid(row=3, columnspan=2, pady=10)
-
+        
+        # Add Notebook
         self.notebook.add(self.comparison_frame, text='Year-by-Year Change')
 
     def clear_other_tabs(self, event):
@@ -204,10 +246,17 @@ class InflationCalculatorApp(tk.Tk):
             messagebox.showerror("Invalid Input", "Please enter valid numbers for amount and number of years.")
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
+            
+    def on_closing(self):
+        self.running = False
+        self.monitor_thread.join()
+        self.destroy()
 
     def run(self):
         self.initialize()
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.mainloop()
 
     def __dir__(self):
         return ['run']
+
