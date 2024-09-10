@@ -63,7 +63,7 @@ class CONTROL:
                 self.data_loaded = False            
 
     def to_sqlite(self):
-        sqliteDB = SQLiteDBHandler("crypto.db")
+        sqliteDB = SQLiteDBHandler("crypto.json")
         if sqliteDB.is_outdated():
             sqliteDB.reset_database()
             sqliteDB.save("crypto.db")
