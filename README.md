@@ -2,6 +2,58 @@
   <img src="https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v1.2.1b1/assets/py_quantsumore_logo.png" alt="quantsumore Logo" width="700"/>
 </p>
 
+# 🚀 Power Up Your Financial Analysis with quantsumore's Data API
+
+---
+
+<table border=1 cellpadding=10 width="100%"><tr><td>
+
+<div align="center">
+
+### ⚠️ **IMPORTANT LEGAL DISCLAIMER** ⚠️
+
+</div>
+
+**quantsumore** is an API client that enables access to data from various sources, including Yahoo Finance, U.S. Department of the Treasury, Barchart.com, CoinMarketCap.com, Federal Reserve Economic Data (FRED), and MTFX Group. 
+
+🔴 **Note the following critical information**:
+
+---
+
+### 1. Trademarks and Endorsements:
+   - "Yahoo! Finance" is a registered trademark of **Yahoo, Inc.**
+   - "CoinMarketCap" is a registered trademark of **CoinMarketCap OpCo, LLC**.
+   - All other trademarks and service marks belong to their respective owners.
+
+**quantsumore** is **NOT** affiliated with, endorsed by, or vetted by Yahoo, Inc., U.S. Department of the Treasury, Barchart.com, CoinMarketCap, Federal Reserve Bank of St. Louis, or MTFX Group. This tool only uses publicly accessible APIs and is intended for **research and educational purposes**.
+
+---
+
+### 2. Usage Rights and Responsibilities:
+   - Please review the terms of use for each data provider:
+     - [Yahoo Finance Terms](https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm) 🔗
+     - [U.S. Treasury Terms](https://home.treasury.gov/policies/terms-of-service) 🔗
+     - [Barchart Terms of Service](https://www.barchart.com/terms) 🔗
+     - [CoinMarketCap Terms of Service](https://coinmarketcap.com/terms/) 🔗
+     - [FRED Terms of Use](https://fred.stlouisfed.org/terms-of-use) 🔗
+     - [MTFX Terms of Use](https://www.mtfxgroup.com/terms-of-use) 🔗
+
+👉 It is **your responsibility** to ensure compliance with each provider’s terms, especially regarding **personal** or **commercial use** restrictions.
+
+---
+
+### 3. Intended Use:
+   - **quantsumore** is designed for **personal** and **educational** purposes. If you are using it commercially, **you must** ensure compliance with the data providers' commercial usage policies.
+
+---
+
+### 4. Legal Compliance:
+   - Users must adhere to all **laws** and **regulations** applicable to their use of data retrieved through **quantsumore**.
+
+---
+
+</td></tr></table>
+
 ### Summary of the `quantsumore` Library
 
 [![Downloads](https://static.pepy.tech/badge/quantsumore)](https://pepy.tech/project/quantsumore)
