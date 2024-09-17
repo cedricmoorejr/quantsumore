@@ -10,7 +10,7 @@
 
 <div align="center">
 
-### ⚠️ **IMPORTANT LEGAL DISCLAIMER** ⚠️
+### ⚠️ **LEGAL DISCLAIMER** ⚠️
 
 </div>
 
@@ -20,35 +20,40 @@
 
 ---
 
-### 1. Trademarks and Endorsements:
-   - "Yahoo! Finance" is a registered trademark of **Yahoo, Inc.**
-   - "CoinMarketCap" is a registered trademark of **CoinMarketCap OpCo, LLC**.
-   - All other trademarks and service marks belong to their respective owners.
+### Important Information
 
-**quantsumore** is **NOT** affiliated with, endorsed by, or vetted by Yahoo, Inc., U.S. Department of the Treasury, Barchart.com, CoinMarketCap, Federal Reserve Bank of St. Louis, or MTFX Group. This tool only uses publicly accessible APIs and is intended for **research and educational purposes**.
+👉 `Quantsumore` is an independent open-source tool designed for research and educational purposes. This library provides a simplified way to access financial data from various publicly available APIs, including Yahoo Finance, Treasury.gov, Barchart.com, CoinMarketCap.com, Fred.Stlouisfed.org, and MTFX Group. Please note that `Quantsumore` is not affiliated, endorsed, or certified by any of the data providers mentioned.
 
 ---
 
-### 2. Usage Rights and Responsibilities:
-   - Please review the terms of use for each data provider:
-     - [Yahoo Finance Terms](https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm) 🔗
-     - [U.S. Treasury Terms](https://home.treasury.gov/policies/terms-of-service) 🔗
-     - [Barchart Terms of Service](https://www.barchart.com/terms) 🔗
-     - [CoinMarketCap Terms of Service](https://coinmarketcap.com/terms/) 🔗
-     - [FRED Terms of Use](https://fred.stlouisfed.org/terms-of-use) 🔗
-     - [MTFX Terms of Use](https://www.mtfxgroup.com/terms-of-use) 🔗
+### Trademarks and Endorsements
 
-👉 It is **your responsibility** to ensure compliance with each provider’s terms, especially regarding **personal** or **commercial use** restrictions.
+👉 The data providers mentioned (Yahoo Finance, Treasury.gov, Barchart.com, CoinMarketCap.com, Fred.Stlouisfed.org, and MTFX Group) are the proprietors of their respective trademarks. The use of these names within the `Quantsumore` library does not imply any partnership or endorsement from these entities.
 
 ---
 
-### 3. Intended Use:
-   - **quantsumore** is designed for **personal** and **educational** purposes. If you are using it commercially, **you must** ensure compliance with the data providers' commercial usage policies.
+### Usage Terms and Conditions
+
+👉 Users of `Quantsumore` must comply with the terms and conditions set forth by each data provider. It is the user's responsibility to ensure that their use of the data complies with all applicable laws and terms of service. Direct links to the terms of service for each provider are provided below for your convenience:
+
+- [Yahoo Finance Terms of Use](https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm)
+- [Treasury.gov Terms of Use](https://home.treasury.gov/policy-issues/economic-policy/digital-engagement-privacy-policy)
+- [Barchart Terms of Use](https://www.barchart.com/terms)
+- [CoinMarketCap Terms of Use](https://coinmarketcap.com/terms/)
+- [Federal Reserve Economic Data Terms of Use](https://fred.stlouisfed.org/terms/)
+- [MTFX Group Terms of Use](https://www.mtfxgroup.com/legal)
 
 ---
 
-### 4. Legal Compliance:
-   - Users must adhere to all **laws** and **regulations** applicable to their use of data retrieved through **quantsumore**.
+### No Warranty
+
+👉 `Quantsumore` is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
+
+---
+
+### Personal Use
+
+👉 Please note that the APIs are intended primarily for personal and non-commercial use. Users should refer to the individual terms of use for guidelines on commercial applications.
 
 ---
 
