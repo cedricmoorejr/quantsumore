@@ -22,19 +22,19 @@
 
 ### Important Information
 
-👉 `Quantsumore` is an independent open-source tool designed for research and educational purposes. This library provides a simplified way to access financial data from various publicly available APIs, including Yahoo Finance, Treasury.gov, Barchart.com, CoinMarketCap.com, Fred.Stlouisfed.org, and MTFX Group. Please note that `Quantsumore` is not affiliated, endorsed, or certified by any of the data providers mentioned.
+👉 `quantsumore` is an independent open-source tool designed for research and educational purposes. This library provides a simplified way to access financial data from various publicly available APIs, including Yahoo Finance, Treasury.gov, Barchart.com, CoinMarketCap.com, Fred.Stlouisfed.org, and MTFX Group. Please note that `quantsumore` is not affiliated, endorsed, or certified by any of the data providers mentioned.
 
 ---
 
 ### Trademarks and Endorsements
 
-👉 The data providers mentioned (Yahoo Finance, Treasury.gov, Barchart.com, CoinMarketCap.com, Fred.Stlouisfed.org, and MTFX Group) are the proprietors of their respective trademarks. The use of these names within the `Quantsumore` library does not imply any partnership or endorsement from these entities.
+👉 The data providers mentioned (Yahoo Finance, Treasury.gov, Barchart.com, CoinMarketCap.com, Fred.Stlouisfed.org, and MTFX Group) are the proprietors of their respective trademarks. The use of these names within the `quantsumore` library does not imply any partnership or endorsement from these entities.
 
 ---
 
 ### Usage Terms and Conditions
 
-👉 Users of `Quantsumore` must comply with the terms and conditions set forth by each data provider. It is the user's responsibility to ensure that their use of the data complies with all applicable laws and terms of service. Direct links to the terms of service for each provider are provided below for your convenience:
+👉 Users of `quantsumore` must comply with the terms and conditions set forth by each data provider. It is the user's responsibility to ensure that their use of the data complies with all applicable laws and terms of service. Direct links to the terms of service for each provider are provided below for your convenience:
 
 - [Yahoo Finance Terms of Use](https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm)
 - [Treasury.gov Terms of Use](https://home.treasury.gov/policy-issues/economic-policy/digital-engagement-privacy-policy)
@@ -47,7 +47,7 @@
 
 ### No Warranty
 
-👉 `Quantsumore` is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
+👉 `quantsumore` is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
 
 ---
 
