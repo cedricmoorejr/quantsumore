@@ -14,7 +14,7 @@
 
 </div>
 
-**quantsumore** is an API client that enables access to data from various sources, including Yahoo Finance, U.S. Department of the Treasury, Barchart.com, CoinMarketCap.com, Federal Reserve Economic Data (FRED), and MTFX Group. 
+**quantsumore** is an API client that enables access to data from various sources.
 
 🔴 **Note the following critical information**:
 
@@ -22,26 +22,7 @@
 
 ### Important Information
 
-👉 `quantsumore` is an independent open-source tool designed for research and educational purposes. This library provides a simplified way to access financial data from various publicly available APIs, including Yahoo Finance, Treasury.gov, Barchart.com, CoinMarketCap.com, Fred.Stlouisfed.org, and MTFX Group. Please note that `quantsumore` is not affiliated, endorsed, or certified by any of the data providers mentioned.
-
----
-
-### Trademarks and Endorsements
-
-👉 The data providers mentioned (Yahoo Finance, Treasury.gov, Barchart.com, CoinMarketCap.com, Fred.Stlouisfed.org, and MTFX Group) are the proprietors of their respective trademarks. The use of these names within the `quantsumore` library does not imply any partnership or endorsement from these entities.
-
----
-
-### Usage Terms and Conditions
-
-👉 Users of `quantsumore` must comply with the terms and conditions set forth by each data provider. It is the user's responsibility to ensure that their use of the data complies with all applicable laws and terms of service. Direct links to the terms of service for each provider are provided below for your convenience:
-
-- [Yahoo Finance Terms of Use](https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm)
-- [Treasury.gov Terms of Use](https://home.treasury.gov/policy-issues/economic-policy/digital-engagement-privacy-policy)
-- [Barchart Terms of Use](https://www.barchart.com/terms)
-- [CoinMarketCap Terms of Use](https://coinmarketcap.com/terms/)
-- [Federal Reserve Economic Data Terms of Use](https://fred.stlouisfed.org/terms/)
-- [MTFX Group Terms of Use](https://www.mtfxgroup.com/legal)
+👉 `quantsumore` is an independent open-source tool and is not affiliated, endorsed by, or in any way officially connected with any data providers, companies, or financial institutions whose data it helps to access. The names of these entities and their services are the trademarks of their respective owners.
 
 ---
 
