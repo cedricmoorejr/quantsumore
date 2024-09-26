@@ -14,7 +14,7 @@
 
 </div>
 
-**quantsumore** is an API client that enables access to data from various sources.
+**quantsumore** is an API client that enables access to financial data from various sources.
 
 🔴 **Note the following critical information**:
 
