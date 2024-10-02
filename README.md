@@ -22,13 +22,15 @@
 
 ### Important Information
 
-👉 `quantsumore` is an independent open-source tool and is not affiliated, endorsed by, or in any way officially connected with any data providers, companies, or financial institutions whose data it helps to access. The names of these entities and their services are the trademarks of their respective owners.
+👉 `quantsumore` is an independent Python library designed to provide users with access to market data across various financial instruments. The library is not associated with, endorsed by, or affiliated with any financial institutions or data providers. All data accessed through quantsumore is owned and disseminated by respective data providers.
+
+Users are advised to independently verify the accuracy of the data obtained via quantsumore and should base investment decisions on their own judgment supplemented by professional advice. The developers of quantsumore disclaim all responsibility for any inaccuracies, errors, or omissions in the data provided.
 
 ---
 
 ### No Warranty
 
-👉 `quantsumore` is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
+👉 `quantsumore` is provided "as is", without warranty of any kind, express or implied. No warranties are made concerning the merchantability, fitness for a particular purpose, or non-infringement of the data. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
 
 ---
 
