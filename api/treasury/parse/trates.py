@@ -1,10 +1,31 @@
+# -*- coding: utf-8 -*-
+#
+# quantsumore - finance api client
+# https://github.com/cedricmoorejr/quantsumore/
+#
+# Copyright 2023-2024 Cedric Moore Jr.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+
 import re
 import pandas as pd
 from html import unescape
 from copy import deepcopy
 
 # Custom
-from ....tools.tool import dtparse
+from ....date_parser import dtparse
 
 
 
@@ -36,7 +57,6 @@ class daily_treasury_bill:
             "view-field-br-round-b1-close-52wk-2-table-column",
             "view-field-br-round-b1-yield-52wk-2-table-column"
         ]
-        
         
         if html_content:
             self.process()
@@ -256,6 +276,9 @@ class daily_treasury_bill:
        
     def __dir__(self):
         return ['DATA'] 
+
+
+
 
 
 
@@ -634,7 +657,8 @@ class treasury_yield_all:
         if 'Date' in df.columns:
             df['Date'] = df['Date'].apply(self.format_date)
             df = df.sort_values('Date')
-            df.iloc[:, 1:] = df.iloc[:, 1:].astype(float).round(2)
+            df.iloc[:, 1:] = df.iloc[:, 1:].apply(pd.to_numeric, errors='coerce')
+            df.iloc[:, 1:] = df.iloc[:, 1:].round(2)
             df = df.reset_index(drop=True)
             self.dataframe = df
 
@@ -651,6 +675,8 @@ def __dir__():
 
 
 __all__ = ['daily_treasury_bill', 'daily_treasury_yield', 'treasury_yield_all']
+
+
 
 
 

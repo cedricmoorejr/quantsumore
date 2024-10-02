@@ -1,4 +1,25 @@
+# -*- coding: utf-8 -*-
+#
+# quantsumore - finance api client
+# https://github.com/cedricmoorejr/quantsumore/
+#
+# Copyright 2023-2024 Cedric Moore Jr.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import re
+from urllib.parse import urlparse
 
 class extract_company_name:
     def __init__(self, html):
@@ -103,11 +124,52 @@ class market_find:
         return ['market']
 
 
+class extract_sector:
+    """ From YahooFinance """
+    def __init__(self, html):
+        self.sector = None
+        if html:
+            self.html = html
+            self._sector_text = self.filter_urls(html=self.html, depth=2)
+            if self._sector_text:
+                self._tokenize_and_extract_sector(self._sector_text)
+                
+    def find_sector(self, html, depth=2):
+        urls = re.findall(r'<a[^>]*data-ylk="[^"]*;sec:qsp-company-overview;[^"]*"[^>]*href="([^"]+)"', html)
+        return  [f for f in urls if "sectors" in f]
+
+    def filter_urls(self, html, depth=2):
+        urls = self.find_sector(html=html)
+        filtered_urls = []
+        for url in urls:
+            parsed_url = urlparse(url)
+            path = parsed_url.path.strip('/')
+            parts = path.split('/')
+            if len(parts) == depth:
+                filtered_urls.append(url)
+        return filtered_urls
+    
+    def _tokenize_and_extract_sector(self, text):
+        if isinstance(text, list):
+            text = text[0]
+        path = text.strip('/')
+        tokens = path.split('/')
+        sector = [f for f in tokens if "sectors" not in f]  
+        if sector:
+            self.sector = sector[0]
+       
+    def __dir__(self):
+        return ['sector']
+
+
+
+       
+       
 
 def __dir__():
-    return ['market_find', 'extract_company_name']
+    return ['market_find', 'extract_company_name', 'extract_sector']
 
-__all__ = ['market_find', 'extract_company_name']
+__all__ = ['market_find', 'extract_company_name', 'extract_sector']
 
 
 

@@ -1,18 +1,31 @@
-from ..._http.connection import http_client
+# -*- coding: utf-8 -*-
+#
+# quantsumore - finance api client
+# https://github.com/cedricmoorejr/quantsumore/
+#
+# Copyright 2023-2024 Cedric Moore Jr.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Custom
 from ..prep import treasuryasset
 from .parse import trates
+from ..._http.response_utils import Request
 
 
 class APIClient:
     def __init__(self, asset):
         self.asset = asset  
-
-    def _make_request(self, url):
-        """ Note: http_client is a Singleton class instance."""
-        http_client.update_base_url(url)
-        response = http_client.make_request(params={})
-        html_content = response["response"]
-        return html_content if html_content else None
 
     def TBill(self, period=None, full_table=False):
         """
@@ -34,7 +47,7 @@ class APIClient:
         """
         make_method = getattr(self.asset, 'make')
         url = make_method(query='tbill', period=period)
-        html_content = self._make_request(url)
+        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
         if html_content:
             obj = trates.daily_treasury_bill(html_content, full=full_table)
             rates = obj.DATA()
@@ -62,7 +75,7 @@ class APIClient:
         """ 
         make_method = getattr(self.asset, 'make')
         url = make_method(query='tyield', period=period)
-        html_content = self._make_request(url)
+        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
         if html_content:
             obj = trates.daily_treasury_yield(html_content, full=full_table)
             rates = obj.DATA()
@@ -91,7 +104,7 @@ class APIClient:
         """ 
         make_method = getattr(self.asset, 'make')
         url = make_method(query='tyield', period=period)
-        html_content = self._make_request(url)
+        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
         if html_content:
             obj = trates.treasury_yield_all(html_content)
             rates = obj.DATA()

@@ -1,99 +1,36 @@
+# -*- coding: utf-8 -*-
+#
+# quantsumore - finance api client
+# https://github.com/cedricmoorejr/quantsumore/
+#
+# Copyright 2023-2024 Cedric Moore Jr.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+
 import random
-from collections import deque, OrderedDict
+from collections import OrderedDict
 import requests
 import time
-from urllib.parse import urlparse
 import re
 import os
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+import requests_cache
 
 # Custom
-from ..tools.sys_utils import JsonFileHandler
-
-class UserAgentRandomizer:
-    """
-    A class responsible for randomizing user agents from a predefined list of popular user agents across different platforms and browsers.
-    This class includes a mechanism to reduce the likelihood of selecting a user agent that has been chosen frequently in the recent selections.
-
-    Attributes:
-        user_agents (dict): A class-level dictionary containing user agents categorized by platform and browser combinations.
-        recent_selections (deque): A deque to track the history of the last five selections to dynamically adjust selection probabilities.
-        last_modified_time (float): The last modification time of the JSON file.
-
-    Methods:
-        get_random_user_agent(): Randomly selects and returns a user agent string from the aggregated list of all available user agents, with adjustments based on recent usage to discourage frequent repeats.
-        load_user_agents_from_json(): Loads the user_agents dictionary from the default JSON file.
-        check_and_reload_user_agents(): Checks if the JSON file has been modified since the last load and reloads it if necessary.
-        get_config_path(): Returns the absolute path to the default configuration JSON file.
-    """
-    user_agents = {}
-    recent_selections = deque(maxlen=5)
-    last_modified_time = None
-    json_handler = JsonFileHandler("config.json")    
-
-    @classmethod
-    def load_user_agents_from_json(cls):
-        """ Loads the user_agents dictionary from the default JSON file. """
-        cls.user_agents = cls.json_handler.load()
-        cls.last_modified_time = cls.json_handler.last_modified()
-
-    @classmethod
-    def check_and_reload_user_agents(cls):
-        """ Checks if the JSON file has been modified since the last load and reloads it if necessary."""
-        current_modified_time = cls.json_handler.last_modified()
-        if cls.last_modified_time is None or current_modified_time != cls.last_modified_time:
-            cls.load_user_agents_from_json()
-
-    @classmethod
-    def get_random_user_agent(cls):
-        """
-        Retrieves a random user agent string from the predefined list of user agents across various platforms and browsers.
-        Adjusts the selection process based on the history of the last five selections to discourage frequently repeated choices.
-        """
-        cls.check_and_reload_user_agents()
-
-        all_user_agents = []
-        for category in cls.user_agents.values():
-            for subcategory in category.values():
-                all_user_agents.extend(subcategory.values())
-
-        choice = random.choice(all_user_agents)
-        while cls.recent_selections.count(choice) >= 3:
-            choice = random.choice(all_user_agents)
-
-        cls.recent_selections.append(choice)
-        return choice
-
-
-def find_os_in_user_agent(user_agent):
-    """
-    Determines the operating system from a user-agent string by matching known OS identifiers.
-
-    This function checks the provided `user_agent` string against a dictionary of OS identifiers (`os_dict`).
-    The keys in `os_dict` represent substrings that might appear in a user-agent string, and the corresponding values
-    represent the human-readable names of the operating systems. The function returns the name of the first matching
-    operating system found in the `user_agent` string.
-
-    Parameters:
-    -----------
-    user_agent : str
-        The user-agent string that needs to be analyzed to determine the operating system.
-    """    
-    os_dict = {
-        "Windows": "Windows",
-        "Macintosh": "macOS",
-        "Linux": "Linux",
-        "CrOS": "Chrome OS"
-    }
-    for key in os_dict:
-        if key in user_agent:
-            return os_dict[key]
-    return None
-
-
-
-
+from .utils import UserAgentRandomizer, find_os_in_user_agent, findhost
 
 
 
@@ -155,6 +92,7 @@ class HTTPLite:
         destroy_instance(): Deactivates the singleton instance of HTTPLite, effectively cleaning up resources and resetting the class state to prevent misuse or resource leakage in a controlled shutdown process.
     """
     _instance = None
+    _lock = threading.Lock()
 
     def __new__(cls, *args, **kwargs):
         """
@@ -168,48 +106,56 @@ class HTTPLite:
             cls._instance.initialized = False
         return cls._instance
 
-    def __init__(self, base_url=None):
+    def __init__(self, base_url=None, expire_after=600):
         """
         Initializes the HTTPLite instance with a session and default headers aimed to mimic browser behavior. The headers are dynamically adjusted based on the user agent.
+        Also sets up HTTP caching using requests-cache.
 
         Parameters:
             base_url (str, optional): The base URL for all the requests made using this instance. If not provided, it can be set later via the update_base_url method.
+            expire_after (int): Time (in seconds) after which the cache expires. Defaults to 10 minutes.
 
         Note:
             This method is only called once during the first creation of the instance due to the singleton pattern implemented in __new__.
         """    	
         if not self.initialized:
-            self.session = requests.Session()
+            self.session = requests_cache.CachedSession(
+                cache_name='http_cache',
+                backend='memory',
+                expire_after=expire_after,
+                allowable_codes=(200,),
+                allowable_methods=('GET',),
+            )
+            
             self.session.headers.update({
                 "User-Agent": UserAgentRandomizer.get_random_user_agent(),
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                 "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br, zstd",
-                "DNT": "1", 
                 "Connection": "keep-alive",
+                "Accept-Encoding": "gzip, deflate, br, zstd", 
+                # "Cache-Control": "max-age=0", "max-age=0",  # Removed for effective caching    
+                "DNT": "1",                
                 "Upgrade-Insecure-Requests": "1",
-                "Cache-Control": "max-age=0",
                 "Priority": "u=0, i",
                 "Sec-Ch-Ua-Mobile": "?0",
                 "Sec-Fetch-Dest": "document",
                 "Sec-Fetch-Mode": "navigate",
                 "Sec-Fetch-Site": random.choice(["same-origin", "same-site"]),
-                "Sec-Fetch-User": "?1",
-                "Referer": "https://www.google.com"
+                "Sec-Fetch-User": "?1",                
+                "Referer": "https://www.google.com"                
             })
-            
             # Determine the OS from the User-Agent and update headers accordingly
             user_agent = self.session.headers['User-Agent']
             os_name = find_os_in_user_agent(user_agent)
-            self.session.headers.update({
-                "Sec-Ch-Ua-Platform": os_name,
-            })
+            self.session.headers.update({"Sec-Ch-Ua-Platform": os_name})
+            
             self.last_request_time = None
             self.initialized = True
         self.base_url = base_url if base_url else None
-        self.host = self.findhost(self.base_url) if self.base_url else None   
+        self.host = findhost(self.base_url) if self.base_url else None   
         self.last_host = None   
-        self.code = None      
+        self.code = None       
+        self.content_type = None        
         
     def update_base_url(self, new_url):
         """
@@ -219,40 +165,29 @@ class HTTPLite:
             new_url (str): The new base URL to be used for subsequent requests.
         """
         self.base_url = new_url
-        self.host = self.findhost(new_url)
-
-    def findhost(self, url):
+        self.host = findhost(new_url)
+        
+    def random_delay(self, concurrent=False, delay_enabled=False):
         """
-        Extracts the host from a URL or returns the hostname if that's what is provided.
-
-        Parameters:
-            url (str): The URL or hostname from which the host will be extracted.
-
-        Returns:
-            str: The hostname extracted from the URL.
+        Introduces a configurable delay between consecutive requests to prevent rate limiting or detection.
+        The delay is applied only if delay_enabled is True, facilitating easy toggling for testing purposes.
         """
-        parsed_url = urlparse(url)
-        if parsed_url.scheme and parsed_url.netloc:
-            return parsed_url.netloc
-        elif not parsed_url.netloc and not parsed_url.scheme:
-            return url
+        if not delay_enabled:
+            # Skip delay entirely if delay is not enabled
+            return
+        
+        if concurrent:
+            delay = random.uniform(1, 5)
+            time.sleep(delay)
         else:
-            parsed_url = urlparse('//'+url)
-            return parsed_url.netloc
-
-    def random_delay(self):
-        """
-        Introduces a delay between consecutive requests to the same host to prevent rate limiting or detection.
-        The delay ensures a minimum time interval of 3 seconds unless the host has changed.
-        """
-        if self.last_host and self.last_host == self.host:
-            if self.last_request_time is not None:
-                elapsed_time = time.time() - self.last_request_time
-                if elapsed_time < 3:
-                    time.sleep(3 - elapsed_time)
-        self.last_request_time = time.time()
-        self.last_host = self.host
-
+            if self.last_host and self.last_host == self.host:
+                if self.last_request_time is not None:
+                    elapsed_time = time.time() - self.last_request_time
+                    if elapsed_time < 3:
+                        time.sleep(3 - elapsed_time)
+            self.last_request_time = time.time()
+            self.last_host = self.host
+        
     def shuffle_headers(self):
         """
         Randomizes the order of HTTP headers to mimic the non-deterministic order seen in browsers.
@@ -286,7 +221,40 @@ class HTTPLite:
             return headers.get(key, f"Header '{key}' not found")
         return headers
 
-    def make_request(self, params):
+    def verify_content_type(self, type_input):
+        """
+        Determines the type of content by examining the content type string provided, 
+        classifying it as either 'html' or 'json' based on predefined patterns.
+
+        Args:
+            type_input (str): A string representing the content type header from an HTTP response,
+                              typically containing MIME type and possibly other information.
+
+        Returns:
+            str | None: Returns 'html' if the input matches HTML content patterns,
+                        'json' if it matches JSON content patterns, or None if no match is found.
+
+        Note:
+            The method internally uses regular expressions to check for matches against 
+            the content type. Patterns for HTML include keywords like 'text' and 'html',
+            while JSON detection is based on the presence of 'application' and 'json'.
+        """        
+        html_patterns = [r'text', r'html', r'charset', r'utf']
+        json_patterns = [r'application', r'json']
+        
+        content_type = type_input.lower()
+
+        def matches_any(patterns, content_type):
+            return any(re.search(pattern, content_type) for pattern in patterns)
+
+        if matches_any(html_patterns, content_type):
+            return "html"
+        elif matches_any(json_patterns, content_type):
+            return "json"
+        else:
+            return None
+
+    def make_request(self, params, concurrent=False, return_url=True, delay_enabled=True):
         """
         Sends a request to the server using the current base URL and provided parameters, handling header shuffling and random delays.
 
@@ -296,39 +264,91 @@ class HTTPLite:
         Returns:
             dict: A dictionary containing the 'response' which can either be text or JSON, depending on the request parameters.
         """
-        self.random_delay()
-
-        if 'format' not in params:
-            params['format'] = 'html'
-
-        # Update the host before making the request
-        self.host = self.findhost(self.base_url)
-
-        # Shuffle headers right before making the request
-        self.shuffle_headers()
-
         try:
+            if 'format' not in params:
+                params['format'] = 'html'
+
+            self.host = findhost(self.base_url)
+            self.shuffle_headers()
+
             response = self.session.get(self.base_url, params=params)
             self.code = response.status_code
-            response.raise_for_status()
-            if params['format'] == 'json':
-                return {'response': response.json()}
-            else:
-                return {'response': response.text}
-        except Exception:
-            return None
+            self.content_type = response.headers.get('Content-Type')
 
+            if response.from_cache:
+                # print("Used Cache")
+                pass                
+
+            if not response.from_cache:
+                self.random_delay(concurrent=concurrent, delay_enabled=delay_enabled)
+
+            response.raise_for_status()
+
+            content_type_result = self.verify_content_type(self.content_type)
+            if content_type_result == "json":
+                response_data = {"response": response.json()}
+            elif content_type_result == "html":
+                response_data = {"response": response.text}
+            else:
+                raise ValueError("Unsupported content type")
+
+            if concurrent:
+                return response_data
+            else:
+                if return_url:
+                    return [{self.base_url: response_data}]
+                else:
+                    return response_data
+
+        except requests.exceptions.HTTPError as e:
+            error_message = {"error": f"HTTP Error {e.response.status_code}: {str(e)}"}
+        except Exception as e:
+            error_message = {"error": str(e)}
+
+        if not concurrent:
+            return [{self.base_url: error_message}]
+        return error_message
+           
+    def make_requests_concurrently(self, urls, params, return_url=True, delay_enabled=True):
+        """
+        Makes multiple HTTP requests concurrently using threading.
+
+        Parameters:
+            urls (list): A list of URLs to send requests to.
+            params (dict): The parameters to pass with each request.
+
+        Returns:
+            list: A list of responses from all URLs.
+        """          
+        results = []
+        def worker(url):
+            self.update_base_url(url)
+            result = self.make_request(params, concurrent=True, return_url=return_url, delay_enabled=delay_enabled)
+            with self._lock:
+                if return_url:
+                    results.append({url: result})
+                else:
+                    results.append(result)
+        threads = []
+
+        for url in urls:
+            thread = threading.Thread(target=worker, args=(url,))
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+        return results
+       
     @classmethod
     def destroy_instance(cls):
         """
         Destroys the singleton instance of the HTTPLite class, rendering it unusable by replacing all callable attributes with a method that raises an error.
-        """
+        """        
         if cls._instance:
-            # Iterate over all callable attributes and replace them with unusable versions
             for key in dir(cls._instance):
                 attr = getattr(cls._instance, key)
                 if callable(attr) and key not in ['__class__', '__del__', '__dict__']:
-                    # Replace the method with a function that raises an error
                     setattr(cls._instance, key, cls._make_unusable)
             cls._instance = None
 
@@ -341,9 +361,10 @@ class HTTPLite:
 
         Raises:
             RuntimeError: Indicates that the instance has been destroyed and is no longer usable.
-        """    	
+        """          
         raise RuntimeError("This instance has been destroyed and is no longer usable.")
-       
+
+
 
 
 http_client = HTTPLite()
@@ -352,8 +373,3 @@ def __dir__():
     return ['http_client']
 
 __all__ = ['http_client']
-
-
-# Fix Versions if Needed
-from ..configuration import fix_versions
-

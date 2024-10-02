@@ -1,3 +1,23 @@
+# -*- coding: utf-8 -*-
+#
+# quantsumore - finance api client
+# https://github.com/cedricmoorejr/quantsumore/
+#
+# Copyright 2023-2024 Cedric Moore Jr.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import re
 import pandas as pd
 import json
@@ -6,9 +26,12 @@ from copy import deepcopy
 import time
 
 # Custom
-from ...market_utils import currencyquery, forex_hours
-from ....tools._html_cl import HTMLclean
-from ....tools.tool import dtparse
+from ...market_utils import forexquery, forex_hours
+from ....web_utils import HTMLclean
+from ....date_parser import dtparse
+from ...._http.response_utils import clean_initial_content, get_top_level_key
+
+
 
 # Helper
 def fix_and_validate_dict_string_or_list(input_data):
@@ -122,6 +145,199 @@ def reorder_dict(original_dict, new_order):
 
 
 
+
+
+
+
+
+
+## Via JSON
+##========================================================================
+class fx_historical:
+    def __init__(self, json_content=None):
+        self.cleaned_data = None          
+        self.timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        self.data = None       
+
+        if isinstance(json_content, list):
+            self.json_content = json_content
+        else:
+            self.json_content = [json_content] if json_content else []
+
+        if self.json_content:
+            self.parse()
+
+            if self.cleaned_data:
+                self._create_dataframe()
+            
+    def _clean_content(self, content):
+        return clean_initial_content(content)   
+        
+    def _create_dataframe(self):
+        rows = self.cleaned_data
+        df = pd.DataFrame(rows)
+        df['InverseRate'] = round((1 / df['RatePairValue']), 6)
+        df['LastUpdate'] = df['LastUpdate'].apply(dtparse.parse, to_format='%Y-%m-%d') # Convert Date Column  
+        df['BaseCurrency'] = df['RatePair'].str.slice(0, 3)  # First 3 characters for the base currency
+        df['QuoteCurrency'] = df['RatePair'].str.slice(3, 6)  # Last 3 characters for the quote currency
+        df['QueriedAt'] = self.timestamp
+        df.rename(columns={'LastUpdate': 'Date', 'RatePair': 'CurrencyPair', 'RatePairValue': 'Rate'}, inplace=True)
+
+        column_order=['Date', 'CurrencyPair', 'BaseCurrency', 'QuoteCurrency', 'Rate', 'InverseRate','QueriedAt']
+        filtered_columns = [col for col in column_order if col in df.columns]
+        self.data = df[filtered_columns]
+
+    def _is_data(self, dataframe):
+        if dataframe is None:
+            return True
+        elif dataframe.empty:
+            return True
+        else:
+            return False
+
+    def parse(self):
+        # Flatten the list of dictionaries and remove 'CallCount' key using dictionary comprehension
+        cleaned_content = self._clean_content(self.json_content)         
+        flattened_data = []
+        responses = cleaned_content
+        for response in responses:
+            for item in response['d']:
+                new_item = {key: value for key, value in item.items() if key != 'CallCount'}
+                flattened_data.append(new_item)
+
+        if flattened_data:
+            self.cleaned_data = flattened_data
+
+    def DATA(self):
+        if self._is_data(self.data):
+            return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        return self.data
+
+    def __dir__(self):
+        return ['DATA']
+
+
+
+class fx_interbank_rates:
+    def __init__(self, json_content=None):
+        self.cleaned_data = None          
+        self.timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        self.data = None       
+
+        if isinstance(json_content, list):
+            self.json_content = json_content
+        else:
+            self.json_content = [json_content] if json_content else []
+
+        if self.json_content:
+            self.parse()
+
+            if self.cleaned_data:
+                self._create_dataframe()
+    
+    def _clean_content(self, content):
+        return clean_initial_content(content)   
+        
+    def _create_dataframe(self):
+        rows = self.cleaned_data
+        df = pd.DataFrame(rows)
+        df.rename(columns={'ChangePercent': 'PercentageChange', 'RatePair': 'CurrencyPair', 'Amount':'Rate'}, inplace=True)
+        df['QueriedAt'] = self.timestamp
+        df["QuoteCurrency"] = df['CurrencyPair'].str.slice(0, 3)
+        df = df[["CurrencyPair", "QuoteCurrency", "Rate", "PercentageChange", "QueriedAt"]]
+        self.data = df
+
+    def _is_data(self, dataframe):
+        if dataframe is None:
+            return True
+        elif dataframe.empty:
+            return True
+        else:
+            return False
+        
+    def parse(self):
+        cleaned_content = self._clean_content(self.json_content)        	
+        flattened_data = []
+        responses = cleaned_content
+        for response in responses:
+            for item in response:            
+                new_item = {key: value for key, value in item.items() if key != 'ChartData'}
+                flattened_data.append(new_item)
+
+        if flattened_data:
+            self.cleaned_data = flattened_data
+
+    def DATA(self):
+        if self._is_data(self.data):
+            return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        return self.data
+
+    def __dir__(self):
+        return ['DATA']
+
+
+
+class live_bid_ask:
+    def __init__(self, json_content=None):
+        self.cleaned_data = None          
+        self.data = None         
+
+        if isinstance(json_content, list):
+            self.json_content = json_content
+        else:
+            self.json_content = [json_content] if json_content else []
+
+        if self.json_content:
+            self.parse()
+
+            if self.cleaned_data:
+                self._create_dataframe()
+
+    def _clean_content(self, content):
+        return clean_initial_content(content)   
+        
+    def _create_dataframe(self):
+        rows = self.cleaned_data
+        df = pd.DataFrame(rows)
+        self.data = df
+
+    def _is_data(self, dataframe):
+        if dataframe is None:
+            return True
+        elif dataframe.empty:
+            return True
+        else:
+            return False
+
+    def parse(self):
+        cleaned_content = self._clean_content(self.json_content)          
+        top_key = get_top_level_key(cleaned_content)
+        rows = []
+        for entry in cleaned_content:
+            row = {}
+            row['Symbol'] = entry[top_key]['symbol']
+            row['Asset Class'] = entry[top_key]['assetClass']
+            for key, val in entry[top_key]['summaryData'].items():
+                row[val['label']] = val['value']
+            rows.append(row)
+
+        if rows:
+            self.cleaned_data = rows
+
+    def DATA(self):
+        if self._is_data(self.data):
+            return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        return self.data
+
+    def __dir__(self):
+        return ['DATA']
+
+
+
+
+
+## Via HTML
+##========================================================================
 class live_quote:
     def __init__(self, html_content=None):
         self.html_content = html_content
@@ -310,119 +526,6 @@ class live_quote:
 
 
 
-
-
-
-class live_bid_ask:
-    def __init__(self, html_content=None):
-        self.html_content = html_content
-        self.currency_pair = None
-        self.timestamp = None
-        self.bid_ask_prices = None   
-        self.data = None       
-        self.error = False         
-
-        if html_content:
-            self.parse()
-            if not self.error:
-                self.compile_data()
-                
-    def __format_price(self, value):
-        try:
-            return round(float(value), 6)
-        except ValueError:
-            return value
-
-    def clean_html_content(self):
-        self.html_content = HTMLclean.decode(self.html_content)
-
-    def extract_ccy_pair(self):
-        div_pattern = r'<div class="symbol-name[^>]*>.*?<span>\(([^)]*)\)</span>'
-        div_match = re.search(div_pattern, self.html_content, re.DOTALL)
-        if div_match:
-            symbol_in_parentheses = div_match.group(1)
-            cleaned_symbol = re.sub(r'[^A-Za-z]', '', symbol_in_parentheses)
-            if len(cleaned_symbol) == 6:
-                self.currency_pair = f"{cleaned_symbol.upper()}"
-        return None
-
-    def extract_bid_ask_prices(self):
-        pattern = r'data-ng-init=\'init\((\{.*?\})\)\''
-        match = re.search(pattern, self.html_content, re.DOTALL)
-        if match:
-            json_like_string = match.group(1)
-            bid_price_pattern = r'"bidPrice":"([0-9.]+)"'
-            ask_price_pattern = r'"askPrice":"([0-9.]+)"'
-            bid_price_match = re.search(bid_price_pattern, json_like_string)
-            ask_price_match = re.search(ask_price_pattern, json_like_string)
-            bid_price = bid_price_match.group(1) if bid_price_match else None
-            ask_price = ask_price_match.group(1) if ask_price_match else None
-            ask = self.__format_price(ask_price)
-            bid = self.__format_price(bid_price)
-            spread = round((ask - bid), 6)
-            self.bid_ask_prices = {"bidPrice":bid, "askPrice":ask, "bid-askSpread":spread}
-        return None
-       
-    def extract_date_time(self):
-        json_pattern = r'<script type="application/json" id="barchart-www-inline-data">(.*?)</script>'
-        json_match = re.search(json_pattern, self.html_content, re.DOTALL)        
-        if json_match:
-            json_content = json_match.group(1)
-            data = json.loads(json_content)
-            first_key = list(data.keys())[0]
-            if forex_hours.time:
-                self.timestamp = forex_hours.time
-            else:
-                try:
-                    trade_time = data[first_key]["quote"]["tradeTime"]
-                    self.timestamp = trade_time.replace("T", " ")
-                except:
-                    date_pattern = r'"sessionDateDisplayLong":"([^"]+)"'
-                    time_pattern = r'"tradeTime":"([^"]+)"'
-                    date_match = re.search(date_pattern, self.html_content)
-                    time_match = re.search(time_pattern, self.html_content)
-                    if date_match and time_match:
-                        date_part = date_match.group(1)
-                        time_part = time_match.group(1)
-                        self.timestamp = f"{date_part} {time_part}"
-        return None
-    
-    def parse(self):
-        try:
-            self.clean_html_content()
-            self.extract_ccy_pair()
-            self.extract_bid_ask_prices()
-            self.extract_date_time()
-        except:
-            self.error = True
-
-    def compile_data(self):
-        data = combine_dicts([{'currencyPair':self.currency_pair}, self.bid_ask_prices, {'lastUpdated':self.timestamp}])
-        data = reorder_dict(
-            data,
-            new_order = [
-                'currencyPair', 
-                'bidPrice', 
-                'askPrice', 
-                'bid-askSpread',                 
-                'lastUpdated'
-            ])
-        self.data = data
-
-    def DATA(self):
-        if not self.error:
-            return self.currency_pair, self.data
-        else:
-            return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
-
-    def __dir__(self):
-        return ['DATA']
-
-
-
-
-
-# For Conversion
 class conversion:
     def __init__(self, html_content=None, conversion_amount=1):
         self.html_content = html_content
@@ -498,8 +601,8 @@ class conversion:
         from_currency_code = self.currency_pair[:3].strip()
         to_currency_code = self.currency_pair[3:].strip()
 
-        from_currency = currencyquery.query(from_currency_code, query_type="bchart",ret_type="name")
-        to_currency = currencyquery.query(to_currency_code, query_type="bchart",ret_type="name")
+        from_currency = forexquery.query(from_currency_code, query_type="bchart",ret_type="name")
+        to_currency = forexquery.query(to_currency_code, query_type="bchart",ret_type="name")
 
         rate_from = self.exchange_rate
         rate_to = self.converted_exchange_rate 
@@ -546,108 +649,6 @@ class conversion:
     def __dir__(self):
         return ['DATA']
 
-
-
-# For Historical
-class fx_historical:
-    def __init__(self, json_content=None):
-        self.timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        self.data = None
-        self.error = False
-
-        if isinstance(json_content, str):
-            self.json_content = json.loads(json_content)
-        elif isinstance(json_content, dict):
-            self.json_content = json_content
-        else:
-            self.json_content = {}
-
-        if self.json_content:
-            self.parse()
-
-    def inspect_json(self):
-        if 'd' not in self.json_content or not self.json_content['d']:
-            raise Exception("No data available for the currency pair.")
-    
-    def process_json(self):
-        df = pd.DataFrame(self.json_content['d'])
-        df['BaseCurrency'] = df['RatePair'].str[:3]
-        df['QuoteCurrency'] = df['RatePair'].str[-3:]
-        df['Rate'] = df['RatePairValue']
-        df['InverseRate'] = round((1 / df['RatePairValue']), 6)
-        for index, row in df.iterrows():
-            df.at[index, row['BaseCurrency']] = row['Rate']
-            df.at[index, row['QuoteCurrency']] = row['InverseRate']
-        df = df.drop(columns=['RatePairValue', 'BaseCurrency', 'QuoteCurrency', 'Rate', 'InverseRate', 'CallCount'])
-        df.rename(columns={'LastUpdate': 'Date', 'RatePair': 'CurrencyPair'}, inplace=True)
-        df['Date'] = df['Date'].apply(dtparse.parse, to_format='%Y-%m-%d') # Convert Date Column        
-        df['QueriedAt'] = self.timestamp
-        self.data = df
-
-    def parse(self):
-        try:
-            self.inspect_json()
-            self.process_json()
-        except Exception as e:
-            self.error = True
-
-    def DATA(self):
-        if self.error:
-            return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
-        return self.data
-
-    def __dir__(self):
-        return ['DATA']
-
-
-
-# For Interbank
-class fx_interbank_rates:
-    def __init__(self, json_content=None):
-        self.timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        self.data = None
-        self.error = False
-
-        if isinstance(json_content, str):
-            self.json_content = json.loads(json_content)
-        elif isinstance(json_content, dict):
-            self.json_content = json_content
-        else:
-            self.json_content = {}
-
-        if self.json_content:
-            self.parse()
-
-    def inspect_json(self):
-        if not self.json_content:
-            raise Exception("No data available for the currency pair.")
-    
-    def process_json(self):
-        df = pd.DataFrame(self.json_content)
-        df = df.drop(columns=['ChartData'])
-        df.rename(columns={'ChangePercent': 'PercentageChange', 'RatePair': 'CurrencyPair', 'Amount':'Rate'}, inplace=True)
-        df['QueriedAt'] = self.timestamp
-        df["QuoteCurrency"] = df['CurrencyPair'].str[3:]
-        df = df[["CurrencyPair", "QuoteCurrency", "Rate", "PercentageChange", "QueriedAt"]]
-        self.data = df
-
-    def parse(self):
-        try:
-            self.inspect_json()
-            self.process_json()
-        except Exception as e:
-            self.error = True
-
-    def DATA(self):
-        if self.error:
-            return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
-        return self.data
-
-    def __dir__(self):
-        return ['DATA']
-
-
-        
 
 def __dir__():
     return [

@@ -1,30 +1,37 @@
+# -*- coding: utf-8 -*-
+#
+# quantsumore - finance api client
+# https://github.com/cedricmoorejr/quantsumore/
+#
+# Copyright 2023-2024 Cedric Moore Jr.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+
 from copy import deepcopy
 
 # Custom
-from ..._http.connection import http_client
 from ..prep import crypto_asset
 from .parse import crypto
+from ..._http.response_utils import Request
 
 
 class APIClient:
     def __init__(self, asset):
         self.asset = asset
 
-    def _make_request(self, url, headers_to_update=None):
-        """ Note: http_client is a Singleton class instance."""
-        http_client.update_base_url(url)
-        original_headers = {}
-        if headers_to_update:
-            for header, value in headers_to_update.items():
-                original_headers[header] = http_client.get_headers(header)
-                http_client.update_header(header, value)
-        response = http_client.make_request(params={})
-        for header, original_value in original_headers.items():
-            http_client.update_header(header, original_value)
-        content = response["response"]
-        return content if content else None
-
-    def cLatest(self, slug, baseCurrencySymbol=None, quoteCurrencySymbol=None, cryptoExchange=None, limit=100, exchangeType="all"):
+    def cLatest(self, slug, baseCurrencySymbol=None, quoteCurrencySymbol=None, limit=100, exchangeType="all", cryptoExchange=None):
         """
         Fetches and returns the latest live cryptocurrency market data for a specified asset.
 
@@ -85,9 +92,8 @@ class APIClient:
         [1 rows x 20 columns]
         """    	
         make_method = getattr(self.asset, 'make')
-        url = make_method('live', slug, baseCurrencySymbol, quoteCurrencySymbol, limit, exchangeType)
-        headers_to_update = {"Accept": "application/json"}
-        content = self._make_request(url, headers_to_update=headers_to_update)
+        url = make_method(query='live', slug=slug, baseCurrencySymbol=baseCurrencySymbol, quoteCurrencySymbol=quoteCurrencySymbol, limit=limit, exchangeType=exchangeType)
+        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=False, no_content=False)        
         if content:
             obj = crypto.live_quote(content, cryptoExchange=cryptoExchange)
             data = obj.DATA()
@@ -149,10 +155,11 @@ class APIClient:
 
         [9 rows x 14 columns]
         """    	
+        if all(x is None for x in [start, end]):
+            raise ValueError("Start and end dates must be provided for historical data requests.")
         make_method = getattr(self.asset, 'make')
-        url = make_method(query_type='historical', slug=slug, start=start, end=end)
-        headers_to_update = {"Accept": "application/json"}
-        content = self._make_request(url, headers_to_update=headers_to_update)
+        url = make_method(query='historical', slug=slug, start=start, end=end)
+        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=False, no_content=False) 
         if content:
             obj = crypto.crypto_historical(content)
             data = obj.DATA()

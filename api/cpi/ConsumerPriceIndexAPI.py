@@ -1,10 +1,29 @@
+# -*- coding: utf-8 -*-
+#
+# quantsumore - finance api client
+# https://github.com/cedricmoorejr/quantsumore/
+#
+# Copyright 2023-2024 Cedric Moore Jr.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import pandas as pd
-from functools import lru_cache
 
 # Custom
-from ..._http.connection import http_client
 from ..prep import cpi_asset
 from .parse import cpi
+from ..._http.response_utils import Request
 
 
 
@@ -12,22 +31,7 @@ class APIClient:
     def __init__(self, asset):
         self.asset = asset
         self.CPI_U = self._CPI_U(self) # Auto create CPI_U instance that knows about its parent APIClient instance
-
-    def _make_request(self, url, headers_to_update=None):
-        """ Note: http_client is a Singleton class instance."""
-        http_client.update_base_url(url)
-        original_headers = {}
-        if headers_to_update:
-            for header, value in headers_to_update.items():
-                original_headers[header] = http_client.get_headers(header)
-                http_client.update_header(header, value)
-        response = http_client.make_request(params={})
-        for header, original_value in original_headers.items():
-            http_client.update_header(header, original_value)
-        content = response["response"]
-        return content if content else None
-
-    @lru_cache(maxsize=128)
+       
     def _all_urban(self, series_id='CPIAUCNS'):
         """
         Fetches and processes Consumer Price Index (CPI) data for all urban consumers.
@@ -40,7 +44,7 @@ class APIClient:
         """    	
         make_method = getattr(self.asset, 'make')
         url = make_method(series_id=series_id)
-        html_content = self._make_request(url)
+        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
         if html_content:
             obj1 = cpi.CUUR0000AA0.Date(html_content)
             end_date = obj1.date()

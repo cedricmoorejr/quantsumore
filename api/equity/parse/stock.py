@@ -1,186 +1,296 @@
+# -*- coding: utf-8 -*-
+#
+# quantsumore - finance api client
+# https://github.com/cedricmoorejr/quantsumore/
+#
+# Copyright 2023-2024 Cedric Moore Jr.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+
 import time
 import datetime
-from html.parser import HTMLParser
 import re
 import pandas as pd
 import numpy as np
+import json
+from html.parser import HTMLParser
 
 # Custom
-from ....tools.tool import dtparse
-from ...market_utils import *
+from ....date_parser import dtparse
 from ...parse_tools import market_find, extract_company_name
+from ...._http.response_utils import clean_initial_content, get_top_level_key
+
+
+
+## Via JSON
+##========================================================================
+class latest:
+    def __init__(self, json_content=None):
+        self.cleaned_data = None  
+        self.data = None
+        # self.error = False       
+
+        if isinstance(json_content, list):
+            self.json_content = json_content
+        else:
+            self.json_content = [json_content] if json_content else []
+
+        if self.json_content:
+            self.parse()
+
+            if self.cleaned_data:
+                self._create_dataframe()
+                
+    def _clean_content(self, content):
+        return clean_initial_content(content)   
+        
+    def _query_time(self):
+        return dtparse.now(utc=True, as_unix=True) 
+       
+    def _create_dataframe(self):
+        rows = self.cleaned_data
+        df = pd.DataFrame(rows)
+        df['date'] = df['date'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
+        df['firstTradeDate'] = df['firstTradeDate'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
+        df['marketTime'] = df['marketTime'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
+        df['timeQueried'] = self._query_time()
+        df['timeQueried'] = df['timeQueried'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))        
+        self.data = df
+
+    def _is_data(self, dataframe):
+        if dataframe is None or dataframe.empty:
+            return False
+        else:
+            return True
+        
+    def parse(self):
+        cleaned_content = self._clean_content(self.json_content)    	
+        rows = []
+        for entry in cleaned_content:
+            result = entry['chart']['result']
+            for item in result:
+                meta = item['meta']
+                indicators = item['indicators']
+                quote = indicators.get('quote', [{}])[0]
+                adjclose = indicators.get('adjclose', [{}])[0]
+                
+                row = {
+                    "date": item.get("timestamp", [0])[0],     	
+                    "currency": meta.get("currency", pd.NA),
+                    "symbol": meta.get("symbol", pd.NA),
+                    "exchangeName": meta.get("exchangeName", pd.NA),
+                    "fullExchangeName": meta.get("fullExchangeName", pd.NA),
+                    "instrumentType": meta.get("instrumentType", pd.NA),
+                    "firstTradeDate": meta.get("firstTradeDate", 0),
+                    "regularMarketPrice": meta.get("regularMarketPrice", 0.0),
+                    "fiftyTwoWeekHigh": meta.get("fiftyTwoWeekHigh", 0.0),
+                    "fiftyTwoWeekLow": meta.get("fiftyTwoWeekLow", 0.0),
+                    "regularMarketDayHigh": meta.get("regularMarketDayHigh", 0.0),
+                    "regularMarketDayLow": meta.get("regularMarketDayLow", 0.0),
+                    "regularMarketVolume": meta.get("regularMarketVolume", 0),
+                    "longName": meta.get("longName", pd.NA),
+                    "marketTime": meta.get("regularMarketTime", 0),                      
+                }
+                rows.append(row)
+        if rows:
+            self.cleaned_data = rows
+
+    def DATA(self):
+        if not self._is_data(self.data):
+            return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        return self.data
+
+    def __dir__(self):
+        return ['DATA']
+
+
 
 class historical:
-    def __init__(self, html_content=None):
-        self.html_content = html_content
-        self.headers = []
-        self.rows = []
-        self.exchanges = ['NasdaqGS', 'NYSE', 'NYSEArca']
-        self.exchange_type = None
-        self.ticker = None        
-        self.exchange_validation = self.validate_stock_exchange()
-        
-        if html_content:
+    def __init__(self, json_content=None):
+        self.cleaned_data = None  
+        self.data = None
+        # self.error = False       
+
+        if isinstance(json_content, list):
+            self.json_content = json_content
+        else:
+            self.json_content = [json_content] if json_content else []
+
+        if self.json_content:
             self.parse()
-            self.exchange_type = market_find(html_content)
-            self.exchange_validation = self.validate_stock_exchange()
 
-    def validate_stock_exchange(self):
-        return bool(self.exchange_type and self.exchange_type.market in self.exchanges)
-        
-    def parse(self):
-        self.extract_ticker_content()    	
-        self.extract_headers()
-        self.extract_rows()
+            if self.cleaned_data:
+                self._create_dataframe()
 
-    def extract_ticker_content(self):
-        pattern = re.compile(r'<section class="container yf-3a2v0c paddingRight">\s*<h1 class="[^"]+">(.*?)</h1>\s*</section>')
-        company_info = pattern.search(self.html_content)
-        company_name_and_symbol = company_info.group(1).strip() if company_info else None
-        match = re.search(r'\(([^)]+)\)', company_name_and_symbol)
-        if match:
-            self.ticker = match.group(1)
-
-    def extract_headers(self):
-        header_pattern = re.compile(r'<th class="[^"]*">(.*?)</th>')
-        headers = header_pattern.findall(self.html_content)
-        self.headers = [self.clean_header(header) for header in headers]
-
-    def extract_rows(self):
-        row_pattern = re.compile(r'<tr class="yf-ewueuo">(.*?)</tr>', re.DOTALL)
-        rows = row_pattern.findall(self.html_content)
-        data_pattern = re.compile(r'<td class="yf-ewueuo">(.*?)</td>')
-        
-        for row in rows:
-            cells = data_pattern.findall(row)
-            if cells:
-                cleaned_cells = [cell.strip() for cell in cells]
-                if len(cleaned_cells) == 7:
-                    self.rows.append(cleaned_cells)
-
-    def clean_header(self, text):
-        clean_text = re.sub(r'<[^>]*>', '', text).strip()
-        clean_text = re.split(r'\s{2,}', clean_text)[0].strip()
-        return clean_text
+    def _clean_content(self, content):
+        return clean_initial_content(content)
        
-    def format_date(self, date_str, from_format=None, to_format=None):
-        return dtparse.parse(date_str, from_format, to_format)
-       
-    def DATA(self):
-        """ Converts the parsed headers and rows into a pandas DataFrame."""
-        if not self.exchange_validation:
-            return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+    def _query_time(self):
+        return dtparse.now(utc=True, as_unix=True) 
            
-        df = pd.DataFrame(self.rows, columns=self.headers)
-        if 'Date' in df.columns:
-            df['Date'] = df['Date'].apply(self.format_date)
-            df = df.sort_values('Date')
-            df = df.reset_index(drop=True)
-            df.insert(0, 'Ticker', self.ticker)
-            df['Open'] = pd.to_numeric(df['Open'], errors='coerce')
-            df['High'] = pd.to_numeric(df['High'], errors='coerce')
-            df['Low'] = pd.to_numeric(df['Low'], errors='coerce')
-            df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
-            df['Adj Close'] = pd.to_numeric(df['Adj Close'], errors='coerce')
-            df['Volume'] = pd.to_numeric(df['Volume'].str.replace(',', ''), errors='coerce')
-        return df
-       
-    def __dir__(self):
-        return ['DATA']
+    def _create_dataframe(self):
+        rows = self.cleaned_data
+        df = pd.DataFrame(rows)
+        df['date'] = df['date'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
+        df['firstTradeDate'] = df['firstTradeDate'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
+        df['marketTime'] = df['marketTime'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
+        df['timeQueried'] = self._query_time()
+        df['timeQueried'] = df['timeQueried'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))    
+        self.data = df
 
-
-
-
-class latest:
-    def __init__(self, html_content=None):
-        self.html_content = html_content
-        self.price = None        
-        self.ticker = None   
-        self.latest_price = None        
-        self.market_time_notice = None      
-        self.stock_market_hours = self.market_status()
-        self.stock_market_last = self.last_open()
-
-        self.exchanges = ['NasdaqGS', 'NYSE', 'NYSEArca']
-        self.exchange_type = None
-        self.exchange_validation = self.validate_stock_exchange()
+    def _is_data(self, dataframe):
+        if dataframe is None or dataframe.empty:
+            return False
+        else:
+            return True
         
-        if html_content:
-            self.parse()
-            self.exchange_type = market_find(html_content)
-            self.exchange_validation = self.validate_stock_exchange()
-
-    def validate_stock_exchange(self):
-        return bool(self.exchange_type and self.exchange_type.market in self.exchanges)
-
     def parse(self):
-        self.extract_price()
-        self.extract_ticker_content()
-        self.extract_market_time_notice()
+        cleaned_content = self._clean_content(self.json_content)    	
+        rows = []
+        for entry in cleaned_content:
+            result = entry['chart']['result']
+            for item in result:
+                meta = item['meta']
+                timestamps = item.get('timestamp', [])
+                quote = item['indicators']['quote'][0]
+                adjclose = item['indicators']['adjclose'][0]
 
-    def extract_price(self):
-        """Extracts the regular market price from the data-value attribute."""
-        price_pattern = re.compile(r'<fin-streamer[^>]+data-field="regularMarketPrice"[^>]+data-value="([^"]+)"')
-        price_match = price_pattern.search(self.html_content)
-        self.price = price_match.group(1) if price_match else None
+                for i, timestamp in enumerate(timestamps):
+                    row = {
+                        # Meta fields
+                        "date": timestamp,                        
+                        "currency": meta.get("currency", pd.NA),
+                        "symbol": meta.get("symbol", pd.NA),
+                        "exchangeName": meta.get("exchangeName", pd.NA),
+                        "fullExchangeName": meta.get("fullExchangeName", pd.NA),
+                        "instrumentType": meta.get("instrumentType", pd.NA),
+                        "firstTradeDate": meta.get("firstTradeDate", 0),
+                        # "regularMarketTime": meta.get("regularMarketTime", 0),
+                        # "gmtoffset": meta.get("gmtoffset", 0),
+                        # "timezone": meta.get("timezone", pd.NA),
+                        # "exchangeTimezoneName": meta.get("exchangeTimezoneName", pd.NA),
+                        "regularMarketPrice": meta.get("regularMarketPrice", 0.0),
+                        "fiftyTwoWeekHigh": meta.get("fiftyTwoWeekHigh", 0.0),
+                        "fiftyTwoWeekLow": meta.get("fiftyTwoWeekLow", 0.0),
+                        "regularMarketDayHigh": meta.get("regularMarketDayHigh", 0.0),
+                        "regularMarketDayLow": meta.get("regularMarketDayLow", 0.0),
+                        "regularMarketVolume": meta.get("regularMarketVolume", 0),
+                        "longName": meta.get("longName", pd.NA),
+                        # "shortName": meta.get("shortName", pd.NA),
+                        # "chartPreviousClose": meta.get("chartPreviousClose", 0.0),
+                        # "priceHint": meta.get("priceHint", 0),
+                        
+                        # Timestamp and quote fields
+                        "open": quote.get("open", [None])[i],
+                        "low": quote.get("low", [None])[i],
+                        "close": quote.get("close", [None])[i],
+                        "high": quote.get("high", [None])[i],
+                        "volume": quote.get("volume", [None])[i],
+                        "adjclose": adjclose.get("adjclose", [None])[i],
+                        "marketTime": meta.get("regularMarketTime", 0),                
+                    }
+                    rows.append(row)
 
-    def extract_ticker_content(self):
-        """Cleans the additional content to extract the desired pattern."""
-        pattern = re.compile(r'<section class="container yf-3a2v0c paddingRight">\s*<h1 class="[^"]+">(.*?)</h1>\s*</section>')
-        company_info = pattern.search(self.html_content)
-        company_name_and_symbol = company_info.group(1).strip() if company_info else None
-        match = re.search(r'\(([^)]+)\)', company_name_and_symbol)
-        if match:
-            self.ticker = match.group(1)
-
-    def extract_market_time_notice(self):
-        """Extracts the market time notice to extract and format the updated time."""        
-        market_time_notice_pattern = re.compile(r'<div slot="marketTimeNotice"><span class="[^"]+">(.*?)</span>')
-        market_time_notice = market_time_notice_pattern.search(self.html_content)
-        market_time_notice_text = market_time_notice.group(1).strip() if market_time_notice else None
-
-        if self.stock_market_hours == "closed":
-            self.market_time_notice = self.stock_market_last
-
-        elif "market open" in market_time_notice_text.lower():
-            pattern = r"As of (\d+:\d+ \w+ \w+)\."
-            match = re.search(pattern, market_time_notice_text)
-            if match:
-                time_portion = match.group(1)
-                current_time = time.localtime()
-                current_date = time.strftime("%Y-%m-%d", current_time)
-                self.market_time_notice =  f"{current_date} {time_portion}"
-
-    def market_status(self):
-        if is_market_open():
-            return "open"
-        return "closed"
-
-    def last_open(self):
-        return last_open_date(format=True)
-
-    def format_price(self, value):
-        try:
-            return float(value)
-        except ValueError:
-            return None
+        if rows:
+            self.cleaned_data = rows
 
     def DATA(self):
-        if not self.exchange_validation:
+        if not self._is_data(self.data):
             return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
-        data = {
-            'ticker': [self.ticker],
-            'last_price': [self.price],
-            'last_updated': [self.market_time_notice]
-        }
-        df = pd.DataFrame(data)
-        return df
-       
+        return self.data
+
     def __dir__(self):
         return ['DATA']
 
 
 
+
+class last:
+    def __init__(self, json_content=None):
+        self.cleaned_data = None          
+        self.data = None
+        
+        if isinstance(json_content, list):
+            self.json_content = json_content
+        else:
+            self.json_content = [json_content] if json_content else []
+
+        if self.json_content:
+            self.parse()
+
+            if self.cleaned_data:
+                self._create_dataframe()
+
+    def _clean_content(self, content):
+        return clean_initial_content(content)   
+        
+    def _create_dataframe(self):
+        rows = self.cleaned_data
+        df = pd.DataFrame(rows)
+        df['Timestamp'] = df['Timestamp'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
+        self.data = df
+
+    def _is_data(self, dataframe):
+        if dataframe is None or dataframe.empty:
+            return False
+        else:
+            return True
+        
+    def parse(self):
+        cleaned_content = self._clean_content(self.json_content)
+        top_key = get_top_level_key(cleaned_content)
+        structured_data = []
+        
+        try:
+            data = cleaned_content[top_key]['result']
+        except TypeError:
+            data = cleaned_content[0][top_key]['result']
+        except KeyError:
+            return pd.DataFrame()
+        
+        for result in data:
+            symbol = result['symbol']
+            meta = result['response'][0]['meta']
+            timestamps = result['response'][0]['timestamp']
+            closes = result['response'][0]['indicators']['quote'][0]['close']
+            
+            for timestamp, close in zip(timestamps, closes):
+                structured_data.append({
+                    'Symbol': symbol,
+                    'Timestamp': timestamp,
+                    'Close Price': close,
+                    'Market Price': meta['regularMarketPrice'],
+                    'Day High': meta['regularMarketDayHigh'],
+                    'Day Low': meta['regularMarketDayLow'],
+                    'Volume': meta['regularMarketVolume']
+                })
+        if structured_data:
+            self.cleaned_data = structured_data
+
+    def DATA(self):
+        if not self._is_data(self.data):
+            return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        return self.data
+
+    def __dir__(self):
+        return ['DATA']
+
+
+
+## Via HTML
+##========================================================================
 class quote_statistics(HTMLParser):
     def __init__(self, html_content=None):
         super().__init__()
@@ -188,8 +298,8 @@ class quote_statistics(HTMLParser):
         self.statistics = ''
         self.company_name = None        
         self.headers = ['Previous Close', 'Open', 'Bid', 'Ask', "Day's Range", '52 Week Range', 'Volume', 'Avg. Volume',
-                'Market Cap (intraday)', 'Beta (5Y Monthly)', 'PE Ratio (TTM)', 'EPS (TTM)', 'Earnings Date',
-                'Forward Dividend & Yield', 'Ex-Dividend Date', '1y Target Est']
+                				'Market Cap (intraday)', 'Beta (5Y Monthly)', 'PE Ratio (TTM)', 'EPS (TTM)', 'Earnings Date',
+                				'Forward Dividend & Yield', 'Ex-Dividend Date', '1y Target Est']
         self.exchanges = ['NasdaqGS', 'NYSE', 'NYSEArca']
         self.exchange_type = None
         self.exchange_validation = self.validate_stock_exchange()
