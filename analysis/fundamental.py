@@ -165,7 +165,7 @@ class fAnalyze:
         return self.ratios._ex_dividend_date()
 
     def annual_dividend(self):
-        """ Return the dividend date."""    	
+        """ Return the annual dividend."""    	
         return self.ratios._annual_dividend()
 
     def current_ratio(self):
