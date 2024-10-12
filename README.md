@@ -144,7 +144,7 @@ from quantsumore.api import equity
 
 ```python
 # Fetch company bio for Apple Inc.
-company_bio = equity.CompanyBio(ticker="AAPL", verbose=True)
+company_bio = equity.CompanyBio(ticker="AAPL")
 print(company_bio)
 ```
 
@@ -188,7 +188,7 @@ print(historical_data)
 
 ```python
 # Convert 100 Euros to USD based on the latest conversion rates
-conversion_data = forex.CurrencyConversion(currency_pair="EURUSD", conversion_amount=100, verbose=True)
+conversion_data = forex.CurrencyConversion(currency_pair="EURUSD", conversion_amount=100)
 print(conversion_data)
 ```
 
