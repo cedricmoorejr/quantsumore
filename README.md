@@ -60,6 +60,7 @@ Users are advised to independently verify the accuracy of the data obtained via 
 The `quantsumore` library is a comprehensive Python package designed for retrieving and analyzing a wide range of financial market data. It provides specialized API clients to fetch data from various financial markets, including cryptocurrencies, equities, Forex, Treasury instruments, and Consumer Price Index (CPI) metrics. Below is an overview of the key API clients and their functionalities.
 
 ## Table of Contents
+- [Installation](#installation)
 - [Using the `quantsumore` API Clients](#using-the-quantsumore-api-clients)
   - [Cryptocurrency Data](#cryptocurrency-data)
   - [Consumer Price Index (CPI)](#consumer-price-index-cpi)
@@ -71,6 +72,19 @@ The `quantsumore` library is a comprehensive Python package designed for retriev
   - [Using Financial Statements, Ratios, and Indicators](#using-financial-statements-ratios-and-indicators)
   - [Examples of Financial and Technical Analysis Applications](#examples-of-financial-and-technical-analysis-applications)
 
+
+# Installation
+To start using the `quantsumore` API clients for financial data analysis, follow these steps to install the package and set up your environment.
+
+### Installing the `quantsumore` Package
+
+You can install `quantsumore` directly from PyPI using `pip`. Open your terminal and run the following command:
+
+```bash
+pip install quantsumore
+```
+
+This will install the `quantsumore` package along with any required dependencies.
 
 # Using the `quantsumore` API Clients
 
