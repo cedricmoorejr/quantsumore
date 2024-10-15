@@ -74,7 +74,7 @@ The `quantsumore` library is a comprehensive Python package designed for retriev
 
 
 # Installation
-To start using the `quantsumore` API clients for financial data analysis, follow these steps to install the package and set up your environment.
+To start using the `quantsumore` API clients for financial data analysis, follow these steps to install the package.
 
 ### Installing the `quantsumore` Package
 
