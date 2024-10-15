@@ -25,8 +25,9 @@ import re
 # Custom
 from ..api.equity.parse import fin_statement, dividend
 from ..api.prep import stocks_asset
-from .._http.response_utils import Request, key_from_mapping, locKeyInStructure, validateHTMLResponse, ExtractURLKeys
+from .._http.response_utils import Request, key_from_mapping, validateHTMLResponse
 from ..exceptions import FinancialStatementUnavailableError, DividendError
+from ..strata_utils import IterDict
 
 
 class APIClient:
@@ -80,26 +81,36 @@ class APIClient:
         
         for which, which_content, in categorized_content.items():
             if which == 'financial_statements':
-                url = ExtractURLKeys(which_content, ignore_case=True, flatten=True)
-                content_check = locKeyInStructure(which_content, target_key="data", value_only=True, first_only=True, return_all=False) 
-                if content_check:            
-                    # obj = fin_statement.financials(json_content=which_content)
-                    obj = fin_statement.financials(json_content=which_content)                
+                url = IterDict.unique_url_keys(which_content, ignore_case=True, flatten=True)	
+                content_check = IterDict.search_keys(which_content, target_keys=["message", "data"], value_only=True, first_only=True, return_all=False, include_key_in_results=True)
+                message = (content_check["message"].rstrip() + ('' if re.search(r'\.$', content_check["message"].rstrip()) else '.') if content_check["message"] is not None else None) # Add a period if the trimmed text does not end with one               
+                contents = content_check["data"]                
+                if not contents:
+                    if not message:
+                        message = "No available financial statement data for the ticker symbol provided."
+                        raise FinancialStatementUnavailableError(message)
+                    raise FinancialStatementUnavailableError(message)  
+                else:
+                    obj = fin_statement.financials(json_content=which_content)            
                     results['financial_statements'] = [(obj.IncomeStatement, obj.BalanceSheet, obj.CashFlowStatement)]
-                else:
-                    message = locKeyInStructure(which_content, target_key="message", value_only=True, first_only=True, return_all=False) 
-                    raise FinancialStatementUnavailableError(message)
-
+                        
             elif which == 'dividend':            
-                url = ExtractURLKeys(which_content, ignore_case=True, flatten=True)
-                content_check = locKeyInStructure(which_content, target_key="data", value_only=True, first_only=True, return_all=False) 
-                if content_check:            
-                    # obj = dividend.dividend_history(json_content=which_content)
-                    obj = dividend.dividend_history(json_content=which_content)            
-                    results['dividend'] = [(obj.DividendReport, obj.DividendData)]
-                else:
-                    message = locKeyInStructure(which_content, target_key="message", value_only=True, first_only=True, return_all=False)
-                    raise DividendError(url=url, ticker=None, message=message)                   
+                url = IterDict.unique_url_keys(which_content, ignore_case=True, flatten=True)	
+                content_check = IterDict.search_keys(which_content, target_keys=["message", "data"], value_only=True, first_only=True, return_all=False, include_key_in_results=True)
+                message = (content_check["message"].rstrip() + ('' if re.search(r'\.$', content_check["message"].rstrip()) else '.') if content_check["message"] is not None else None) # Add a period if the trimmed text does not end with one               
+                contents = content_check["data"]
+                try:
+                    if message:
+                        raise DividendError(url=url, ticker=None, message=message)            
+                    else:
+                        if contents:
+                            obj = dividend.dividend_history(json_content=which_content)            
+                            results['dividend'] = [(obj.DividendReport, obj.DividendData)]
+                except DividendError:
+                    results['dividend'] = f'Error: {message}' 
+                   
         return results         
 
 process = APIClient(stocks_asset)
+
+

@@ -24,7 +24,7 @@ import re
 
 # Custom
 from .connection import http_client
-from ..web_utils import url_encode_decode
+from ..web_utils import url_encode_decode, HTMLclean
 
 def normalize_response(response, target_key="response", onlyNormalize=False, keep_structure=False):
     """
@@ -126,76 +126,74 @@ def normalize_response(response, target_key="response", onlyNormalize=False, kee
     return process_result(result, multiple=multi)
 
 
-def validateHTMLResponse(html_content, ticker=None, currency_pair=None, query=None):
-    """
-    Validates sections of HTML content based on provided criteria related to financial data.
-
-    This function performs validations to determine if specific sections relevant to financial data queries
-    exist within a given HTML content string. It supports different types of financial instruments such as equities
-    and currencies, depending on the parameters supplied.
-    
-    Parameters:
-    - html_content (str): The HTML content to be validated.
-    - ticker (str, optional): The ticker symbol associated with equities. If provided, the function will
-      validate content specifically related to the ticker within equity-related queries ('profile' and 'stats').
-    - currency_pair (str, optional): The currency pair identifier. If provided and the query is 'currency', the function
-      will validate content specific to the currency pair.
-    - query (str, optional): The type of query to validate against. Expected values are 'profile', 'stats', or 'currency'.
-      Default is 'None'.    
-    """	
-    if query == "currency" and currency_pair:
+class validateHTMLResponse:
+    def __init__(self, html):
+        if not self.__is_valid_html_str(html):
+            return False
+        self.html = HTMLclean.decode(html)
+        
+    def __is_valid_html_str(self, html):
+        if html is None or not isinstance(html, str):
+            return False
+        if html.strip() == "":
+            return False
+        errors = []
+        if not re.match(r'(?i)<!doctype\s+html>', html):
+            errors.append("Missing or incorrect DOCTYPE declaration.")
+        if not re.search(r'<html[^>]*>', html, re.IGNORECASE) or not re.search(r'</html>', html, re.IGNORECASE):
+            errors.append("Missing <html> or </html> tag.")
+        if not re.search(r'<head[^>]*>', html, re.IGNORECASE) or not re.search(r'</head>', html, re.IGNORECASE):
+            errors.append("Missing <head> or </head> tag.")
+        if re.search(r'<head[^>]*>', html, re.IGNORECASE):
+            head_content = re.search(r'<head[^>]*>(.*?)</head>', html, re.IGNORECASE | re.DOTALL)
+            if head_content:
+                if not re.search(r'<title[^>]*>.*?</title>', head_content.group(1), re.IGNORECASE | re.DOTALL):
+                    errors.append("Missing <title> or </title> tag inside <head>.")
+            else:
+                errors.append("Head tag content not found.")
+        if not re.search(r'<body[^>]*>', html, re.IGNORECASE) or not re.search(r'</body>', html, re.IGNORECASE):
+            errors.append("Missing <body> or </body> tag.")
+        if not errors:
+            return True
+        else:
+            return False
+        
+    def __ticker_search(self, ticker):
+        html_content = self.html        
+        ticker = re.sub(r'\s+', '', ticker).upper()
+        section_pattern = r'<div class="top yf-1s1umie">(.*?)</div>\s*</div>\s*</div>'
+        section_match = re.search(section_pattern, html_content, re.DOTALL)
+        if section_match:
+            section_content = section_match.group(0)
+        ticker_section_match = re.search(r'<section[^>]*class="container yf-xxbei9 paddingRight"[^>]*>(.*?)</section>', section_content, re.DOTALL)        
+        if ticker_section_match:
+            ticker_section_content = ticker_section_match.group(1)
+            s = re.sub(r'\s*<.*?>\s*', '', ticker_section_content)  
+            ticker_match = re.search(r'\(([^)]+)\)$', s)
+            if ticker_match:
+                found_ticker = ticker_match.group(1)
+                if found_ticker == ticker:
+                    return True
+        return False
+         
+    def currency(self, currency_pair):
+        html_content = self.html
         if not currency_pair.__contains__("^"):
             currency_pair = "^" + currency_pair
         pattern_pair = rf'<span>\({re.escape(currency_pair)}\)</span>'
         if re.search(pattern_pair, html_content, re.IGNORECASE | re.DOTALL):
-            return html_content
-        return None
-
-    if ticker and (query == "profile" or query == "stats"):
-        if re.search(rf'<section\s+class="container yf-1bx8svv paddingRight">.*?<h1\s+class="yf-1bx8svv">.*?\({ticker}\).*?</h1>.*?</section>', html_content, re.IGNORECASE | re.DOTALL):
-            return html_content
-        return None
-
-    elif not ticker:
-        if query == "profile":
-            description_found = re.search(r'<section data-testid="description".*?<h3.*?>\s*Description\s*</h3>.*?</section>', html_content, re.IGNORECASE | re.DOTALL)
-            key_exec_found = re.search(r'<section data-testid="key-executives".*?<h3.*?>\s*Key Executives\s*</h3>.*?</section>', html_content, re.IGNORECASE | re.DOTALL)
-            if description_found or key_exec_found:
-                return html_content
-
-        elif query == "stats":
-            stats_found = re.search(r'<div\s+data-testid="quote-statistics"[^>]*>.*?<ul[^>]*>.*?</ul>.*?</div>', html_content, re.IGNORECASE | re.DOTALL)
-            if stats_found:
-                return html_content
-    return None 
-
-
-def inspect_content(content, root_key='data'):
-    """
-    Determine if all content in a list contain a specified key.
-
-    This function iterates over a list of dictionaries (content) and checks
-    each dictionary to see if it contains a specific key (root_key). It returns
-    True if all dictionaries contain the key, and False otherwise.
-
-    Parameters:
-    - content (list of dict): A list of dictionaries representing content.
-    - root_key (str, optional): The key to check for in each dataset dictionary.
-                                Defaults to 'data'.
-
-    Returns:
-    - bool: True if all dictionaries in the list contain the root_key, False otherwise.
-    """	
-    num_content = len(content)
-
-    data_keys_count = 0
-    for i, dataset in enumerate(content):
-        if root_key in dataset:
-            data_keys_count += 1
-    if data_keys_count == num_content:
-        return True    
-    return False
-
+            return True
+        return False
+        
+    def equity(self, ticker):
+        html_content = self.html
+        if self.__ticker_search(ticker=ticker):
+            profile_check = re.search(r'<section data-testid="description".*?<h3.*?>\s*Description\s*</h3>.*?</section>', html_content, re.IGNORECASE | re.DOTALL)
+            stats_check = re.search(r'<div\s+data-testid="quote-statistics"[^>]*>.*?<ul[^>]*>.*?</ul>.*?</div>', html_content, re.IGNORECASE | re.DOTALL)
+            if profile_check or stats_check:
+                return True
+        return False
+   
 def clean_initial_content(content):
     """
     Clean the input content by removing entries with URL keys and extracting the contents within their 'response' sub-key.
@@ -224,56 +222,6 @@ def clean_initial_content(content):
             else:
                 cleaned_content.append({key: value})
     return cleaned_content
-
-def get_top_level_key(content, top_1=True):
-    """
-    This function takes a nested data structure (e.g., a dictionary or list of dictionaries)
-    and returns the top-level keys of the structure.
-    If top_1 is True, it returns only the first key that is not 'error'.
-    
-    :param content: The nested data structure (dict or list of dicts)
-    :param top_1: Boolean, if True returns only the first valid key
-    :return: List of keys, a single key, or an error message
-    """
-    keys = []
-    if isinstance(content, dict):
-        keys = list(content.keys())
-    elif isinstance(content, list) and content and isinstance(content[0], dict):
-        keys = list(content[0].keys())
-    else:
-        return "Invalid or unsupported structure"
-    
-    keys = [key for key in keys if key != 'error']
-    
-    if top_1 and keys:
-        return keys[0]
-    return keys
-   
-def safe_content_access(content, path):
-    """
-    Safely access nested content using a list of keys, automatically handling lists by accessing the first element.
-    
-    Args:
-    content (dict): The dictionary to access.
-    path (list): A list of keys representing the path to the desired content.
-
-    Returns:
-    The content found at the path, handling lists by returning the first element.
-    """
-    current_content = content
-    for key in path:
-        if isinstance(current_content, list):
-            if len(current_content) > 0:
-                current_content = current_content[0]
-            else:
-                return None
-        if isinstance(current_content, dict):
-            current_content = current_content.get(key, None)
-            if current_content is None:
-                return None
-        else:
-            return current_content
-    return current_content
 
 def key_from_mapping(input_str, mappings, invert=False):
     """
@@ -311,215 +259,6 @@ def key_from_mapping(input_str, mappings, invert=False):
         return inverse_mappings[input_str]
 
     return None
-
-
-
-def __is_effectively_empty(item):
-    """
-    Recursively checks if a structure is effectively empty.
-    An empty structure is:
-    - an empty list, tuple, set, or dict
-    - a list, tuple, or set where all elements are empty structures
-    - a dict where all values are empty structures
-    """
-    if isinstance(item, (list, tuple, set)):
-        return all(__is_effectively_empty(i) for i in item)
-    elif isinstance(item, dict):
-        return all(__is_effectively_empty(v) for v in item.values())
-    return False
-
-def locKeyInStructure(structure, target_key, value_only=True, first_only=True, return_all=False):
-    """
-    Recursively searches for a key in a nested structure (dict, list, tuple, set)
-    and returns its corresponding value, the key-value pair, or the entire sub-structure,
-    optionally returning all matches instead of just the first.
-
-    Parameters:
-    structure (Any): The nested structure to search. It can be a dict, list, tuple, set, or any iterable.
-    target_key (str): The key to search for within the structure.
-    value_only (bool): If True, returns only the value associated with the target key.
-                       If False, returns a dictionary with the key-value pair. Default is True.
-    first_only (bool): If True, returns only the first match found. If False, returns all matches.
-    return_all (bool): If True, returns the entire sub-structure where the target key is found instead of just the value or key-value pair.
-
-    Returns:
-    Union[Any, dict, None, List]: Depending on first_only, value_only, and return_all, returns a single value,
-                                  a single key-value pair, the entire structure, a list of values, a list of key-value pairs, or a list of structures.
-    """
-    results = []
-
-    if structure is None:
-        return None
-    if isinstance(structure, dict):
-        for key, value in structure.items():
-            if key == target_key:
-                result = (value if value_only else {key: value}) if not return_all else structure
-                if first_only:
-                    return result
-                else:
-                    results.append(result)
-            sub_result = locKeyInStructure(value, target_key, value_only, first_only, return_all)
-            if sub_result is not None:
-                if first_only:
-                    return sub_result
-                else:
-                    results.extend(sub_result if isinstance(sub_result, list) else [sub_result])
-    elif isinstance(structure, (list, tuple, set)):
-        for item in structure:
-            sub_result = locKeyInStructure(item, target_key, value_only, first_only, return_all)
-            if sub_result is not None:
-                if first_only:
-                    return sub_result
-                else:
-                    results.extend(sub_result if isinstance(sub_result, list) else [sub_result])
-    elif isinstance(structure, (str, bytes)):
-        return None if first_only else results
-    else:
-        try:
-            iterator = iter(structure)
-            for item in iterator:
-                sub_result = locKeyInStructure(item, target_key, value_only, first_only, return_all)
-                if sub_result is not None:
-                    if first_only:
-                        return sub_result
-                    else:
-                        results.extend(sub_result if isinstance(sub_result, list) else [sub_result])
-        except TypeError:
-            return None if first_only else results
-           
-    if results:
-        results = [res for res in results if res is not None]
-        if not results: 
-            return None
-    if __is_effectively_empty(results):
-        return None
-    return results if not first_only else None
-
-
-def locMultipleKeyInStructure(structure, target_keys, value_only=True, first_only=True, return_all=False):
-    """
-    Recursively searches for keys in a nested structure (dict, list, tuple, set)
-    and returns their corresponding values, the key-value pairs, or the entire sub-structure,
-    optionally returning all matches instead of just the first.
-
-    Parameters:
-    structure (Any): The nested structure to search. It can be a dict, list, tuple, set, or any iterable.
-    target_keys (list): The keys to search for within the structure.
-    value_only (bool): If True, returns only the values associated with the target keys.
-                       If False, returns a dictionary with the key-value pairs. Default is True.
-    first_only (bool): If True, returns only the first match found. If False, returns all matches.
-    return_all (bool): If True, returns the entire sub-structure where the target keys are found instead of just the values or key-value pairs.
-
-    Returns:
-    Union[Any, dict, None, List]: Depending on first_only, value_only, and return_all, returns a single value,
-                                  a single key-value pair, the entire structure, a list of values, a list of key-value pairs, or a list of structures.
-    """
-    def remove_duplicates(dicts):
-        seen = []
-        unique_dicts = []
-        for d in dicts:
-            if d not in seen:
-                unique_dicts.append(d)
-                seen.append(d)
-        return unique_dicts  
-       
-    results = []       
-
-    if structure is None:
-        return None
-    if isinstance(structure, dict):
-        for key, value in structure.items():
-            if key in target_keys:
-                result = (value if value_only else {key: value}) if not return_all else structure
-                if first_only:
-                    return result
-                else:
-                    results.append(result)
-            sub_result = locMultipleKeyInStructure(value, target_keys, value_only, first_only, return_all)
-            if sub_result is not None:
-                if first_only:
-                    return sub_result
-                else:
-                    results.extend(sub_result if isinstance(sub_result, list) else [sub_result])
-    elif isinstance(structure, (list, tuple, set)):
-        for item in structure:
-            sub_result = locMultipleKeyInStructure(item, target_keys, value_only, first_only, return_all)
-            if sub_result is not None:
-                if first_only:
-                    return sub_result
-                else:
-                    results.extend(sub_result if isinstance(sub_result, list) else [sub_result])
-    elif isinstance(structure, (str, bytes)):
-        return None if first_only else results
-    else:
-        try:
-            iterator = iter(structure)
-            for item in iterator:
-                sub_result = locMultipleKeyInStructure(item, target_keys, value_only, first_only, return_all)
-                if sub_result is not None:
-                    if first_only:
-                        return sub_result
-                    else:
-                        results.extend(sub_result if isinstance(sub_result, list) else [sub_result])
-        except TypeError:
-            return None if first_only else results
-
-    if results:
-        results = [res for res in results if res is not None] 
-        if not results:
-            return None
-    return remove_duplicates(results)  if not first_only else None
-
-
-def ExtractURLKeys(structure, ignore_case=True, flatten=False):
-    """
-    Extracts and returns a set or a single string of unique keys that are URLs from a nested dictionary,
-    list, tuple, set, or other iterable structure.
-
-    Parameters:
-    - structure (any): The input data structure to search for URL keys.
-    - ignore_case (bool, optional): If True, the URL matching will be case-insensitive. Defaults to True.
-    - flatten (bool, optional): If True and only one URL key is found, return it as a string instead of a set. Defaults to False.
-
-    Returns:
-    - set: A set of unique keys that are URLs found in the structure.
-
-    Example usage:
-    structure = {
-        'https://example.com/api/data': {'data': 123},
-        'normal_key': 'value',
-        'another_url': 'https://example.com/api/info'
-    }
-    keys = ExtractURLKeys(structure)
-    print(keys)
-    # Output: {'https://example.com/api/data', 'https://example.com/api/info'}
-    """
-    keys = set()
-    url_pattern = r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+[^ \n]*'
-    regex = re.compile(url_pattern, re.IGNORECASE if ignore_case else 0)
-    def recurse(current_structure):
-        if isinstance(current_structure, dict):
-            for key in current_structure.keys():
-                if regex.search(key):
-                    keys.add(key)
-            for value in current_structure.values():
-                recurse(value)
-        elif isinstance(current_structure, (list, tuple, set)):
-            for item in current_structure:
-                recurse(item)
-        elif hasattr(current_structure, '__iter__') and not isinstance(current_structure, (str, bytes)):
-            try:
-                iterator = iter(current_structure)
-                for item in iterator:
-                    recurse(item)
-            except TypeError:
-                pass
-    recurse(structure)
-    if flatten and len(keys) == 1:
-        return next(iter(keys))
-    if isinstance(keys, set):
-        return list(keys)        
-    return keys
 
 
 ##==
@@ -589,8 +328,7 @@ def Request(url, headers_to_update=None, response_format='html', target_response
         return response
 
 
-
 def __dir__():
-    return ['Request', 'normalize_response', 'locKeyInStructure']
+    return ['Request', 'normalize_response']
 
-__all__ = ['Request', 'normalize_response', 'locKeyInStructure']
+__all__ = ['Request', 'normalize_response']

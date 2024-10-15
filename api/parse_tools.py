@@ -70,60 +70,48 @@ class extract_company_name:
             
     def __dir__(self):
         return ['name']            
-            
-            
+           
+
 class market_find:
     def __init__(self, html):
-        self.html = html
         self.market = None
-        self._exchange_text = None
-        self._extract_exchange_text()
+        self.exchanges = ['NasdaqGS', 'NYSE', 'NYSEArca']
+        
+        if html:
+            self.html = html
+            self._extract_exchange_text(html=html)
+            
+    def _extract_exchange_text(self, html):
+        try:
+            section_pattern = r'<div class="top yf-1s1umie">(.*?)</div>\s*</div>\s*</div>'
+            section_match = re.search(section_pattern, html, re.DOTALL)
 
-    def _extract_exchange_text(self):
-        start_tag = '<span class="exchange yf-1fo0o81">'
-        end_tag = '</span>'
-        
-        start_index = self.html.find(start_tag)
-        if start_index == -1:
-            return
-        
-        # Move the index to the end of the start tag
-        start_index += len(start_tag)
-        
-        # Find the closing span tag
-        end_index = self.html.find(end_tag, start_index)
-        if end_index == -1:
-            return
-        
-        # Extract the inner HTML
-        inner_html = self.html[start_index:end_index]
-        
-        # Remove nested tags to get the text
-        text = self._remove_tags(inner_html)
-        self._exchange_text = text.strip()
-        self._tokenize_and_extract_market(self._exchange_text)
+            if section_match:
+                section_content = section_match.group(0)
+            else:
+                raise ValueError("No section match found")
 
-    def _remove_tags(self, html):
-        inside_tag = False
-        text = []
-        for char in html:
-            if char == '<':
-                inside_tag = True
-            elif char == '>':
-                inside_tag = False
-            elif not inside_tag:
-                text.append(char)
-        return ''.join(text)
+            exchange_pattern = r'<span class="exchange yf-wk4yba">.*?<span>(.*?)</span>.*?<span>(.*?)</span>'
+            exchange_match = re.search(exchange_pattern, section_content, re.DOTALL)
 
-    def _tokenize_and_extract_market(self, text):
-        tokens = text.split()
-        if tokens:
-            self.market = tokens[0]
-       
+            if exchange_match:
+                exchange_info = list(exchange_match.groups())
+                for exchange in self.exchanges:
+                    if any(exchange in item for item in exchange_info):
+                        self.market = exchange
+                        break
+            else:
+                raise ValueError("No exchange match found")
+
+        except Exception:
+            print("No exchange match found")
+            self.market = None
+
     def __dir__(self):
         return ['market']
 
 
+       
 class extract_sector:
     """ From YahooFinance """
     def __init__(self, html):
@@ -162,14 +150,35 @@ class extract_sector:
         return ['sector']
 
 
+class extract_ticker:
+    """ From YahooFinance """
+    def __init__(self, html):
+        self.ticker = None
+        if html:
+            self.html = html
+            self.safely_find_ticker(html=html)
+                
+    def safely_find_ticker(self, html):
+        section_pattern = r'<div class="top yf-1s1umie">(.*?)</div>\s*</div>\s*</div>'
+        section_match = re.search(section_pattern, html, re.DOTALL)
 
-       
-       
+        if section_match:
+            section_content = section_match.group(0)
+
+        ticker_section_match = re.search(r'<section[^>]*class="container yf-xxbei9 paddingRight"[^>]*>(.*?)</section>', section_content, re.DOTALL)        
+        if ticker_section_match:
+            ticker_section_content = ticker_section_match.group(1)
+            s = re.sub(r'\s*<.*?>\s*', '', ticker_section_content)  
+            ticker_match = re.search(r'\(([^)]+)\)$', s)
+            if ticker_match:
+                self.ticker = ticker_match.group(1)      
+        return None
+
 
 def __dir__():
-    return ['market_find', 'extract_company_name', 'extract_sector']
+    return ['market_find', 'extract_company_name', 'extract_sector', 'extract_ticker']
 
-__all__ = ['market_find', 'extract_company_name', 'extract_sector']
+__all__ = ['market_find', 'extract_company_name', 'extract_sector', 'extract_ticker']
 
 
 

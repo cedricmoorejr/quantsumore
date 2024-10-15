@@ -26,7 +26,8 @@ from copy import deepcopy
 
 # Custom
 from ....date_parser import dtparse
-from ...._http.response_utils import clean_initial_content, get_top_level_key, safe_content_access
+from ...._http.response_utils import clean_initial_content
+
 
 
 
@@ -147,8 +148,7 @@ class financials:
         if not self.ticker:
             self.ticker = self._getTickerSymbol(self.json_content)
         content = self._clean_content(self.json_content)
-        top_key = get_top_level_key(content)
-        finstatement = safe_content_access(content, [top_key, statementType])
+        finstatement = content[0]['data'][statementType]       
         if finstatement:
             headers = finstatement['headers']
             rows = finstatement['rows']

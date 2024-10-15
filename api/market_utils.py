@@ -29,8 +29,7 @@ import unicodedata
 
 # Custom
 from ..sys_utils import filePaths, JSON, SQLiteDBHandler
-from .._http.response_utils import locKeyInStructure, locMultipleKeyInStructure
-
+from ..strata_utils import IterDict
 
 
 ## Equity Utils
@@ -292,7 +291,7 @@ class Query:
                 self.validated_slug_id = None                
 
             def _extract(self, data, key):
-                return locKeyInStructure(data, target_key=key, value_only=True, first_only=True, return_all=False)
+                return IterDict.search_keys(data, target_keys=key, value_only=True, first_only=True, return_all=False, include_key_in_results=False)
 
             def validate(self, slug):
                 if not isinstance(slug, str):
@@ -300,7 +299,7 @@ class Query:
                 
                 slug = slug.lower()
                 data = self.coin.Slug(slug)
-                result = locMultipleKeyInStructure(data, target_keys=["slug", "id"], value_only=False, first_only=False, return_all=False)
+                result = IterDict.search_keys_in(data, target_keys=["slug", "id"], value_only=False, first_only=False, return_all=False)
                 if result:
                     if len(result) == 2:
                         SLUG = self._extract(result, "slug")

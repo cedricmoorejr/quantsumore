@@ -42,8 +42,8 @@ class APIClient:
 
         Parameters:
         ----------
-        slug : str
-            The identifier for the cryptocurrency asset (e.g., "bitcoin").
+        slug : str or list of str
+            The identifier(s) for the cryptocurrency asset(s). Accepts a single identifier (e.g., "bitcoin") or a list of identifiers (e.g., ["bitcoin", "ethereum"]).
         baseCurrencySymbol : str, optional
             The symbol of the base currency (e.g., "USD"). Defaults to None.
         quoteCurrencySymbol : str, optional
@@ -110,8 +110,8 @@ class APIClient:
 
         Parameters:
         ----------
-        slug : str
-            The identifier for the cryptocurrency asset (e.g., "bitcoin").
+        slug : str or list of str
+            The identifier(s) for the cryptocurrency asset(s). Accepts a single identifier (e.g., "bitcoin") or a list of identifiers (e.g., ["bitcoin", "ethereum"]).
         start : str
             The start date for the historical data retrieval in the format "YYYY-MM-DD".
         end : str

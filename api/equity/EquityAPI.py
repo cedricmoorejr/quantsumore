@@ -24,8 +24,9 @@ from copy import deepcopy
 # Custom
 from ..prep import stocks_asset
 from .parse import stock, fin_statement, dividend
-from ..._http.response_utils import Request, key_from_mapping, locKeyInStructure, validateHTMLResponse
+from ..._http.response_utils import Request, key_from_mapping, validateHTMLResponse
 from ...exceptions import FinancialStatementUnavailableError, HTTP404TickerError, RetrievalError, DividendError
+from ...strata_utils import IterDict
 
 
 class APIClient:
@@ -45,7 +46,7 @@ class APIClient:
         make_method = getattr(self.asset, 'make')
         url = make_method(query='profile', ticker=ticker)
         html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
-        html_check = validateHTMLResponse(html_content, ticker=ticker, query="profile")
+        html_check = validateHTMLResponse(html_content).equity(ticker=ticker)
         if html_check:
             obj = stock.profile(html_content)
             data = obj.DATA()
@@ -146,10 +147,10 @@ class APIClient:
         make_method = getattr(self.asset, 'make')
         url = make_method(query='stats', ticker=ticker)
         html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
-        html_check = validateHTMLResponse(html_content, ticker=ticker, query="stats")
+        html_check = validateHTMLResponse(html_content).equity(ticker=ticker)
         if html_check:
             obj = stock.quote_statistics(html_content)
-            _, stats = obj.DATA()
+            stats = obj.DATA()
             return stats
         return None          
           
@@ -197,43 +198,51 @@ class APIClient:
                 return obj.DATA()
         except:
             raise RetrievalError(message="Failed to retrieve historical data")
-
-
-    def sLatest(self, ticker):
+           
+    def Dividends(self, ticker):
         """
-        Retrieves the latest stock price for a company based on its ticker symbol.
+        Retrieves dividend data for the specified ticker symbol.
 
-        This method fetches the most recent price of a stock identified by its ticker symbol. 
-        During trading hours, it provides the current price. If trading is closed, it returns 
-        the last available price from the most recent trading session.
+        This method fetches dividend-related information such as ex-dividend dates, dividend yields, and payment dates 
+        for a given company based on the `ticker`. It is designed to provide an overview of a company's dividend history 
+        and current dividend policies.
 
         Parameters:
         ----------
-        ticker : str
-            The ticker symbol of the company whose latest stock price is to be retrieved.
+        ticker : str|list
+            The ticker symbol or a list of symbols for which to retrieve stock data. Example: 'AAPL' for Apple Inc.
 
         Returns:
         -------
-        float or None
-            Returns a float representing the latest stock price. Returns None if no data 
-            is found for the given ticker symbol or if the data request fails.
+        object
+            A dividend data object that contains historical and current dividend information for the specified `ticker`. 
+            The object includes the dividend data parsed from the response in JSON format.
+
+        Raises:
+        ------
+        RetrievalError
+            If the request fails, a RetrievalError is raised to inform the user that the dividend data could not be retrieved.
 
         Notes:
         -----
-        This method is useful for obtaining real-time or near-real-time price information for a stock.
-        It handles the distinction between active trading hours and after-hours or closed market scenarios,
-        ensuring that the most relevant price is returned.
-        """    	
-        try:
-            make_method = getattr(self.asset, 'make')
-            url = make_method(query='price', ticker=ticker, start=dtparse.now(as_string=True), end=dtparse.now(as_string=True))
-            content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-            if content:
-                obj = stock.latest(content)
-                return obj.DATA()
-        except:
-            raise RetrievalError(message="Failed to retrieve the latest stock price")
-
+        - The method constructs a request URL using the asset's `make` method, tailored to query dividend information, 
+          and sends the request to retrieve the data in JSON format.
+        - The `dividend.dividend_history` function is used to process the JSON response and create a structured dividend 
+          data object from the returned content.
+        - This method assumes availability of an API or a method within `self.asset` that can generate appropriate endpoint 
+          URLs for accessing dividend data.
+        """
+        make_method = getattr(self.asset, 'make')
+        url = make_method(query='dividend_history', ticker=ticker)
+        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
+        content_check = IterDict.search_keys(content, target_keys="data", value_only=True, first_only=False, return_all=False, include_key_in_results=False)
+        if content_check:            
+            obj = dividend.dividend_history(content)
+            return (obj.DividendReport, obj.DividendData)
+        else:
+            message = IterDict.search_keys(content, target_keys="message", value_only=True, first_only=False, return_all=False, include_key_in_results=False)
+            raise DividendError(url=url, ticker=None, message=message)
+           
     def Lastn(self, ticker, interval="1m"):
         """
         Retrieves the latest stock price data for the specified ticker symbol over a given time interval.
@@ -272,13 +281,48 @@ class APIClient:
         make_method = getattr(self.asset, 'make')
         url = make_method(query='last', ticker=ticker, interval=interval)
         content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        content_check = locKeyInStructure(content, target_key="spark", value_only=True, first_only=True, return_all=False)
+        content_check = IterDict.search_keys(content, target_keys="spark", value_only=True, first_only=False, return_all=False, include_key_in_results=False)
         if content_check:
             obj = stock.last(content)
             return obj.DATA()
         else:
-            message = locKeyInStructure(content, target_key="error", value_only=True, first_only=True, return_all=False) 
+            message = IterDict.search_keys(content, target_keys="error", value_only=True, first_only=False, return_all=False, include_key_in_results=False)
             raise HTTP404TickerError(message)
+           
+    def sLatest(self, ticker):
+        """
+        Retrieves the latest stock price for a company based on its ticker symbol.
+
+        This method fetches the most recent price of a stock identified by its ticker symbol. 
+        During trading hours, it provides the current price. If trading is closed, it returns 
+        the last available price from the most recent trading session.
+
+        Parameters:
+        ----------
+        ticker : str
+            The ticker symbol of the company whose latest stock price is to be retrieved.
+
+        Returns:
+        -------
+        float or None
+            Returns a float representing the latest stock price. Returns None if no data 
+            is found for the given ticker symbol or if the data request fails.
+
+        Notes:
+        -----
+        This method is useful for obtaining real-time or near-real-time price information for a stock.
+        It handles the distinction between active trading hours and after-hours or closed market scenarios,
+        ensuring that the most relevant price is returned.
+        """    	
+        try:
+            make_method = getattr(self.asset, 'make')
+            url = make_method(query='price', ticker=ticker, start=dtparse.now(as_string=True), end=dtparse.now(as_string=True))
+            content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
+            if content:
+                obj = stock.latest(content)
+                return obj.DATA()
+        except:
+            raise RetrievalError(message="Failed to retrieve the latest stock price")
 
     def Financials(self, ticker, period="Quarterly"):
         """
@@ -329,57 +373,13 @@ class APIClient:
         make_method = getattr(self.asset, 'make')
         url = make_method(query='financials', ticker=ticker, period=period)
         content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        content_check = locKeyInStructure(content, target_key="data", value_only=True, first_only=True, return_all=False) 
+        content_check = IterDict.search_keys(content, target_keys="data", value_only=True, first_only=False, return_all=False, include_key_in_results=False) 
         if content_check:            
             obj = fin_statement.financials(json_content=content)
             return (obj.IncomeStatement, obj.BalanceSheet, obj.CashFlowStatement)
         else:
-            message = locKeyInStructure(content, target_key="message", value_only=True, first_only=True, return_all=False) 
+            message = IterDict.search_keys(content, target_keys="message", value_only=True, first_only=False, return_all=False, include_key_in_results=False) 
             raise FinancialStatementUnavailableError(message)
-        
-    def Dividends(self, ticker):
-        """
-        Retrieves dividend data for the specified ticker symbol.
-
-        This method fetches dividend-related information such as ex-dividend dates, dividend yields, and payment dates 
-        for a given company based on the `ticker`. It is designed to provide an overview of a company's dividend history 
-        and current dividend policies.
-
-        Parameters:
-        ----------
-        ticker : str|list
-            The ticker symbol or a list of symbols for which to retrieve stock data. Example: 'AAPL' for Apple Inc.
-
-        Returns:
-        -------
-        object
-            A dividend data object that contains historical and current dividend information for the specified `ticker`. 
-            The object includes the dividend data parsed from the response in JSON format.
-
-        Raises:
-        ------
-        RetrievalError
-            If the request fails, a RetrievalError is raised to inform the user that the dividend data could not be retrieved.
-
-        Notes:
-        -----
-        - The method constructs a request URL using the asset's `make` method, tailored to query dividend information, 
-          and sends the request to retrieve the data in JSON format.
-        - The `dividend.dividend_history` function is used to process the JSON response and create a structured dividend 
-          data object from the returned content.
-        - This method assumes availability of an API or a method within `self.asset` that can generate appropriate endpoint 
-          URLs for accessing dividend data.
-        """
-        make_method = getattr(self.asset, 'make')
-        url = make_method(query='dividend_history', ticker=ticker)
-        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        content_check = locKeyInStructure(content, target_key="data", value_only=True, first_only=True, return_all=False) 
-        if content_check:            
-            obj = dividend.dividend_history(content)
-            return (obj.DividendReport, obj.DividendData)
-        else:
-            message = locKeyInStructure(content, target_key="message", value_only=True, first_only=True, return_all=False)
-            raise DividendError(url=url, ticker=None, message=message)
            
     def __dir__(self):
         return ['CompanyBio','CompanyExecutives', 'CompanyDetails', 'Stats', 'sHistorical', 'sLatest', 'Lastn', 'Financials', 'Dividends']            

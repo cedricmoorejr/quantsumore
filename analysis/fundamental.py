@@ -26,7 +26,7 @@ import numpy as np
 
 # Custom
 from .._http.response_utils import key_from_mapping
-
+from ._frameworks import WriteExcel
 
 
 class FinancialStatement(pd.DataFrame):
@@ -56,7 +56,6 @@ class DividendHistory(FinancialStatement):
 
 
 
-
 class fAnalyze:
     """
     A class to analyze financial data and ratios for a given ticker symbol.
@@ -68,7 +67,53 @@ class fAnalyze:
         dividend_data (pd.DataFrame or None): The raw data for dividends.
         dividend_report (pd.DataFrame or None): A summary report of the dividend data.
         common_size (Common_Size): A nested class instance to generate common-size financial statements.
+        writeStatement: Write financial statements to an excel file.        
     """
+    @property
+    def income_statement(self):
+        if self._income_statement is None:
+            raise AttributeError("Income statement is not available.")
+        return self._income_statement
+    @income_statement.setter
+    def income_statement(self, value):
+        self._income_statement = value
+
+    @property
+    def balance_sheet(self):
+        if self._balance_sheet is None:
+            raise AttributeError("Balance sheet is not available.")
+        return self._balance_sheet
+    @balance_sheet.setter
+    def balance_sheet(self, value):
+        self._balance_sheet = value
+
+    @property
+    def cash_flow_statement(self):
+        if self._cash_flow_statement is None:
+            raise AttributeError("Cash flow statement is not available.")
+        return self._cash_flow_statement
+    @cash_flow_statement.setter
+    def cash_flow_statement(self, value):
+        self._cash_flow_statement = value
+
+    @property
+    def dividend_data(self):
+        if self._dividend_data is None:
+            raise AttributeError("Dividend history is not available.")
+        return self._dividend_data
+    @dividend_data.setter
+    def dividend_data(self, value):
+        self._dividend_data = value
+
+    @property
+    def dividend_report(self):
+        if self._dividend_report is None:
+            raise AttributeError("Dividend report is not available.")
+        return self._dividend_report
+    @dividend_report.setter
+    def dividend_report(self, value):
+        self._dividend_report = value
+        
     def __init__(self, engine):
         """
         Initializes the fAnalyze instance with an engine to process financial data and sets default attributes.
@@ -78,27 +123,47 @@ class fAnalyze:
         """    	
         self.engine = engine
         self.ticker = None       
-        self.income_statement = pd.DataFrame()
-        self.balance_sheet = pd.DataFrame()
-        self.cash_flow_statement = pd.DataFrame()
+        self.income_statement = None
+        self.balance_sheet = None
+        self.cash_flow_statement = None
         self.dividend_data = None
         self.dividend_report = None
         self.ratios = self.Ratios(self)
         self.common_size = self.Common_Size(self)       
         self.cache = {}   
-        
+    
     def __dir__(self):
-        return [
-            "CommonSize", "balance_sheet", "capex_ratio",
-            "cash_flow_statement", "current_ratio", "debt_to_equity_ratio",
-            "ebit_margin", "free_cash_flow", "free_cash_flow_to_operating_cash_flow_ratio",
-            "gross_profit_margin_ratio", "income_statement", "interest_coverage_ratio",
-            "net_profit_margin", "operating_profit_margin_ratio", "quick_ratio",
-            "rd_to_revenue_ratio", "sga_to_revenue_ratio","cash_ratio", "pretax_profit_margin_ratio",
-            "tax_burden", "interest_burden", "debt_to_capital_ratio", "defensive_interval_ratio", "fixed_charge_coverage_ratio",
-            "receivables_turnover_ratio", "inventory_turnover_ratio", "dividend_data", "dividend_report", "dividend_yield",
-            "ex_dividend_date", "annual_dividend",
-        ] 
+        available_attributes = []
+
+        financial_statements_exist = (
+            self.balance_sheet is not None and not self.balance_sheet.empty and
+            self.cash_flow_statement is not None and not self.cash_flow_statement.empty and
+            self.income_statement is not None and not self.income_statement.empty
+        )
+        if financial_statements_exist:
+            available_attributes.extend([
+                "CommonSize", "balance_sheet", "capex_ratio",
+                "cash_flow_statement", "current_ratio", "debt_to_equity_ratio",
+                "ebit_margin", "free_cash_flow", "free_cash_flow_to_operating_cash_flow_ratio",
+                "gross_profit_margin_ratio", "income_statement", "interest_coverage_ratio",
+                "net_profit_margin", "operating_profit_margin_ratio", "quick_ratio",
+                "rd_to_revenue_ratio", "sga_to_revenue_ratio", "cash_ratio", "pretax_profit_margin_ratio",
+                "tax_burden", "interest_burden", "debt_to_capital_ratio", "defensive_interval_ratio", 
+                "fixed_charge_coverage_ratio", "receivables_turnover_ratio", "inventory_turnover_ratio",
+                "writeStatement",
+            ])
+            if self.dividend_data is not None and self.dividend_report is not None:
+                available_attributes.extend([
+                    "dividend_data", "dividend_report", "dividend_yield",
+                    "ex_dividend_date", "annual_dividend"
+                ])
+        return available_attributes       
+
+    def __check_data_availability(self, required_data):
+        """Helper method to check if the required data is available."""
+        for data in required_data:
+            if data is None or (hasattr(data, 'empty') and data.empty):
+                raise AttributeError("Required financial data is not available.")
 
     def __clearNA(self, df):
         return df.fillna("")
@@ -124,6 +189,7 @@ class fAnalyze:
             self.dividend_report = cached_data.get('dividend_report', None)
         else:
             try:
+                income, balance, cash_flow = (None, None, None)                 
                 data = self.engine.Process(self.ticker, period)
                 income, balance, cash_flow = data['financial_statements'][0]  
                 self.income_statement = self.__clearNA(income)
@@ -136,10 +202,14 @@ class fAnalyze:
                 }
                 print(f"Financial Statements successfully loaded for {self.ticker}.")
             except Exception as e:
+                self.income_statement = None
+                self.balance_sheet = None
+                self.cash_flow_statement = None                
                 print(f"Financial Statements could not be loaded for {self.ticker}. Error: {e}")
             
             # Attempt to load dividend data separately
             try:
+                dividend_report, dividend_data = (None, None)               
                 dividend_report, dividend_data = data["dividend"][0]
                 self.dividend_data = dividend_data
                 self.dividend_report = dividend_report
@@ -148,100 +218,136 @@ class fAnalyze:
                     'dividend_report': dividend_report
                 })
                 print(f"Dividend data successfully loaded for {self.ticker}.")
+            except ValueError:
+                self.dividend_data = None 
+                self.dividend_report = None                
+                if "Error: " in data["dividend"]:
+                    print(data["dividend"].replace("Error: ", ""))    
             except Exception as e:
-                print(f"Dividend data could not be loaded for {self.ticker}. This does not affect financial statements. Error: {e}")
-
+                print(f"Dividend data could not be loaded for {self.ticker}. This does not affect financial statements.")
+                self.dividend_data = None
+                self.dividend_report = None  
 
     def __call__(self, ticker, period):
         """ Calls the instance as a function to fetch and process financial data for a specified ticker and period."""     	
         self.get_financial_data(ticker, period)
-
+    
     def dividend_yield(self):
-        """ Return the dividend yield."""    	
+        """ Return the dividend yield."""
+        self.__check_data_availability([self.dividend_data, self.dividend_report])
         return self.ratios._dividend_yield()
 
     def ex_dividend_date(self):
-        """ Return the EX-Dividend date."""    	
+        """ Return the EX-Dividend date."""
+        self.__check_data_availability([self.dividend_data, self.dividend_report])
         return self.ratios._ex_dividend_date()
 
     def annual_dividend(self):
-        """ Return the annual dividend."""    	
+        """ Return the total annual dividend paid per share."""
+        self.__check_data_availability([self.dividend_data, self.dividend_report])
         return self.ratios._annual_dividend()
-
+       
+    # Balance Sheet Ratios
+    #------------------------------------------------------------------------------------------
     def current_ratio(self):
         """ Calculate and return the current ratio from the balance sheet."""
+        self.__check_data_availability([self.balance_sheet])        
         return self.ratios._current_ratio()
-       
+           
     def quick_ratio(self):
-        """ Calculate and return the quick ratio from the balance sheet."""
+        """Calculate and return the quick ratio from the balance sheet."""
+        self.__check_data_availability([self.balance_sheet])
         return self.ratios._quick_ratio()
        
     def cash_ratio(self):
-        """ Calculate and return the cash ratio from the balance sheet. """
+        """Calculate and return the cash ratio from the balance sheet."""
+        self.__check_data_availability([self.balance_sheet])
         return self.ratios._cash_ratio()
 
     def debt_to_equity_ratio(self):
-        """ Calculate and return the debt to equity ratio from the balance sheet. """
+        """Calculate and return the debt to equity ratio from the balance sheet."""
+        self.__check_data_availability([self.balance_sheet])
         return self.ratios._debt_to_equity_ratio()
 
     def debt_to_capital_ratio(self):
-        """ Calculate and return the debt-to-capital ratio from the balance sheet."""
+        """Calculate and return the debt-to-capital ratio from the balance sheet."""
+        self.__check_data_availability([self.balance_sheet])
         return self.ratios._debt_to_capital_ratio()
 
+    # Income Statement Ratios
+    #------------------------------------------------------------------------------------------
     def gross_profit_margin_ratio(self):
-        """ Calculate and return the gross margin ratio from the income statement. """
+        """Calculate and return the gross margin ratio from the income statement."""
+        self.__check_data_availability([self.income_statement])
         return self.ratios._gross_profit_margin_ratio()
 
     def operating_profit_margin_ratio(self):
-        """ Calculate and return the operating margin ratio from the income statement. """
+        """Calculate and return the operating margin ratio from the income statement."""
+        self.__check_data_availability([self.income_statement])
         return self.ratios._operating_profit_margin_ratio()
 
     def net_profit_margin(self):
-        """ Calculate and return the net profit margin from the income statement. """
+        """Calculate and return the net profit margin from the income statement."""
+        self.__check_data_availability([self.income_statement])
         return self.ratios._net_profit_margin()
 
     def ebit_margin(self):
-        """ Calculate and return the EBIT margin from the income statement."""
+        """Calculate and return the EBIT margin from the income statement."""
+        self.__check_data_availability([self.income_statement])
         return self.ratios._ebit_margin()
 
     def rd_to_revenue_ratio(self):
-        """ Calculate and return the R&D to revenue ratio from the income statement."""
+        """Calculate and return the R&D to revenue ratio from the income statement."""
+        self.__check_data_availability([self.income_statement])
         return self.ratios._rd_to_revenue_ratio()
 
     def sga_to_revenue_ratio(self):
-        """ Calculate and return the SG&A to revenue ratio from the income statement."""
+        """Calculate and return the SG&A to revenue ratio from the income statement."""
+        self.__check_data_availability([self.income_statement])
         return self.ratios._sga_to_revenue_ratio()
 
     def interest_coverage_ratio(self):
-        """ Calculate and return the interest coverage ratio from the income statement."""
+        """Calculate and return the interest coverage ratio from the income statement."""
+        self.__check_data_availability([self.income_statement])
         return self.ratios._interest_coverage_ratio()
 
     def pretax_profit_margin_ratio(self):
-        """ Calculate and return the pretax margin ratio from the income statement."""
+        """Calculate and return the pretax margin ratio from the income statement."""
+        self.__check_data_availability([self.income_statement])
         return self.ratios._pretax_profit_margin_ratio()
 
     def tax_burden(self):
-        """ Calculate and return the tax burden from the income statement."""
+        """Calculate and return the tax burden from the income statement."""
+        self.__check_data_availability([self.income_statement])
         return self.ratios._tax_burden()
 
     def interest_burden(self):
-        """ Calculate and return the interest burden from the income statement."""
+        """Calculate and return the interest burden from the income statement."""
+        self.__check_data_availability([self.income_statement])
         return self.ratios._interest_burden()
 
+    # Cash Flow Statement Ratios
+    #------------------------------------------------------------------------------------------
     def capex_ratio(self):
-        """ Calculate and return the CAPEX ratio from the cash flow statement."""
+        """Calculate and return the CAPEX ratio from the cash flow statement."""
+        self.__check_data_availability([self.cash_flow_statement])
         return self.ratios._capex_ratio()
 
     def free_cash_flow(self):
-        """ Calculate and return the free cash flow from the cash flow statement."""
+        """Calculate and return the free cash flow from the cash flow statement."""
+        self.__check_data_availability([self.cash_flow_statement])
         return self.ratios._free_cash_flow()
 
     def free_cash_flow_to_operating_cash_flow_ratio(self):
-        """ Calculate and return the ratio of free cash flow to operating cash flow from the cash flow statement."""
+        """Calculate and return the ratio of free cash flow to operating cash flow from the cash flow statement."""
+        self.__check_data_availability([self.cash_flow_statement])
         return self.ratios._free_cash_flow_to_operating_cash_flow_ratio()
 
+    # Ratios involving multiple statements
+    #------------------------------------------------------------------------------------------
     def defensive_interval_ratio(self):
-        """ Calculate and return the defensive interval ratio."""
+        """Calculate and return the defensive interval ratio."""
+        self.__check_data_availability([self.income_statement, self.balance_sheet])   
         return self.ratios._defensive_interval_ratio()
 
     def fixed_charge_coverage_ratio(self, lease_payments=0):
@@ -250,17 +356,26 @@ class fAnalyze:
 
         Args:
             lease_payments (float): Optional lease payments to include.        
-        """    	
-        return self.ratios._fixed_charge_coverage_ratio()
+        """ 
+        self.__check_data_availability([self.income_statement])
+        return self.ratios._fixed_charge_coverage_ratio(lease_payments=lease_payments)
 
     def receivables_turnover_ratio(self):
-        """ Calculate and return the receivables turnover ratio."""    	
+        """Calculate and return the receivables turnover ratio."""
+        self.__check_data_availability([self.income_statement, self.balance_sheet])   
         return self.ratios._receivables_turnover_ratio()
 
     def inventory_turnover_ratio(self):
-        """ Calculate and return the inventory turnover ratio."""    	
+        """Calculate and return the inventory turnover ratio."""
+        self.__check_data_availability([self.income_statement, self.balance_sheet])        
         return self.ratios._inventory_turnover_ratio()
-       
+      
+    ##----------------------------------------------------------------------------------------------------------------------------##
+    #| The CommonSize method calculates a common-size version of a financial statement, which expresses each item as a            |#
+    #| percentage of a key total figure, such as total revenue for the income statement, total assets for the balance sheet,      |#
+    #| or net income for the cash flow statement. This provides a standardized view, making it easier to analyze and compare      |#
+    #| financials across periods or between companies, as it eliminates scale differences.                                        |#
+    ##----------------------------------------------------------------------------------------------------------------------------##       
     def CommonSize(self, financial_statement):
         """
         Return a common size financial statement based on the specified type.
@@ -274,8 +389,81 @@ class fAnalyze:
         Returns:
         DataFrame: A DataFrame representing the common size version of the selected financial statement, with each value transformed into a percentage of a key total figure from that statement.
         """
-        return self.common_size._CommonSize(financial_statement=financial_statement)
- 
+        self.__check_data_availability([self.income_statement, self.balance_sheet, self.cash_flow_statement])
+        return self.common_size._CommonSize(financial_statement=financial_statement) 
+
+    ##----------------------------------------------------------------------------------------------------------------------------##
+    #| The writeStatement method writes selected financial statements to an Excel file at the specified path. It allows for the   |#
+    #| inclusion of standard or common size formats depending on the include_common_size flag. This method simplifies the process |#
+    #| of exporting financial data by providing options to export as standard numbers or as percentages of a key total figure,    |#
+    #| making it versatile for comparative and period-over-period financial analysis.                                             |#
+    ##----------------------------------------------------------------------------------------------------------------------------##    
+    def writeStatement(self, save_path, financial_statements=None, include_common_size=False):
+        """
+        Writes specified financial statements to an Excel file at the given path in either standard or common size format.
+
+        Args:
+            save_path (str): The path where the Excel file will be saved. If the file does not exist, it will be created.
+                             If it exists, it will be overwritten.
+            financial_statements (list of str or str, optional): A list of financial statement names or aliases to be written.
+                If None or 'all', all available financial statements will be written. Default is None.
+            include_common_size (bool): If True, financial statements will include common size calculations. Default is False.
+
+        Raises:
+            ValueError: If any provided financial statement identifiers are invalid or if no valid financial statements
+                        are provided.
+            Exception: Propagates exceptions from lower-level operations, notably from file handling and Excel operations.
+        """        
+        self.__check_data_availability([self.income_statement, self.balance_sheet, self.cash_flow_statement])
+
+        valid_statements = {
+            "Income Statement": ["I", "IS", "Income", "Income_Statement", "Income Statement"],
+            "Balance Sheet": ["Balance Sheet", "B", "BS", "Balance_Sheet"],
+            "Cash Flow Statement": ["Cash Flow Statement", "Cash_Flow_Statement", "C", "CF", "Cash Flow", "Cash_Flow", "Cash"],
+        }
+        if include_common_size:
+            formats = "common_size"
+        else:
+            formats = "standard"
+            
+        statements = {
+            "standard": {
+                "Income Statement": self.income_statement,
+                "Balance Sheet": self.balance_sheet,
+                "Cash Flow Statement": self.cash_flow_statement
+            },
+            "common_size": {
+                "Income Statement": self.common_size._CommonSize(financial_statement="Income Statement"),
+                "Balance Sheet": self.common_size._CommonSize(financial_statement="Balance Sheet"),
+                "Cash Flow Statement": self.common_size._CommonSize(financial_statement="Cash Flow Statement")
+            }
+        }[formats]               
+
+        if financial_statements:
+            if isinstance(financial_statements, str):
+                financial_statements = [financial_statements]
+            try:
+                resolved_statements = [key_from_mapping(f, valid_statements, invert=False) for f in financial_statements]
+                statements = {name: stmt for name, stmt in statements.items() if name in resolved_statements}
+            except KeyError as e:
+                raise ValueError(f"Invalid financial statement identifier: {e}")
+
+        if not statements:
+            raise ValueError("No valid financial statements provided to write.")
+
+        try:
+            with WriteExcel() as excel_writer:
+                for name, statement in statements.items():
+                    excel_writer.write_statement(statement)
+                excel_writer.save(filename=save_path)
+        except Exception as e:
+            print(f"An error occurred while writing statements: {e}")     
+       
+    ##----------------------------------------------------------------------------------------------------------------------------##
+    #| The Ratios class within the financial analysis framework serves to calculate various financial ratios that are essential   |#
+    #| for assessing the financial health and performance of a company. This class provides methods for calculating liquidity,    |#
+    #| solvency, profitability, efficiency, and coverage ratios using data extracted from a company's financial statements.       |#
+    ##----------------------------------------------------------------------------------------------------------------------------##       
     class Ratios:
         def __init__(self, analyze_instance):
             self.parent = analyze_instance
@@ -660,31 +848,29 @@ class fAnalyze:
             return None
            
     ## Convert Financial Statement to Common Size
-    ##--------------------------------------------------------------------------------------------------  
+    ##-------------------------------------------------------------------------------------------------- 
     class Common_Size:
         def __init__(self, analyze_instance):
             self.parent = analyze_instance
 
         def __reshape_contents(self, financial_statement):
             df = deepcopy(financial_statement)
-            for column in df.columns:
-                df[column] = pd.to_numeric(df[column], errors='coerce').astype(float)
+            def convert_to_float(value):
+                if value == '--':
+                    return value
+                try:
+                    return float(value)
+                except ValueError:
+                    return value
+            df = df.applymap(convert_to_float)            
             return df.reset_index(drop=False)
 
         def _CommonSize(self, financial_statement):
             valid_statements = {
                 "Income Statement": ["I", "IS", "Income", "Income_Statement", "Income Statement"],
                 "Balance Sheet": ["Balance Sheet", "B", "BS", "Balance_Sheet"],
-                "Cash Flow Statement": [
-                    "Cash Flow Statement",
-                    "Cash_Flow_Statement",
-                    "C",
-                    "CF",
-                    "Cash Flow",
-                    "Cash_Flow",
-                    "Cash",
-                ],
-            }            
+                "Cash Flow Statement": ["Cash Flow Statement", "Cash_Flow_Statement", "C", "CF", "Cash Flow", "Cash_Flow", "Cash"],
+            }
             financial_statement = key_from_mapping(financial_statement, valid_statements, invert=False)
             if financial_statement == 'Income Statement':
                 income_statement = deepcopy(self.parent.income_statement)
@@ -692,9 +878,11 @@ class fAnalyze:
                     df = self.__reshape_contents(income_statement)
                     for col in list(df.columns[1:]):
                         total_revenue = df.loc[df[df.columns[0]] == 'Total Revenue', col].values[0]
-                        df[col + ' (%)'] = (df[col] / total_revenue) * 100            
-                    df.set_index(df.columns[0], inplace=True)                    
-                    return df.fillna('')
+                        if total_revenue == '--' or not isinstance(total_revenue, (int, float)):
+                            continue                        
+                        df[col + ' (%)'] = df[col].apply(lambda x: (x / total_revenue) * 100 if isinstance(x, (int, float)) else x)
+                    df.set_index(df.columns[0], inplace=True)
+                    return df.fillna('') 
                 
             if financial_statement == 'Balance Sheet':
                 balance_sheet = deepcopy(self.parent.balance_sheet)
@@ -702,9 +890,11 @@ class fAnalyze:
                     df = self.__reshape_contents(balance_sheet)
                     for col in list(df.columns[1:]):
                         total_assets = df.loc[df[df.columns[0]] == 'Total Assets', col].values[0]
-                        df[col + ' (%)'] = (df[col] / total_assets) * 100           
-                    df.set_index(df.columns[0], inplace=True)                    
-                    return df.fillna('')
+                        if total_assets == '--' or not isinstance(total_assets, (int, float)):
+                            continue                        
+                        df[col + ' (%)'] = df[col].apply(lambda x: (x / total_assets) * 100 if isinstance(x, (int, float)) else x)
+                    df.set_index(df.columns[0], inplace=True)
+                    return df.fillna('') 
                 
             if financial_statement == 'Cash Flow Statement':
                 cash_flow_statement = deepcopy(self.parent.cash_flow_statement)
@@ -712,9 +902,11 @@ class fAnalyze:
                     df = self.__reshape_contents(cash_flow_statement)
                     for col in list(df.columns[1:]):
                         net_income = df.loc[df[df.columns[0]] == 'Net Income', col].values[0]
-                        df[col + ' (%)'] = (df[col] / net_income) * 100          
-                    df.set_index(df.columns[0], inplace=True)                   
-                    return df.fillna('')  
+                        if net_income == '--' or not isinstance(net_income, (int, float)):
+                            continue                        
+                        df[col + ' (%)'] = df[col].apply(lambda x: (x / net_income) * 100 if isinstance(x, (int, float)) else x)
+                    df.set_index(df.columns[0], inplace=True)
+                    return df.fillna('') 
 
 
 

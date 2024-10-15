@@ -26,7 +26,6 @@ from copy import deepcopy
 
 # Custom
 from ....date_parser import dtparse
-# from ...._http.response_utils import locKeyInStructure, ExtractURLKeys
 
 
 
@@ -135,7 +134,6 @@ class dividend_history:
             if 'label' in df.columns:
                 summary_frames.append(df)
 
-        # summary = FinancialStatement(pd.concat(summary_frames, ignore_index=True))
         summary = pd.concat(summary_frames, ignore_index=True)
         summary['Symbol'] = summary['URL'].apply(self._extract_symbol)
         summary = summary.drop('URL', axis=1)
@@ -146,8 +144,6 @@ class dividend_history:
         summary.loc[summary['Metric'] == 'Dividend Yield', 'Value'] = summary.loc[summary['Metric'] == 'Dividend Yield', 'Value'].apply(self._format_yield)
         summary.loc[summary['Metric'] == 'P/E Ratio', 'Value'] = summary.loc[summary['Metric'] == 'P/E Ratio', 'Value'].apply(self._convert_to_float)
         summary['Value'] = pd.to_datetime(summary['Value'], errors='coerce').dt.strftime('%Y-%m-%d').fillna(summary['Value'])
-        # df.__class__ = DividendSummary
-        # self.Dividend_Summary = DividendSummary(summary)
         return summary
 
     def parse_data(self):
@@ -166,7 +162,6 @@ class dividend_history:
             if 'label' not in df.columns:
                 history_frames.append(df)
 
-        # history = FinancialStatement(pd.concat(history_frames, ignore_index=True))
         history = pd.concat(history_frames, ignore_index=True)
         history['Symbol'] = history['URL'].apply(self._extract_symbol)
         history = history.drop('URL', axis=1) 
@@ -178,8 +173,6 @@ class dividend_history:
         history['timeQueried'] = history['timeQueried'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
         history.columns = [f.replace("Symbol", "Ticker") for f in history.columns]
         history['amount'] = history['amount'].apply(self._convert_to_float)        
-        # df.__class__ = DividendHistory
-        # self.Dividend_Data = DividendHistory(history)
         return history
         
     @property

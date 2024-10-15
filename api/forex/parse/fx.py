@@ -29,8 +29,8 @@ import time
 from ...market_utils import forexquery, forex_hours
 from ....web_utils import HTMLclean
 from ....date_parser import dtparse
-from ...._http.response_utils import clean_initial_content, get_top_level_key
-
+from ...._http.response_utils import clean_initial_content
+from ....strata_utils import IterDict
 
 
 # Helper
@@ -311,7 +311,7 @@ class live_bid_ask:
 
     def parse(self):
         cleaned_content = self._clean_content(self.json_content)          
-        top_key = get_top_level_key(cleaned_content)
+        top_key = IterDict.top_key(cleaned_content, exclusion='error', exclusion_sensitive=True) 
         rows = []
         for entry in cleaned_content:
             row = {}
@@ -517,7 +517,7 @@ class live_quote:
 
     def DATA(self):
         if not self.error:
-            return self.currency_pair, self.data
+            return self.data
         else:
             return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
 

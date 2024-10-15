@@ -121,7 +121,7 @@ class APIClient:
             'AUDUSD', 'USDMXN', 'USDINR', 'USDRUB', 'USDBRL'
         ]
         if isinstance(currency_pair, str):
-            currency_pair = [currency_pair]  # Convert to list if single string is provided
+            currency_pair = [currency_pair]
         invalid_pairs = [pair for pair in currency_pair if pair not in allowed_pairs]
         if invalid_pairs:
             raise ValueError(f"Invalid currency pair(s) '{', '.join(invalid_pairs)}'. Allowed pairs are: {allowed_pairs}")
@@ -154,10 +154,10 @@ class APIClient:
         make_method = getattr(self.asset, 'make')
         url = make_method(query='current', currency_pair=currency_pair)
         html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
-        html_check = validateHTMLResponse(html_content, ticker=None, currency_pair=currency_pair, query="currency")
+        html_check = validateHTMLResponse(html_content).currency(currency_pair=currency_pair)
         if html_check:
             obj = fx.live_quote(html_content)
-            _, quote_data = obj.DATA()
+            quote_data = obj.DATA()
             return quote_data
 
     def CurrencyConversion(self, currency_pair, conversion_amount=1):
@@ -193,7 +193,7 @@ class APIClient:
         make_method = getattr(self.asset, 'make')
         url = make_method(query='convert', currency_pair=currency_pair)
         html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
-        html_check = validateHTMLResponse(html_content, ticker=None, currency_pair=currency_pair, query="currency")
+        html_check = validateHTMLResponse(html_content).currency(currency_pair=currency_pair)
         if html_check:
             obj = fx.conversion(html_content, conversion_amount=conversion_amount)
             conversion_data = obj.DATA()

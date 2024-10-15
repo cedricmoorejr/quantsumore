@@ -22,7 +22,7 @@
 import re
 
 # Custom
-from .market_utils import forexquery, equityquery, CurrencyQuery, ExchangeQuery, CoinQuery, SlugValidateQuery
+from .market_utils import forexquery, equityquery, CurrencyQuery, SlugValidateQuery
 from ..date_parser import dtparse
 from ..web_utils import url_encode_decode, Mask
 
@@ -184,7 +184,7 @@ class Equity:
            
         if query.lower() == "dividend_history":
             if isinstance(ticker, list) and len(ticker) > 1:
-                # If contains multiple currency_pairs
+                # If contains multiple tickers
                 for t in ticker:
                     urls.append(self._construct_url(identifier=t, period1=None, period2=None, financial_period=None, financial_interval=None, Type="div_payout"))
                 return urls if len(urls) > 1 else urls[0]
@@ -379,9 +379,12 @@ class Crypto:
         if query.lower() == "historical":
             slug = args[0] if len(args) > 0 else kwargs.get('slug')
             if slug is None:
-                raise ValueError("Slug name must be provided for 'historical' queries.")               
-            start = kwargs.get('start', None)
-            end = kwargs.get('end', None)    
+                raise ValueError("Slug name must be provided for 'historical' queries.")
+            
+            slug = [slug] if isinstance(slug, str) else slug    
+            
+            start = args[1] if len(args) > 1 else kwargs.get('start')
+            end = args[2] if len(args) > 2 else kwargs.get('end')    
             
             ID = self._normalize_ids(slug)
 
@@ -401,12 +404,13 @@ class Crypto:
         elif query.lower() == "live":
             slug = args[0] if len(args) > 0 else kwargs.get('slug')
             if slug is None:
-                raise ValueError("Slug name must be provided for 'live' queries.")
+                raise ValueError("Slug name must be provided for 'live' queries.") 
+            slug = [slug] if isinstance(slug, str) else slug
+            
             baseCurrencySymbol = args[1] if len(args) > 1 else kwargs.get('baseCurrencySymbol')
             quoteCurrencySymbol = args[2] if len(args) > 2 else kwargs.get('quoteCurrencySymbol')
-            limit = args[3] if len(args) > 3 else kwargs.get('limit')
-            exchangeType = args[4] if len(args) > 4 else kwargs.get('exchangeType')
-            cryptoExchange = args[5] if len(args) > 5 else kwargs.get('cryptoExchange')
+            limit = args[3] if len(args) > 3 else kwargs.get('limit', 100)
+            exchangeType = args[4] if len(args) > 4 else kwargs.get('exchangeType', 'all')
             
             slug = self._normalize_slugs(slug)
 

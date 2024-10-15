@@ -25,13 +25,13 @@ import re
 import pandas as pd
 import numpy as np
 import json
-from html.parser import HTMLParser
 
 # Custom
 from ....date_parser import dtparse
-from ...parse_tools import market_find, extract_company_name
-from ...._http.response_utils import clean_initial_content, get_top_level_key
-
+from ...parse_tools import market_find, extract_company_name, extract_ticker
+from ...._http.response_utils import clean_initial_content
+from ....strata_utils import IterDict
+from ....web_utils import HTMLclean
 
 
 ## Via JSON
@@ -250,7 +250,7 @@ class last:
         
     def parse(self):
         cleaned_content = self._clean_content(self.json_content)
-        top_key = get_top_level_key(cleaned_content)
+        top_key = IterDict.top_key(cleaned_content, exclusion='error', exclusion_sensitive=True) 
         structured_data = []
         
         try:
@@ -291,62 +291,60 @@ class last:
 
 ## Via HTML
 ##========================================================================
-class quote_statistics(HTMLParser):
+class quote_statistics:
     def __init__(self, html_content=None):
-        super().__init__()
-        self.found_statistics = False
-        self.statistics = ''
-        self.company_name = None        
-        self.headers = ['Previous Close', 'Open', 'Bid', 'Ask', "Day's Range", '52 Week Range', 'Volume', 'Avg. Volume',
-                				'Market Cap (intraday)', 'Beta (5Y Monthly)', 'PE Ratio (TTM)', 'EPS (TTM)', 'Earnings Date',
-                				'Forward Dividend & Yield', 'Ex-Dividend Date', '1y Target Est']
-        self.exchanges = ['NasdaqGS', 'NYSE', 'NYSEArca']
-        self.exchange_type = None
-        self.exchange_validation = self.validate_stock_exchange()
+        self.statistics = None
+        self.company_name = ''    
+        self.target_fields = [
+            'Previous Close', 'Open', 'Bid', 'Ask', "Day's Range", '52 Week Range', 'Volume', 'Avg. Volume',
+            'Market Cap (intraday)', 'Beta (5Y Monthly)', 'PE Ratio (TTM)', 'EPS (TTM)', 'Earnings Date',
+            'Forward Dividend & Yield', 'Ex-Dividend Date', '1y Target Est'
+        ]
         
         if html_content:
-            self.feed(html_content)
-            self.exchange_type = market_find(html_content)
-            self.company_name = extract_company_name(html_content).name            
-            self.exchange_validation = self.validate_stock_exchange()
+            self.html_content = HTMLclean.decode(html_content)
+            self.company_name = extract_company_name(self.html_content).name
+            self.exchange_validation = self.validate_stock_exchange(self.html_content)
+            self.parse(html=self.html_content, company_name=self.company_name)
+            
+    def validate_stock_exchange(self, html):
+        market = market_find(html).market
+        return market is not None
 
-    def validate_stock_exchange(self):
-        return bool(self.exchange_type and self.exchange_type.market in self.exchanges)
+    def extract_stats(self, html, company_name):
+        pattern = r'<span class="label yf-mrt107">(.*?)</span>\s*<span class="value yf-mrt107">(.*?)</span>'
+        matches = re.findall(pattern, html, re.DOTALL)
+        
+        if matches:
+            cleaned_data = [(label, re.sub(r'<.*?>', '', value)) for label, value in matches]
+            company_name = company_name if isinstance(company_name, str) else ''            
+            statistics_dict = {label: value.strip() for label, value in cleaned_data}
+            self.statistics = statistics_dict
 
-    def handle_starttag(self, tag, attrs):
-        if tag == 'div':
-            attrs_dict = dict(attrs)
-            if attrs_dict.get('data-testid') == 'quote-statistics':
-                self.found_statistics = True
-                self.statistics += self.get_starttag_text()
+    def extract_stats_retry(self, html, company_name):
+        container_pattern = r'(<div[^>]*>.*?</div>)'
+        containers = re.findall(container_pattern, html, re.DOTALL)
+        matched_html = ""
 
-    def handle_endtag(self, tag):
-        if self.found_statistics and tag == 'div':
-            self.statistics += f"</{tag}>"
-            self.found_statistics = False
-            self.sanitize()
+        for container in containers:
+            if '<ul' in container and '<li' in container:
+                found_fields = [field for field in self.target_fields if field in container]
+                
+                if found_fields:
+                    matched_html += container + "\n"
+        
+        if matched_html:
+            matched_html = HTMLclean.decode(matched_html)
+            self.extract_stats(matched_html, company_name)
 
-    def handle_data(self, data):
-        if self.found_statistics:
-            self.statistics += data
-
-    def sanitize(self):
-        """Sanitizes the parsed data and converts it into a dictionary."""
-        text = self.statistics
-        cleaned_div_content = re.sub(r'\s*<.*?>\s*', '', text)
-        cleaned_text = re.sub(r' {3,}', '\n', cleaned_div_content)
-        cleaned_text = re.sub(r'[ \t]*\n[ \t]*', '\n', cleaned_text)
-        data_dict = {}
-        lines = cleaned_text.split('\n')
-        for line in lines:
-            for key in self.headers:
-                if line.startswith(key):
-                    value = line[len(key):].strip()
-                    data_dict[key] = value
-        self.statistics = data_dict
-
+    def parse(self, html, company_name):
+        self.extract_stats(html, company_name)        
+        if not self.statistics:
+            print("Primary extraction failed. Attempting backup extraction...")
+            self.extract_stats_retry(html, company_name)
+                    
     def DATA(self):
-        """Converts the sanitized data into a pandas DataFrame."""
+        """Converts the sanitized data into a pandas DataFrame or returns error message."""
         if not self.exchange_validation:
             return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.company_name, self.statistics
@@ -355,155 +353,103 @@ class quote_statistics(HTMLParser):
         return ['DATA']
 
 
-
-class profile(HTMLParser):
+class profile:
     def __init__(self, html_content=None):
-        super().__init__()
-        # Description and executive table parsing variables
-        self.found_section = False
-        self.description = ''
-        self.in_table = False
-        self.in_row = False
-        self.in_cell = False
-        self.headers = []
-        self.current_row = []
-        self.data = []
-        self.is_header = False
-        self.exec_table = {}
+        self.company_description = 'Not found.'        
+        self.detail_keys = ["Address", "Phone Number", "Website", "Sector", "Industry", "Full Time Employees"]        
+        self.company_details = {key: None for key in self.detail_keys}
+        self.company_execs = pd.DataFrame([['Not found'] * 5], columns=['Name', 'Title', 'Pay', 'Exercised', 'Year Born'])       
         
-        # Company details parsing variables
-        self.found_details_section = False
-        self.company_details = ''
-        self.detail_keys = ["Address", "Phone Number", "Website", "Sector", "Industry", "Full Time Employees"]
         self.exchanges = ['NasdaqGS', 'NYSE', 'NYSEArca']
         self.exchange_type = None
         self.company_name = None        
         self.exchange_validation = self.validate_stock_exchange()
-        # Feed HTML if provided        
+     
         if html_content:
-            self.feed(html_content)
-            self.exchange_type = market_find(html_content)
+            self.html_content = html_content
+            self.exchange_type = market_find(self.html_content)
             self.company_name = extract_company_name(html_content).name
             self.exchange_validation = self.validate_stock_exchange()
+            self.parse(self.html_content)
 
     def validate_stock_exchange(self):
         return bool(self.exchange_type and self.exchange_type.market in self.exchanges)
 
-    def handle_starttag(self, tag, attrs):
-        attrs_dict = dict(attrs)
-        if tag == 'section' and attrs_dict.get('data-testid') in ['description', 'asset-profile']:
-            if attrs_dict.get('data-testid') == 'description':
-                self.found_section = True
-            else:
-                self.found_details_section = True
-            self.description += self.get_starttag_text()
-        elif tag == 'table' and 'yf-mj92za' in attrs_dict.get('class', ''):
-            self.in_table = True
-        elif tag == 'tr' and self.in_table:
-            self.in_row = True
-            self.current_row = []
-        elif tag == 'thead':
-            self.is_header = True
-        elif tag in ['td', 'th'] and self.in_row:
-            self.in_cell = True
+    def extract_bio(self, html):
+        company_bio_pattern = r'<section[^>]*data-testid="description"[^>]*>.*?<p>(.*?)</p>'
+        company_bio_match = re.search(company_bio_pattern, html, re.DOTALL)
+        if company_bio_match:
+            self.company_description = company_bio_match.group(1)
 
-    def handle_endtag(self, tag):
-        if self.found_section and tag == 'section':
-            self.description += f"</{tag}>"
-            self.found_section = False
-            self.sanitize()
-        elif self.found_details_section and tag == 'section':
-            self.company_details += f"</{tag}>"
-            self.found_details_section = False
-            self.sanitize_details()
-        elif tag == 'table' and self.in_table:
-            self.in_table = False
-            if self.headers and self.data:
-                self.exec_table = self.to_dict(self.headers, self.data)
-        elif tag == 'tr' and self.in_row:
-            self.in_row = False
-            if self.is_header:
-                self.headers = self.current_row
-                self.is_header = False
-            else:
-                self.data.append(self.current_row)
-        elif tag in ['td', 'th'] and self.in_cell:
-            self.in_cell = False
+    def extract_details(self, html):
+        section_pattern = r'<section[^>]*data-testid="asset-profile"[^>]*>(.*?)</section>'
+        section_match = re.search(section_pattern, html, re.DOTALL)
+        if section_match:
+            section_content = section_match.group(0)
 
-    def handle_data(self, data):
-        if self.found_section:
-            self.description += data
-        if self.found_details_section:
-            self.company_details += data
-        if self.in_cell:
-            self.current_row.append(data.strip())
+            address_pattern = r'<div class="address yf-wxp4ja">\s*((<div>.*?<\/div>\s*)+)<\/div>'
+            phone_pattern = r'<a[^>]+href="tel:([^"]+)"'
+            website_pattern = r'<a[^>]+href="(https?://[^"]+)"[^>]*aria-label="website link"'
+            sector_pattern = r'Sector:\s*</dt>\s*<dd><a[^>]*>([^<]+)<\/a>'
+            industry_pattern = r'Industry:\s*</dt>\s*<a[^>]*>([^<]+)<\/a>'
+            employees_pattern = r'Full Time Employees:\s*</dt>\s*<dd><strong>([\d,]+)<\/strong>'
 
-    def sanitize(self):
-        """Sanitizes the parsed description data."""
-        cleaned_text = re.sub(r'\s*<.*?>\s*', '', self.description)
-        self.description = re.sub(r'.*\s{4,}', '', cleaned_text)
+            address = re.search(address_pattern, section_content)
+            address_text = ', '.join(part.strip() for part in re.findall(r'<div>(.*?)<\/div>', address.group(1))) if address else 'Not found'
 
-    def sanitize_details(self):
-        """Process and sanitize the company details."""
-        text = self.company_details
-        if text is None or text == '':
-            return
-        
-        text = re.sub(r"(Sector|Industry|Full Time Employees):", r"\1", text)
-        cleaned_section_content = re.sub(r'\s*<.*?>\s*', '', text).replace('\xa0', '')
-        cleaned_text = re.sub(r'.*\s{4,}', '', cleaned_section_content)
+            phone = re.search(phone_pattern, section_content)
+            phone_text = phone.group(1).strip() if phone else 'Not found'
 
-        ## Get Website
-        website_match = re.search(r'https?:\/\/([a-zA-Z0-9_-]+\.)+[a-zA-Z]{2,}(:\d+)?(\/\S*)?', cleaned_text)
-        if website_match:
-            url = website_match.group(0)
-            url_start_pos = website_match.start()
-            insert_text = f'Website '
-            new_text = cleaned_text[:url_start_pos] + insert_text + cleaned_text[url_start_pos:]
+            website = re.search(website_pattern, section_content)
+            website_text = website.group(1).strip() if website else 'Not found'
 
-        # Get Phone Number
-        phone_match = re.search(r'\b\d{1,4}(?:\s\d{1,4}){2,3}\b', new_text)
-        if phone_match:
-            phone_number = phone_match.group(0)
-            phone_number_start_pos = phone_match.start()
-            insert_text = f'Phone Number '
-            new_text = new_text[:phone_number_start_pos] + insert_text + new_text[phone_number_start_pos:]
+            sector = re.search(sector_pattern, section_content)
+            sector_text = sector.group(1).strip() if sector else 'Not found'
 
-        # Find Address
-        address_match = re.compile(r'^(.+?),\s*(.+?\s*\d+.*?)(?=\s*(Phone Number|Website|Sector|Industry|Full Time Employees))').search(new_text)
-        if address_match:
-            address = address_match.group(0)
-            address_start_pos = address_match.start()
-            insert_text = f'Address '
-            new_text = new_text[:address_start_pos] + insert_text + new_text[address_start_pos:]
-        else:
-            if len(new_text) >= 7:
-                new_text = 'Address ' + new_text    
-        data_dict = {}
-        pattern = '|'.join([re.escape(key) for key in self.detail_keys])
-        parts = re.split(f"({pattern})", new_text)
-        temp_dict = {}
-        for i in range(1, len(parts), 2):
-            temp_dict[parts[i]] = parts[i+1].strip()
-        for key in self.detail_keys:
-            value = temp_dict.get(key, '--')
-            if key in temp_dict:
-                next_key_index = min([value.find(next_key) for next_key in self.detail_keys if value.find(next_key) != -1], default=len(value))
-                value = value[:next_key_index].strip()
-            data_dict[key] = value
-        self.company_details = data_dict
+            industry = re.search(industry_pattern, section_content)
+            industry_text = industry.group(1).strip() if industry else 'Not found'
 
-    def to_dict(self, headers, data):
-        """ Converts the parsed headers and rows into a dictionary."""
-        table_dict = {header: [] for header in headers}
-        for row in data:
-            for header, value in zip(headers, row):
-                table_dict[header].append(value)
-        return table_dict
+            employees = re.search(employees_pattern, section_content)
+            employees_text = employees.group(1).strip() if employees else 'Not found'
 
-    def to_dataframe(self):
-        """ Converts the parsed headers and rows into a pandas DataFrame."""
-        return pd.DataFrame(self.data, columns=self.headers)
+            # Updating dictionary with found data
+            self.company_details.update({
+                "Address": address_text,
+                "Phone Number": phone_text,
+                "Website": website_text,
+                "Sector": sector_text,
+                "Industry": industry_text,
+                "Full Time Employees": employees_text
+            })
+
+    def extract_execs(self, html):
+        section_pattern = r'<section[^>]*data-testid="key-executives"[^>]*>(.*?)</section>'
+        section_match = re.search(section_pattern, html, re.DOTALL)
+        if section_match:
+            section_content = section_match.group(0)
+
+            headers_pattern = r'<th[^>]*>(.*?)</th>'
+            headers = re.findall(headers_pattern, section_content)
+
+            if headers:
+                headers_cleaned = [re.sub(r'\s*<.*?>\s*', '', f) for f in headers]
+                table_rows = []
+                row_pattern = r'<tr[^>]*>(.*?)</tr>'
+                row_matches = re.findall(row_pattern, section_content, re.DOTALL)
+                cell_pattern = r'<td[^>]*>(.*?)</td>'
+
+                for row in row_matches:
+                    cells = re.findall(cell_pattern, row)
+                    if cells:
+                        table_rows.append(cells)
+                        
+            if table_rows:
+                self.company_execs = pd.DataFrame(table_rows, columns=headers_cleaned)
+                                
+    def parse(self, html):
+        self.extract_bio(html)
+        self.extract_details(html)
+        self.extract_execs(html)  
        
     def DATA(self):
         """ Combines all parsed data into a single dictionary."""
@@ -512,15 +458,14 @@ class profile(HTMLParser):
            
         full_report = {
             "Company Name": self.company_name,        	
-            "Company Description": self.description,
+            "Company Description": self.company_description,
             "Company Details": self.company_details,
-            "Company Executives": self.exec_table if self.exec_table else self.to_dataframe().to_dict(orient='list')
+            "Company Executives": self.company_execs
         }
         return full_report
        
     def __dir__(self):
         return ['DATA']
-
 
 
 def __dir__():

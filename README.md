@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v1.3.3b1/gui/assets/py_quantsumore_logo.png" alt="quantsumore Logo" width="700"/>
+  <img src="https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v2.0.0b1/gui/assets/py_quantsumore_logo.png" alt="quantsumore Logo" width="700"/>
 </p>
 
 
@@ -85,6 +85,7 @@ pip install quantsumore
 ```
 
 This will install the `quantsumore` package along with any required dependencies.
+
 
 # Using the `quantsumore` API Clients
 

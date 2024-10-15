@@ -24,7 +24,6 @@ import re
 class FinancialStatementUnavailableError(Exception):
     """Exception raised when financial statement data is unavailable."""
     def __init__(self, message="Quarterly data not available"):
-        # Use re.sub to replace specific parts of the message
         modified_message = re.sub(
             "Our data provider is not providing us with",
             "The data provider is not providing",
@@ -56,7 +55,6 @@ class HTTP404TickerError(Exception):
     """	
     def __init__(self, url, ticker=None, message="Data not found for ticker:"):
         self.url = url
-        # Use the provided ticker if given, otherwise extract from the URL
         self.ticker = ticker if ticker is not None else self._extract_ticker(url)
         self.message = f"{message} {self.ticker}"
         super().__init__(self.message)
@@ -112,7 +110,6 @@ class DividendError(Exception):
         self.url = url        
         self.ticker = ticker if ticker is not None else self._extract_ticker(url)
         self.default_message = f"Dividend not found for ticker: {self.ticker}"        
-        # self.message = f"{message} {self.ticker}"
         self.message = self.default_message if message is None else f"{self.ticker}'s {message}"        
         super().__init__(self.message)
 

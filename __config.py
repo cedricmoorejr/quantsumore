@@ -30,6 +30,7 @@ import concurrent.futures
 
 # Custom
 from .sys_utils import JSON, filePaths, SQLiteDBHandler
+from .web_utils import Mask
 
 
 
@@ -233,7 +234,6 @@ class CryptoConfig:
                     self.loaded_data = json.loads(self.saved_json_content)                
                     if self.saved_json_content:
                         self.data_loaded = True
-                        # print("Data Loaded")
                 except Exception as e:
                     print(f"Data Not Loaded: {str(e)}")
                     self.data_loaded = False
@@ -242,7 +242,6 @@ class CryptoConfig:
                 self.loaded_data = JSON(filename=_CRYPTO_JSON_CONFIG_FILE).load()
                 if self.loaded_data:
                     self.data_loaded = True
-                    # print("Data Loaded")                
             except Exception as e:
                 print(f"Data Not Loaded: {str(e)}")
                 self.data_loaded = False            
@@ -282,9 +281,6 @@ class CryptoConfig:
 
 
 
-
-
-
 ## Main
 ##=========================================================
 def main_parallel():
@@ -312,28 +308,25 @@ def main_parallel():
 
     Note:
         This function expects several external dependencies and global flags like _is_modified_today and _json_file_outdated to be defined. Ensure these are properly set up in the global environment before calling this function.
-    """	
+    """
+    nyse_stock_list = 'aHR0cHM6Ly93d3cubnlzZS5jb20vcHVibGljZG9jcy9ueXNlL3N5bWJvbHMvRUxJR0lCTEVTVE9DS1NfTllTRUFtZXJpY2FuLnhscw=='
+    nasdq_stock_list = 'aHR0cHM6Ly93d3cubmFzZGFxdHJhZGVyLmNvbS9keW5hbWljL3N5bWRpci9uYXNkYXFsaXN0ZWQudHh0'
+    
     with concurrent.futures.ThreadPoolExecutor() as executor:
         data_results = {} 
         os_results = {}  
 
-        # Initialize data_futures as an empty dictionary
         data_futures = {}
-        
-        # Submit task for CryptoConfig class operations
         crypto_config_future = executor.submit(CryptoConfig().run) 
-
-        # Conditional execution for stock ticker data
         if not _is_modified_today:
             urls = [
-                "https://www.nyse.com/publicdocs/nyse/symbols/ELIGIBLESTOCKS_NYSEAmerican.xls",
-                "https://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt"
+                Mask.format.chr(nyse_stock_list, 'format'),
+                Mask.format.chr(nasdq_stock_list, 'format')
             ]
             data_futures = {executor.submit(get_stock_ticker_data, url): url for url in urls}
         else:
             print("Stock data recently modified. No need to update.")
 
-        # Conditional execution for OS versions
         os_tasks = {}
         if _json_file_outdated:
             os_tasks = {
@@ -344,7 +337,6 @@ def main_parallel():
         else:
             print("OS version data is up-to-date. No need to update versions.")
 
-        # Retrieve and store results for data futures
         for future in concurrent.futures.as_completed(data_futures):
             url = data_futures[future]
             try:
@@ -354,7 +346,6 @@ def main_parallel():
             except Exception as e:
                 print("Error processing data: {e}")
 
-        # Retrieve and store results for OS version futures
         for os_name, future in os_tasks.items():
             try:
                 os_version = future.result()
@@ -363,9 +354,8 @@ def main_parallel():
             except Exception as e:
                 print(f"OS version task for {os_name} raised an exception: {e}")
 
-        # Handle CryptoConfig class operation completion (even though it returns nothing)
         try:
-            crypto_config_future.result()  # We wait for it to complete
+            crypto_config_future.result()
             print("Crypto configuration process completed.")
         except Exception as e:
             print(f"Crypto configuration task raised an exception: {e}")
