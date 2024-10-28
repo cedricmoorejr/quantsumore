@@ -23,5 +23,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add files/os_versions.json
-          git commit -m "Update crypto listed data"
+          git commit -m "Update os versions data"
           git push
