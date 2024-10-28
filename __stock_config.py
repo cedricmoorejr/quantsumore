@@ -1,0 +1,73 @@
+import requests
+import pandas as pd
+from io import StringIO
+from copy import deepcopy
+import re
+
+NASDAQ_STOCK_LIST_URL = "http://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt"
+NYSE_STOCK_LIST_URL = "https://www.nyse.com/publicdocs/nyse/symbols/ELIGIBLESTOCKS_NYSEAmerican.xls"
+
+def get_stock_ticker_data(url):
+    response = requests.get(url)
+    data_str = response.content.decode('ISO-8859-1').replace('\r', '')
+    data = StringIO(data_str)
+    delimiters = ['\t', '|']
+    dataframe = None
+    for sep in delimiters:
+        if re.search(re.escape(sep), data_str):
+            df = pd.read_csv(data, sep=sep, keep_default_na=False, na_values=[''])
+            dataframe = deepcopy(df)
+            dataframe.columns = [item.strip() for item in dataframe.columns]
+            break
+    if dataframe is None or dataframe.empty:
+        raise ValueError("No known delimiter found in the data or data is empty.")
+    
+    dataframe['yahoo_mapping'] = dataframe['Symbol'].apply(lambda x: x.replace('.', '-') if isinstance(x, str) and '.' in x else x)
+    dataframe['nasdaq_mapping'] = dataframe['Symbol'].apply(lambda x: x.replace('-', '^') if isinstance(x, str) and '-' in x else x)
+    
+    modifications = {"F-B": "F-PB", "F-C": "F-PC", "F-D": "F-PD"}
+    for original, modified in modifications.items():
+        dataframe.loc[dataframe['yahoo_mapping'] == original, 'yahoo_mapping'] = modified
+    
+    if "nasdaq" in url:
+        dataframe = dataframe[dataframe["Test Issue"] == "N"]
+        dataframe = dataframe.dropna(subset=['Security Name'])
+        dataframe.loc[:, "Exchange"] = "NASDAQ"
+        dataframe = dataframe[['Symbol', 'Security Name', 'Exchange', 'yahoo_mapping', 'nasdaq_mapping']]
+        dataframe.columns = ['Symbol', 'Company', 'Exchange', 'yahoo_mapping', 'nasdaq_mapping']
+    elif "NYSEAmerican" in url:
+        dataframe = dataframe[~dataframe["Symbol"].str.contains('\+', case=False, na=False)]
+        dataframe = dataframe[~dataframe["Symbol"].str.contains('\^', case=False, na=False)]
+        dataframe = dataframe[~dataframe["Company"].str.contains('TEST STOCK', case=False, na=False)]
+        dataframe = dataframe[~dataframe["Symbol"].str.contains('TEST', case=False, na=False)]
+        dataframe.loc[:, "Exchange"] = "NYSE"
+        dataframe = dataframe[['Symbol', 'Company', 'Exchange', 'yahoo_mapping', 'nasdaq_mapping']]
+    return dataframe
+
+def combine_stock_data(ticker_data, truncate=False):
+    combined = pd.concat(list(ticker_data.values()), axis=0, ignore_index=True)
+    combined = combined.sort_values(by='Symbol', ascending=True)
+    duplicates = combined.duplicated(subset=['Symbol'], keep=False)
+    df_dup = combined[duplicates].groupby('Symbol')['Exchange'].agg(set)
+    combined['Both_Exchanges'] = combined['Symbol'].apply(lambda x: 'Both' if set(['NYSE', 'NASDAQ']) == df_dup.get(x, set()) else combined.loc[combined['Symbol'] == x, 'Exchange'].iloc[0])
+    
+    df = combined[['Symbol', 'Company', 'Both_Exchanges', 'yahoo_mapping', 'nasdaq_mapping']]
+    df.columns = ['Symbol', 'Company', 'Exchange', 'yahoo_mapping', 'nasdaq_mapping']
+    df = df.drop_duplicates(subset="Symbol", keep="first")
+    
+    if truncate:
+        df = df[(~df["Company"].str.contains('%', case=False, na=False) | df["Company"].str.contains('ETF', case=True, na=False))]
+        df = df[~df["Company"].str.contains('Warrants|Warrant', case=False, na=False) & ~df["Symbol"].str.endswith('W')]
+        df = df[~df["Company"].str.contains('Units|Unit', case=False, na=False) & ~df["Symbol"].str.endswith('U')]
+        df = df[~df["Company"].str.contains('Rights|Right', case=False, na=False) & ~df["Symbol"].str.endswith('R')]
+        df = df[(~df["Company"].str.contains('Preferred', case=False, na=False) | df["Company"].str.contains('ETF', case=True, na=False))]
+        df = df[(~df["Company"].str.contains('Preference', case=False, na=False) | df["Company"].str.contains('ETF', case=True, na=False))]
+    
+    return df
+
+if __name__ == "__main__":
+    nasdaq_data = get_stock_ticker_data(NASDAQ_STOCK_LIST_URL)
+    nyse_data = get_stock_ticker_data(NYSE_STOCK_LIST_URL)
+    ticker_data = {"NASDAQ": nasdaq_data, "NYSE": nyse_data}
+    combined_data = combine_stock_data(ticker_data, truncate=False)
+    combined_data.to_csv('files/stock_tickers.txt', index=False)
