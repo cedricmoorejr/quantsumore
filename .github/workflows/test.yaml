@@ -1,27 +1,24 @@
-name: Test
+name: Update User Agents
 
 on:
   workflow_dispatch: 
+  push:
+    branches:
+      - main
   schedule:
-    - cron: '0 5 * * 1-5' 
+    - cron: '0 0 * * *'  # Run daily at midnight
 
 jobs:
-  download-and-save:
+  update-user-agents:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - name: Install dependencies
-        run: pip install requests
-      - name: Test
-        run: python __test.py
-      - name: Commit and Push
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add files/user_agents.json
-          git commit -m "Update crypto listed data"
-          git push
+
+      - name: Run script
+        run: python update_script.py
