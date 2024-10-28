@@ -31,7 +31,7 @@ def download_crypto_exchange_list():
 
     if response.status_code == 200:
         data = response.json()        
-        file_path = "files/cryptos.json"        
+        file_path = "files/crypto.json"        
         with open(file_path, 'w') as file:
             json.dump(data, file, indent=4)
         print(f"File saved as {file_path}")
