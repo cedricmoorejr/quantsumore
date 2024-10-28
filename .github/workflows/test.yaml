@@ -21,4 +21,4 @@ jobs:
           python-version: '3.x'
 
       - name: Run script
-        run: python update_script.py
+        run: python __test.py
