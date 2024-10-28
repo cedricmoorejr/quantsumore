@@ -21,7 +21,7 @@ jobs:
           python-version: '3.x'
 
       - name: Run script
-        run: python __test.py
+        run: python __user_agents_config.py
 
       - name: Commit updated User Agents file
         run: |
