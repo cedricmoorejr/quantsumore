@@ -1,0 +1,34 @@
+name: Download and Process Stock Listed Files
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1-5'  # NASDAQ download at midnight on weekdays
+    - cron: '0 2 * * 1-5'  # NYSE download at 2 AM on weekdays
+
+jobs:
+  download-and-process:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install requests pandas
+
+      - name: Run Python script to download and process stock data
+        run: python process_stock_data.py
+
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add files/stock_tickers.txt
+          git commit -m "Update combined stock list file"
+          git push
