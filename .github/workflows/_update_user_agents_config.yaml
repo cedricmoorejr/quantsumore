@@ -6,7 +6,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 0 * * *'  # Run daily at midnight
+    - cron: '30 0 * * *'  # Run daily at midnight
 
 jobs:
   update-user-agents:
