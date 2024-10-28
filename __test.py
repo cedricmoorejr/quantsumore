@@ -1,55 +1,45 @@
 import re
 import json
 
-chrome_pattern = r'Chrome/\d[\d\.]*'
-edge_pattern = r'Edge/\d[\d\.]*'
-macos_pattern = r'Mac OS X \d[\d_]*'
+# Constants for file paths
+USER_AGENTS_FILE = 'files/user_agents.json'
+OS_VERSIONS_FILE = 'files/os_versions.json'
 
-user_agents_file = 'files/user_agents.json'
-os_versions = 'files/os_versions.json'
+# Regex patterns
+CHROME_PATTERN = r'Chrome/\d[\d\.]*'
+EDGE_PATTERN = r'Edge/\d[\d\.]*'
+MACOS_PATTERN = r'Mac OS X \d[\d_]*'
 
-def extract(file):   	
-    with open(file, encoding='utf-8') as skim:
-        return skim.read()
+def read_file(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return file.read()
 
-def inscribe(file, s, overwrite=True):   	
-    mode = 'w' if overwrite else 'a'         
-    with open(file, mode, encoding=self.encoding) as compose:
-        compose.write(s)
-            
-def alter(file, new, old=None, pattern=None):  	
-    if old is None and pattern is None:
-        raise ValueError("Either 'old' or 'pattern' must be provided for replacement.")
-    s = extract(file)
-    if old is not None:
-        s = s.replace(old, new)
-    if pattern is not None:
-        s = re.sub(pattern, new, s)
-    inscribe(file, s)	
+def write_file(file_path, content, mode='w'):
+    with open(file_path, mode, encoding='utf-8') as file:
+        file.write(content)
 
+def load_versions(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return json.load(file)
 
+def replace_versions(file_path, new_version, pattern):
+    content = read_file(file_path)
+    updated_content = re.sub(pattern, new_version, content)
+    write_file(file_path, updated_content)
 
-GOOGLECHROMEVERSION = None
-MICROSOFTEDGEVERSION = None
-MACOSVERSION = None
-        
-GOOGLECHROMEVERSION = os_versions.get("Chrome", None)
-MICROSOFTEDGEVERSION = os_versions.get("Edge", None)
-MACOSVERSION = os_versions.get("macOS", None)
+def main():
+    # Load version numbers from JSON file
+    versions = load_versions(OS_VERSIONS_FILE)
 
-user_agents_file_contents = extract(user_agents_file)
+    # Construct new version strings
+    new_chrome_version = f'Chrome/{versions.get("Chrome", "latest")}'
+    new_edge_version = f'Edge/{versions.get("Edge", "latest")}'
+    new_macos_version = f'Mac OS X {versions.get("macOS", "latest")}'
 
-# New version to replace it with
-if GOOGLECHROMEVERSION:
-    GOOGLECHROMEVERSION_w_PREFIX = f'Chrome/{GOOGLECHROMEVERSION}'
+    # Update the user agents file with new versions
+    replace_versions(USER_AGENTS_FILE, new_chrome_version, CHROME_PATTERN)
+    replace_versions(USER_AGENTS_FILE, new_edge_version, EDGE_PATTERN)
+    replace_versions(USER_AGENTS_FILE, new_macos_version, MACOS_PATTERN)
 
-if MICROSOFTEDGEVERSION:
-    MICROSOFTEDGEVERSION_w_PREFIX = f'Edge/{MICROSOFTEDGEVERSION}'
-
-if MACOSVERSION:
-    MACOSVERSION_w_PREFIX = f'Mac OS X {MACOSVERSION}'
-
-# Use the alter method of FileHandler
-alter(user_agents_file, new=GOOGLECHROMEVERSION_w_PREFIX, pattern=chrome_pattern)
-alter(user_agents_file, new=MICROSOFTEDGEVERSION_w_PREFIX, pattern=edge_pattern)
-alter(user_agents_file, new=MACOSVERSION_w_PREFIX, pattern=macos_pattern)
+if __name__ == "__main__":
+    main()
