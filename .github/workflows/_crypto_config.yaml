@@ -1,0 +1,27 @@
+name: Download and Process Crypto Exchanges
+
+on:
+  workflow_dispatch: 
+  schedule:
+    - cron: '0 1 * * 1-5'  # crypto download at 1 AM on weekdays
+
+jobs:
+  download-and-save:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: pip install requests
+      - name: Run Python script to download crypto data
+        run: python __crypto_config.py
+      - name: Commit and Push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add files/crypto.json
+          git commit -m "Update crypto listed data"
+          git push
