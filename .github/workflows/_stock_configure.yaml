@@ -23,7 +23,7 @@ jobs:
         run: pip install requests pandas
 
       - name: Run Python script to download and process stock data
-        run: python process_stock_data.py
+        run: python __stock_config.py
 
       - name: Commit and Push Changes
         run: |
