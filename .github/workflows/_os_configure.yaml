@@ -21,10 +21,10 @@ jobs:
         run: pip install requests
       - name: Run Python script to update os versions
         run: python __os_config.py
-      - name: Commit and Push
+                    
+      - name: Commit and Push os_versions.json
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add files/os_versions.json
-          git commit -m "Update os versions data"
-          git push
+          git diff --staged --exit-code || (git commit -m "Update os versions" && git push)
