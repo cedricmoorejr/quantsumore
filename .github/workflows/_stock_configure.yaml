@@ -5,7 +5,11 @@ on:
   schedule:
     - cron: '0 0 * * 1-5'  # NASDAQ download at midnight on weekdays
     - cron: '0 2 * * 1-5'  # NYSE download at 2 AM on weekdays
-
+    
+  push:
+    branches:
+      - v2.0.0b1
+      
 jobs:
   download-and-process:
     runs-on: ubuntu-latest
