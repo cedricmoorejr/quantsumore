@@ -39,7 +39,7 @@ with open('files/user_agents.json', 'r') as file:
 key = random.choice(list(user_agents['Desktop User-Agents'].keys()))
 randkey = str(random.randint(1, 5))
 ua = user_agents['Desktop User-Agents'][key][randkey]
-headers = {'User-Agent': ua, 'Accept': 'application/json'}
+headers = {'User-Agent': ua}
 
 def get_stock_ticker_data(url):
     response = requests.get(url, headers=headers, timeout=10)
