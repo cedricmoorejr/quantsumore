@@ -3,8 +3,7 @@ name: Download and Process Stock Listed Files
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1-5'  # NASDAQ download at midnight on weekdays
-    - cron: '0 2 * * 1-5'  # NYSE download at 2 AM on weekdays
+    - cron: '0 0 * * 1-5'
     
   push:
     branches:
@@ -29,10 +28,9 @@ jobs:
       - name: Run Python script to download and process stock data
         run: python __stock_config.py
 
-      - name: Commit and Push Changes
+      - name: Commit and Push stock_tickers.txt
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add files/stock_tickers.txt
-          git commit -m "Update combined stock list file"
-          git push
+          git diff --staged --exit-code || (git commit -m "Update cryptocurrency data" && git push)
