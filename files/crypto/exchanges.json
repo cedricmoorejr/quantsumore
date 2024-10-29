@@ -1,6 +1,6 @@
 {
     "crypto_exchanges": {
-        "16": {
+        "1": {
             "exchangeId": "16",
             "exchangeName": "Poloniex",
             "exchangeSlug": "poloniex"
