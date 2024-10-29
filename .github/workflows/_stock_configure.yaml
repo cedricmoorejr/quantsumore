@@ -33,4 +33,4 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add files/stock_tickers.txt
-          git diff --staged --exit-code || (git commit -m "Update cryptocurrency data" && git push)
+          git diff --staged --exit-code || (git commit -m "Update stock exchange data" && git push)
