@@ -34,3 +34,10 @@ jobs:
           git config --local user.name "GitHub Action"
           git add files/crypto/cryptocurrency.json
           git diff --staged --exit-code || (git commit -m "Update cryptocurrency data" && git push)
+          
+      - name: Commit and Push all_data.json
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add files/crypto/all_data.json
+          git diff --staged --exit-code || (git commit -m "Update cryptocurrency data" && git push)
