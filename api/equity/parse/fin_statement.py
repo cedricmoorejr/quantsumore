@@ -27,8 +27,9 @@ from copy import deepcopy
 # Custom
 from ....date_parser import dtparse
 from ...._http.response_utils import clean_initial_content
-
-
+from ...shape_tools import is_valid_dataframe
+from ....strata_utils import IterDict
+from ...parse_tools import extract_symbol_from_url
 
 
 class FinancialStatement(pd.DataFrame):
@@ -57,16 +58,83 @@ class financials:
         self.income_statement = None           
         self.balance_sheet = None            
         self.cash_flow_statement = None             
-        self.ticker = None         
+        self.ticker = None
+        self.error_messages = []
+        self.error = True        
 
-        if isinstance(json_content, list):
-            self.json_content = json_content
-        else:
-            self.json_content = [json_content] if json_content else []
+        if json_content:
+            self.json_content = IterDict.isNested(json_content)
 
         if self.json_content:
-            for statementType in self.financialStatements:
-                self.parse(statementType)
+            self.check_data()  # Processes the data and checks for errors
+            self.display_error_messages()  # Display error messages regardless of error status
+            if not self.error:
+                for statementType in self.financialStatements:
+                    self.parse(statementType) # Proceed with parsing if no critical errors
+
+    def display_error_messages(self):
+        if self.error_messages:
+            for x, t in self.error_messages:
+                print(f'{x}: {t}')                
+
+    def check_data(self):
+        json_content = self.json_content
+        def verify_financial_data(financial_datasets):
+            acceptable_data = []
+            for entry in financial_datasets:
+                url, response_info = list(entry.items())[0]
+
+                if response_info['response']['status']['rCode'] == 200:
+                    data = response_info['response']['data']
+                    if data and 'tabs' in data:
+                        if any(data.get(table) for table in ['incomeStatementTable', 'balanceSheetTable', 'cashFlowTable']):
+                            message = response_info['response'].get('message')
+                            error_message = response_info['response']['status'].get('bCodeMessage')
+                            
+                            if message or (error_message and any(em.get('errorMessage') for em in error_message)):
+                                acceptable_data.append((url, False))
+                            else:
+                                acceptable_data.append((url, True))
+                        else:
+                            acceptable_data.append((url, False))
+                    else:
+                        acceptable_data.append((url, False))
+                else:
+                    acceptable_data.append((url, False))
+
+            return acceptable_data
+
+        validate_financial_data = verify_financial_data(json_content)
+
+        # Initialize the list to store messages
+        error_messages_list = []
+
+        for url, check in validate_financial_data:
+            if not check: 
+                ticker = extract_symbol_from_url(url)
+                data = IterDict.find(json_content, target_key=url)
+                found_message = IterDict.filter(data, 'message', "^(?!None$)(?i).*", True)
+                if found_message:
+                    n_message = IterDict.find(found_message, 'message')
+                    message = (n_message.rstrip() + ('' if re.search(r'\.$', n_message.rstrip()) else '.') if n_message is not None else None)  
+                    error_messages_list.append((ticker, message))
+                else:
+                    found_error_message = IterDict.filter(data, 'errorMessage', "^(?!None$)(?i).*", True)
+                    if found_error_message:
+                        n_message = IterDict.find(found_error_message, 'errorMessage')
+                        message = (n_message.rstrip() + ('' if re.search(r'\.$', n_message.rstrip()) else '.') if n_message is not None else None)  
+                        error_messages_list.append((ticker, message))
+                    else:
+                        default_message = "Financial statement data data could not be found."
+                        error_messages_list.append((ticker, default_message))		
+
+            # Filter to get only URLs that passed validation (those with True status)
+            self.error_messages = error_messages_list
+            valid_urls = [url for url, is_valid in validate_financial_data if is_valid]
+            self.json_content = [entry for entry in json_content if any(url in entry for url in valid_urls)]
+
+            if valid_urls:            
+                self.error = False
                 
     def _clean_content(self, content):
         return clean_initial_content(content)
@@ -101,14 +169,23 @@ class financials:
                 dataframe[column] = dataframe[column].apply(currency_to_float)
             return dataframe
         return _clean_currency(df, cols)
-       
-    def _is_data(self, dataframe):
-        if dataframe is None or dataframe.empty:
-            return False
-        else:
-            return True
+           
+    def _clean_headers_rows(self, headers, rows):
+        empty_indices = []
+        cleaned_headers = {}
+        for key, value in headers.items():
+            if value: 
+                cleaned_headers[key] = value
+            else:
+                empty_indices.append(key)
+        cleaned_rows = []
+        for row in rows:
+            cleaned_row = {k: v for k, v in row.items() if k not in empty_indices}
+            cleaned_rows.append(cleaned_row)
+        return cleaned_headers, cleaned_rows
            
     def _create_dataframe(self, headers, rows, statement):
+        headers, rows = self._clean_headers_rows(headers, rows)    	
         column_names = [headers[key] for key in sorted(headers.keys())]
         data_for_df = []
         for row in rows:
@@ -156,20 +233,23 @@ class financials:
         
     @property
     def IncomeStatement(self):
-        if not self._is_data(self.income_statement):
-            return "Financial Statement data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.income_statement):
+            if not self.error_messages:            
+                return "Financial Statement data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.income_statement
        
     @property
     def BalanceSheet(self):
-        if not self._is_data(self.balance_sheet):
-            return "Financial Statement data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.balance_sheet):
+            if not self.error_messages:            
+                return "Financial Statement data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.balance_sheet
        
     @property       
     def CashFlowStatement(self):
-        if not self._is_data(self.cash_flow_statement):
-            return "Financial Statement data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.cash_flow_statement):
+            if not self.error_messages:            
+                return "Financial Statement data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.cash_flow_statement
        
     def __dir__(self):

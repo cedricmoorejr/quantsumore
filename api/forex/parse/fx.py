@@ -29,122 +29,10 @@ import time
 from ...market_utils import forexquery, forex_hours
 from ....web_utils import HTMLclean
 from ....date_parser import dtparse
-from ...._http.response_utils import clean_initial_content
+from ...._http.response_utils import validateHTMLResponse, clean_initial_content
 from ....strata_utils import IterDict
-
-
-# Helper
-def fix_and_validate_dict_string_or_list(input_data):
-    def fix_and_validate_dict_string(dict_string):
-        try:
-            parsed_dict = json.loads(dict_string)
-            return parsed_dict
-        except json.JSONDecodeError as e:
-            pass
-        open_braces = dict_string.count('{')
-        close_braces = dict_string.count('}')
-        if open_braces > close_braces:
-            dict_string += '}' * (open_braces - close_braces)
-        if dict_string[-1] != '}':
-            dict_string += '}'
-        dict_string = dict_string.replace('", "', '", "')
-        dict_string = dict_string.replace('": "', '": "')
-        dict_string = dict_string.replace(', "', ', "')
-        try:
-            parsed_dict = json.loads(dict_string)
-            return parsed_dict
-        except json.JSONDecodeError as e:
-            return None
-    if isinstance(input_data, list):
-        return [fix_and_validate_dict_string(item) for item in input_data]
-    elif isinstance(input_data, str):
-        return fix_and_validate_dict_string(input_data)
-    else:
-        raise ValueError("Input data must be either a string or a list of strings.")
-
-def process_dict_or_list(data):
-    def convert_to_float(value):
-        try:
-            return float(value)
-        except ValueError:
-            return value    
-    if isinstance(data, dict):
-        new_dict = {}
-        for key, value in data.items():
-            if isinstance(value, (dict, list)):
-                new_dict[key] = process_dict_or_list(value)
-            elif isinstance(value, str):
-                if ' - ' in value: 
-                    parts = value.split(' - ')
-                    if len(parts) == 2:
-                        new_dict[key] = convert_to_float(parts[0])
-                    else:
-                        new_dict[key] = value
-                else:
-                    new_dict[key] = convert_to_float(value)
-            else:
-                new_dict[key] = value
-        return new_dict
-    elif isinstance(data, list):
-        return [process_dict_or_list(item) for item in data]
-    else:
-        return data
-
-def remove_nested_keys(data):
-    data_dict = deepcopy(data)
-    def _remove_nested_keys(d):
-        if isinstance(d, dict):
-            keys_to_remove = []
-            for key, value in d.items():
-                if isinstance(value, dict):
-                    keys_to_remove.append(key)
-                else:
-                    d[key] = value
-            for key in keys_to_remove:
-                del d[key]
-        elif isinstance(d, list):
-            for item in d:
-                _remove_nested_keys(item)
-    _remove_nested_keys(data_dict)
-    return data_dict
-
-def combine_dicts(dict_list):
-    result = {}
-    def add_key(key, value):
-        if key not in result:
-            result[key] = value
-        else:
-            index = 1
-            new_key = f"{key}_{index}"
-            while new_key in result:
-                index += 1
-                new_key = f"{key}_{index}"
-            result[new_key] = value
-    for d in dict_list:
-        for key, value in d.items():
-            if isinstance(value, dict):
-                add_key(key, combine_dicts([value]))
-            else:
-                add_key(key, value)
-    return result
-
-def rename_keys(data, old_keys, new_keys):
-    if len(old_keys) != len(new_keys):
-        raise ValueError("The list of old keys and new keys must have the same length.")
-    new_data = deepcopy(data)
-    for old_key, new_key in zip(old_keys, new_keys):
-        if old_key in new_data:
-            new_data[new_key] = new_data.pop(old_key)
-        else:
-            raise KeyError(f"The key '{old_key}' does not exist in the dictionary.")
-    return new_data
-
-def reorder_dict(original_dict, new_order):
-    reordered_dict = {key: original_dict[key] for key in new_order if key in original_dict}
-    return reordered_dict
-
-
-
+from ...shape_tools import is_valid_dataframe, fix_and_validate_dict_string_or_list, process_dict_or_list, remove_nested_keys, combine_dicts, rename_keys, reorder_dict
+from ...parse_tools import convert_to_float, extract_currency_pair_from_url
 
 
 
@@ -158,21 +46,54 @@ class fx_historical:
         self.cleaned_data = None          
         self.timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         self.data = None       
+        self.error = True 
 
-        if isinstance(json_content, list):
-            self.json_content = json_content
-        else:
-            self.json_content = [json_content] if json_content else []
-
-        if self.json_content:
-            self.parse()
-
-            if self.cleaned_data:
-                self._create_dataframe()
+        if json_content:
+            self.json_content = IterDict.isNested(json_content)
             
-    def _clean_content(self, content):
-        return clean_initial_content(content)   
-        
+        if self.json_content:
+            self.check_data()  
+            self.display_error_messages()  
+            if not self.error:
+                self.parse()
+                if self.cleaned_data:
+                    self._create_dataframe()
+            
+    def display_error_messages(self):
+        if self.error_messages:
+            for message in self.error_messages:
+                print(message)
+
+    def check_data(self):
+        json_content = self.json_content    
+        def validate_api_responses(api_responses):
+            validation_list = []
+            for index, response in enumerate(api_responses):
+                for url, content in response.items():
+                    quotes = content.get('response', {}).get('d', {})
+                    if quotes == [] or quotes is None:
+                        validation_list.append((url, False))
+                    else:
+                        validation_list.append((url, True))
+            return validation_list
+
+        validate_crypto_content = validate_api_responses(json_content)
+        error_messages_list = []
+
+        for url, check in validate_crypto_content:
+            if not check: 
+                currency_pair = extract_currency_pair_from_url(url)
+                data = IterDict.find(json_content, target_key=url)
+                check_quote_values = IterDict.search_keys_in(data, "d")
+                message = "No data exists for the specified time periods."
+
+            self.error_messages = error_messages_list
+            valid_urls = [url for url, is_valid in validate_crypto_content if is_valid]
+            self.json_content = [entry for entry in json_content if any(url in entry for url in valid_urls)]
+
+            if valid_urls:            
+                self.error = False
+
     def _create_dataframe(self):
         rows = self.cleaned_data
         df = pd.DataFrame(rows)
@@ -187,17 +108,8 @@ class fx_historical:
         filtered_columns = [col for col in column_order if col in df.columns]
         self.data = df[filtered_columns]
 
-    def _is_data(self, dataframe):
-        if dataframe is None:
-            return True
-        elif dataframe.empty:
-            return True
-        else:
-            return False
-
     def parse(self):
-        # Flatten the list of dictionaries and remove 'CallCount' key using dictionary comprehension
-        cleaned_content = self._clean_content(self.json_content)         
+        cleaned_content = IterDict.find(self.json_content, first_only=False, target_key="response", wrap=False)         
         flattened_data = []
         responses = cleaned_content
         for response in responses:
@@ -209,8 +121,9 @@ class fx_historical:
             self.cleaned_data = flattened_data
 
     def DATA(self):
-        if self._is_data(self.data):
-            return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.data):
+            if not self.error_messages:
+                return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.data
 
     def __dir__(self):
@@ -223,20 +136,53 @@ class fx_interbank_rates:
         self.cleaned_data = None          
         self.timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         self.data = None       
+        self.error = False
 
-        if isinstance(json_content, list):
-            self.json_content = json_content
-        else:
-            self.json_content = [json_content] if json_content else []
-
+        if json_content:
+            self.json_content = IterDict.isNested(json_content)
+            
         if self.json_content:
-            self.parse()
-
-            if self.cleaned_data:
-                self._create_dataframe()
-    
-    def _clean_content(self, content):
-        return clean_initial_content(content)   
+            # self.check_data()  
+            # self.display_error_messages()  
+            if not self.error:
+                self.parse()
+                if self.cleaned_data:
+                    self._create_dataframe()
+            
+    # def display_error_messages(self):
+    #     if self.error_messages:
+    #         for message in self.error_messages:
+    #             print(message)
+    # 
+    # def check_data(self):
+    #     json_content = self.json_content    
+    #     def validate_api_responses(api_responses):
+    #         validation_list = []
+    #         for index, response in enumerate(api_responses):
+    #             for url, content in response.items():
+    #                 quotes = content.get('response', {}).get('d', {})
+    #                 if quotes == [] or quotes is None:
+    #                     validation_list.append((url, False))
+    #                 else:
+    #                     validation_list.append((url, True))
+    #         return validation_list
+    # 
+    #     validate_crypto_content = validate_api_responses(json_content)
+    #     error_messages_list = []
+    # 
+    #     for url, check in validate_crypto_content:
+    #         if not check: 
+    #             currency_pair = extract_currency_pair_from_url(url)
+    #             data = IterDict.find(json_content, target_key=url)
+    #             check_quote_values = IterDict.search_keys_in(data, "d")
+    #             message = "No data exists for the specified time periods."
+    # 
+    #         self.error_messages = error_messages_list
+    #         valid_urls = [url for url, is_valid in validate_crypto_content if is_valid]
+    #         self.json_content = [entry for entry in json_content if any(url in entry for url in valid_urls)]
+    # 
+    #         if valid_urls:            
+    #             self.error = False  
         
     def _create_dataframe(self):
         rows = self.cleaned_data
@@ -247,16 +193,8 @@ class fx_interbank_rates:
         df = df[["CurrencyPair", "QuoteCurrency", "Rate", "PercentageChange", "QueriedAt"]]
         self.data = df
 
-    def _is_data(self, dataframe):
-        if dataframe is None:
-            return True
-        elif dataframe.empty:
-            return True
-        else:
-            return False
-        
     def parse(self):
-        cleaned_content = self._clean_content(self.json_content)        	
+        cleaned_content = IterDict.find(self.json_content, first_only=False, target_key="response", wrap=False)       	
         flattened_data = []
         responses = cleaned_content
         for response in responses:
@@ -268,12 +206,14 @@ class fx_interbank_rates:
             self.cleaned_data = flattened_data
 
     def DATA(self):
-        if self._is_data(self.data):
-            return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.data):
+            if not self.error_messages:
+                return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.data
 
     def __dir__(self):
         return ['DATA']
+
 
 
 
@@ -281,43 +221,125 @@ class live_bid_ask:
     def __init__(self, json_content=None):
         self.cleaned_data = None          
         self.data = None         
+        self.error_messages = []
+        self.error = True 
 
-        if isinstance(json_content, list):
-            self.json_content = json_content
-        else:
-            self.json_content = [json_content] if json_content else []
-
+        if json_content:
+            self.json_content = IterDict.isNested(json_content)
+            
         if self.json_content:
-            self.parse()
+            self.check_data()  
+            self.display_error_messages()  
+            if not self.error:
+                self.parse()
+                if self.cleaned_data:
+                    self._create_dataframe()
 
-            if self.cleaned_data:
-                self._create_dataframe()
+    def display_error_messages(self):
+        if self.error_messages:
+            for x, t in self.error_messages:
+                print(f'{x}: {t}')  
+                
+    def check_data(self):
+        json_content = self.json_content    
+        def validate_api_responses(api_responses):
+            validation_list = []
+            for index, response in enumerate(api_responses):
+                for url, content in response.items():
+                    if (
+                        content.get('response', {}).get('status', {}).get('bCodeMessage') is not None or
+                        content.get('response', {}).get('status', {}).get('developerMessage') is not None or
+                        content.get('response', {}).get('message', {}) is not None
+                    ):
+                        validation_list.append((url, False))
+                    else:
+                        validation_list.append((url, True))
+            return validation_list
+        
+        def process_messages(data, verbose=False):
+            messages = []        
+            def clean(msgs):
+                try:
+                    messages_list = [f for f in msgs if 'code:' not in f]
+                    return [f.split("-")[-1].split(": ")[-1] for f in messages_list]
+                except:
+                    return msgs
 
-    def _clean_content(self, content):
-        return clean_initial_content(content)   
+            def extract_message_fields(data):
+                result = {}
+                if isinstance(data, dict):
+                    for key, value in data.items():
+                        if 'error_message' in key.lower():
+                            result[key] = value
+                        elif isinstance(value, (dict, list)):
+                            result.update(extract_message_fields(value))
+                elif isinstance(data, list):
+                    for item in data:
+                        result.update(extract_message_fields(item))
+                return result
+
+            def process_entry(key, value):
+                if value is None:
+                    return 
+                if isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            for k, v in item.items():
+                                if v is not None:
+                                    messages.append(f"{key} - {k}: {v}")
+                        else:
+                            if item is not None:
+                                messages.append(f"{key}: {item}")
+                elif isinstance(value, dict):
+                    for sub_key, sub_value in value.items():
+                        process_entry(f"{key} - {sub_key}", sub_value)
+                else:
+                    messages.append(f"{key}: {value}")
+                    
+            extracted_data = extract_message_fields(data)
+            for key, value in extracted_data.items():
+                process_entry(key, value)
+            if verbose:
+                for message in messages:
+                    print(message)
+            else:
+                return clean(messages)
+        
+        validate_fx_content = validate_api_responses(json_content)
+        error_messages_list = []
+
+        for url, check in validate_fx_content:
+            if not check: 
+                currency_pair = extract_currency_pair_from_url(url)
+                data = IterDict.find(json_content, target_key=url)
+                check_quote_values = IterDict.search_keys_in(data, "d")
+                if not check_quote_values:
+                    message = "No data exists for the specified time periods."
+                else:        
+                    n_message = process_messages(data)
+                    message = n_message[0] if n_message else None 
+                error_messages_list.append((currency_pair, message))
+                
+            self.error_messages = error_messages_list
+            valid_urls = [url for url, is_valid in validate_fx_content if is_valid]
+            self.json_content = [entry for entry in json_content if any(url in entry for url in valid_urls)]
+
+            if valid_urls:            
+                self.error = False
         
     def _create_dataframe(self):
         rows = self.cleaned_data
         df = pd.DataFrame(rows)
         self.data = df
 
-    def _is_data(self, dataframe):
-        if dataframe is None:
-            return True
-        elif dataframe.empty:
-            return True
-        else:
-            return False
-
     def parse(self):
-        cleaned_content = self._clean_content(self.json_content)          
-        top_key = IterDict.top_key(cleaned_content, exclusion='error', exclusion_sensitive=True) 
+        cleaned_content = IterDict.find(self.json_content, first_only=False, target_key="data", wrap=False)          
         rows = []
         for entry in cleaned_content:
             row = {}
-            row['Symbol'] = entry[top_key]['symbol']
-            row['Asset Class'] = entry[top_key]['assetClass']
-            for key, val in entry[top_key]['summaryData'].items():
+            row['Symbol'] = entry['symbol']
+            row['Asset Class'] = entry['assetClass']
+            for key, val in entry['summaryData'].items():
                 row[val['label']] = val['value']
             rows.append(row)
 
@@ -325,15 +347,13 @@ class live_bid_ask:
             self.cleaned_data = rows
 
     def DATA(self):
-        if self._is_data(self.data):
-            return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.data):
+            if not self.error_messages:
+                return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.data
 
     def __dir__(self):
         return ['DATA']
-
-
-
 
 
 ## Via HTML
@@ -363,21 +383,28 @@ class live_quote:
         self.stats_raw = None
         self.stats_clean = None    
         self.data = None       
-        self.error = False         
+        self.error = True
 
         if html_content:
-            self.parse()
-            if not self.error:
-                self.compile_data()
-                
-    def __format_price(self, value):
-        try:
-            return round(float(value), 6)
-        except ValueError:
-            return value
+            self.url = IterDict.top_key(html_content)        	
+            self.html_content = IterDict.HTMLcontent(html_content) 
+            if self.html_content:
+                self.html_content = HTMLclean.decode(self.html_content)
+                self.validate_content(self.html_content)
+                if not self.error:                
+                    self.parse()
+                    self.compile_data()
 
-    def clean_html_content(self):
-        self.html_content = HTMLclean.decode(self.html_content)
+    def validate_content(self, html):
+        self.error = False
+
+        # Validate if correct html content
+        identifier = self.url
+        if identifier:
+            identifier = extract_currency_pair_from_url(identifier)
+            html_check = validateHTMLResponse(html).currency(currency_pair=identifier)
+            if not html_check:
+                self.error = True
 
     def extract_ccy_pair(self):
         div_pattern = r'<div class="symbol-name[^>]*>.*?<span>\(([^)]*)\)</span>'
@@ -400,8 +427,8 @@ class live_quote:
             ask_price_match = re.search(ask_price_pattern, json_like_string)
             bid_price = bid_price_match.group(1) if bid_price_match else None
             ask_price = ask_price_match.group(1) if ask_price_match else None
-            ask = self.__format_price(ask_price)
-            bid = self.__format_price(bid_price)
+            ask = convert_to_float(ask_price, roundn=6)
+            bid = convert_to_float(bid_price, roundn=6)
             spread = round((ask - bid), 6)
             self.bid_ask_prices = {"bidPrice":bid, "askPrice":ask, "bid-askSpread":spread}
         return None
@@ -414,7 +441,7 @@ class live_quote:
             price_change_pattern = r'"priceChange":"([+\\-]?[0-9.]+)"'
             price_change_match = re.search(price_change_pattern, json_like_string)
             price_change = price_change_match.group(1) if price_change_match else None
-            self.intraday = {'lastChangeInRate':self.__format_price(price_change)}
+            self.intraday = {'lastChangeInRate':convert_to_float(price_change, roundn=6)}
         return None
 
     def extract_date_time(self):
@@ -456,7 +483,7 @@ class live_quote:
 
     def clean_data(self):
         def innerrenameKeys(data):
-            key_map = data[0] # First dict contains header/quote names
+            key_map = data[0]
             data_dict = data[1]
             new_data = {key_map[k]: data_dict[k] for k in key_map if k in data_dict}
             return new_data 
@@ -474,16 +501,12 @@ class live_quote:
         return None
     
     def parse(self):
-        try:
-            self.clean_html_content()
-            self.extract_ccy_pair()
-            self.extract_bid_ask_prices()
-            self.extract_other_prices()
-            self.extract_date_time()
-            self.extract_raw_stats()
-            self.clean_data()
-        except:
-            self.error = True
+        self.extract_ccy_pair()
+        self.extract_bid_ask_prices()
+        self.extract_other_prices()
+        self.extract_date_time()
+        self.extract_raw_stats()
+        self.clean_data()
 
     def compile_data(self):
         data = combine_dicts([{'currencyPair':self.currency_pair}, self.bid_ask_prices, self.intraday, self.stats_clean, {'lastUpdated':self.timestamp}])
@@ -516,13 +539,15 @@ class live_quote:
         self.data = data
 
     def DATA(self):
-        if not self.error:
-            return self.data
-        else:
+        if self.error:
             return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        return self.data
 
     def __dir__(self):
         return ['DATA']
+
+
+
 
 
 
@@ -535,21 +560,28 @@ class conversion:
         self.conversion_amount = conversion_amount
         self.timestamp = None        
         self.data = None      
-        self.error = False             
+        self.error = True
 
         if html_content:
-            self.parse()
-            if not self.error:
-                self.restructure()
+            self.url = IterDict.top_key(html_content)        	
+            self.html_content = IterDict.HTMLcontent(html_content) 
+            if self.html_content:
+                self.html_content = HTMLclean.decode(self.html_content)
+                self.validate_content(self.html_content)
+                if not self.error:                
+                    self.parse()
+                    self.restructure()
 
-    def __format_price(self, value):
-        try:
-            return float(value)
-        except ValueError:
-            return value
+    def validate_content(self, html):
+        self.error = False
 
-    def clean_html_content(self):
-        self.html_content = HTMLclean.decode(self.html_content)
+        # Validate if correct html content
+        identifier = self.url
+        if identifier:
+            identifier = extract_currency_pair_from_url(identifier)
+            html_check = validateHTMLResponse(html).currency(currency_pair=identifier)
+            if not html_check:
+                self.error = True
 
     def extract_ccy_pair(self):
         div_pattern = r'<div class="symbol-name[^>]*>.*?<span>\(([^)]*)\)</span>'
@@ -593,7 +625,7 @@ class conversion:
             last_price_pattern = r'"lastPrice":"([0-9.]+)"'
             last_price_match = re.search(last_price_pattern, json_like_string)
             last_price = last_price_match.group(1) if last_price_match else None
-            self.exchange_rate = self.__format_price(last_price)
+            self.exchange_rate = convert_to_float(last_price, roundn=6)
             self.converted_exchange_rate = round(1/self.exchange_rate, 6)
         return None
 
@@ -632,19 +664,14 @@ class conversion:
         }
 
     def parse(self):
-        try:
-            self.clean_html_content()
-            self.extract_ccy_pair()
-            self.extract_exchange_rate()
-            self.extract_date_time()
-        except:
-            self.error = True
+        self.extract_ccy_pair()
+        self.extract_exchange_rate()
+        self.extract_date_time()
 
     def DATA(self):
-        if not self.error:
-            return self.data
-        else:
+        if self.error:
             return "Currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        return self.data
 
     def __dir__(self):
         return ['DATA']

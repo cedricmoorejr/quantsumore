@@ -41,14 +41,6 @@ def normalize_response(response, target_key="response", onlyNormalize=False, kee
                                          returns only the values associated with the found key.
                                          Defaults to False.
 
-    Returns:
-        The normalized data which may be a deeply parsed structure or specific values extracted from the structure.
-
-    Raises:
-        json.JSONDecodeError: If a JSON-encoded string within the response or its substructures fails to parse.
-
-    Note:
-        The function can handle complex nested structures and can optionally parse JSON strings into Python data structures.
     """
     def normalize(response=response, target_key=target_key, keep_structure=keep_structure, results=None):
         if results is None:
@@ -73,18 +65,7 @@ def normalize_response(response, target_key="response", onlyNormalize=False, kee
         return results
 
     def deep_parse_json(input_data):
-        """
-        Recursively parses input data, converting all JSON strings within it into Python data structures.
-
-        Args:
-            input_data (dict | list | str): The input data which may contain JSON strings.
-
-        Returns:
-            The input data with all JSON strings parsed into appropriate Python data structures.
-
-        Raises:
-            json.JSONDecodeError: If a JSON string cannot be parsed.
-        """
+        """ Recursively parses input data, converting all JSON strings within it into Python data structures. """
         if isinstance(input_data, str):
             try:
                 parsed_data = json.loads(input_data)
@@ -99,17 +80,7 @@ def normalize_response(response, target_key="response", onlyNormalize=False, kee
             return input_data
 
     def process_result(result, multiple=False):
-        """
-        Processes the normalized data, ensuring that all JSON-encoded strings are parsed and returns the final result.
-
-        Args:
-            result: The data output from the normalize function.
-            multiple (bool, optional): Indicates if multiple results are expected and should be parsed accordingly.
-                                       Defaults to False.
-
-        Returns:
-            The fully processed result after deep parsing.
-        """
+        """ Processes the normalized data, ensuring that all JSON-encoded strings are parsed and returns the final result. """
         if multiple:
             return [deep_parse_json(r) for r in result]
         if isinstance(result, list):
@@ -127,6 +98,13 @@ def normalize_response(response, target_key="response", onlyNormalize=False, kee
 
 
 class validateHTMLResponse:
+    """
+    Validates sections of HTML content based on provided criteria related to financial data.
+
+    This function performs validations to determine if specific sections relevant to financial data queries
+    exist within a given HTML content string. It supports different types of financial instruments such as equities
+    and currencies, depending on the parameters supplied.   
+    """	    
     def __init__(self, html):
         if not self.__is_valid_html_str(html):
             return False
@@ -175,14 +153,28 @@ class validateHTMLResponse:
                 if found_ticker == ticker:
                     return True
         return False
+
+    def __currencypair_search(self, currency_pair):
+        def remove_non_alphabetic(text):
+            return re.sub(r'[^a-zA-Z]', '', text)
+           
+        html_content = self.html
+        currency_pair = remove_non_alphabetic(currency_pair)
+        escaped_currency_pair = re.escape(currency_pair)
+        pattern = rf"\b{escaped_currency_pair}\b.*Barchart\.com"
+        match = re.search(pattern, html_content)
+        if match:
+            return currency_pair
+        return None
          
     def currency(self, currency_pair):
         html_content = self.html
-        if not currency_pair.__contains__("^"):
-            currency_pair = "^" + currency_pair
-        pattern_pair = rf'<span>\({re.escape(currency_pair)}\)</span>'
-        if re.search(pattern_pair, html_content, re.IGNORECASE | re.DOTALL):
-            return True
+        if self.__currencypair_search(currency_pair=currency_pair):
+            if not currency_pair.__contains__("^"):
+                currency_pair = "^" + currency_pair
+            pattern_pair = rf'<span>\({re.escape(currency_pair)}\)</span>'
+            if re.search(pattern_pair, html_content, re.IGNORECASE | re.DOTALL):
+                return True
         return False
         
     def equity(self, ticker):
@@ -193,6 +185,7 @@ class validateHTMLResponse:
             if profile_check or stats_check:
                 return True
         return False
+       
    
 def clean_initial_content(content):
     """
@@ -295,8 +288,7 @@ def Request(url, headers_to_update=None, response_format='html', target_response
         This function supports handling multiple URLs concurrently and can handle complex data structures in responses, including nested and JSON strings.
         It also manages headers dynamically and ensures that they are restored after the request, minimizing side effects on the http_client's state.
     """
-    # Determine if the request should be handled concurrently
-    concurrent = isinstance(url, list) and len(url) > 1
+    concurrent = isinstance(url, list) and len(url) > 1 # Determine if the request should be handled concurrently
 
     if headers_to_update is None:
         headers_to_update = {}
@@ -312,16 +304,13 @@ def Request(url, headers_to_update=None, response_format='html', target_response
     if concurrent:
         response = http_client.make_requests_concurrently(url, params, return_url=return_url, delay_enabled=False)
     else:
-        # Update the base URL if it's a singular request or there's a single URL in concurrent mode
         if isinstance(url, str):
             http_client.update_base_url(url)
         response = http_client.make_request(params, concurrent=False, return_url=return_url, delay_enabled=True)
 
-    # Restore original headers
     for header, original_value in original_headers.items():
         http_client.update_header(header, original_value)
 
-    # Directly use the no_content value for keep_structure in normalize_response.
     try:
         return normalize_response(response, target_key=target_response_key, onlyNormalize=onlyParse, keep_structure=no_content)        
     except:

@@ -153,9 +153,8 @@ class APIClient:
         """    	
         make_method = getattr(self.asset, 'make')
         url = make_method(query='current', currency_pair=currency_pair)
-        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
-        html_check = validateHTMLResponse(html_content).currency(currency_pair=currency_pair)
-        if html_check:
+        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
+        if html_content:
             obj = fx.live_quote(html_content)
             quote_data = obj.DATA()
             return quote_data
@@ -192,9 +191,8 @@ class APIClient:
         """    	
         make_method = getattr(self.asset, 'make')
         url = make_method(query='convert', currency_pair=currency_pair)
-        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
-        html_check = validateHTMLResponse(html_content).currency(currency_pair=currency_pair)
-        if html_check:
+        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
+        if html_content:
             obj = fx.conversion(html_content, conversion_amount=conversion_amount)
             conversion_data = obj.DATA()
             return conversion_data

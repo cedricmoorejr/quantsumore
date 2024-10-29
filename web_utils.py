@@ -138,50 +138,6 @@ url_encode_decode = URLEncoderDecoder()
 
 
 
-def find_url_in_text(text):
-    url_pattern = r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+[^ \n]*'
-    urls = re.findall(url_pattern, text)
-    return urls
-   
-def parse_url(url, include_notation=True, parts=None):
-    parsed_url = urlparse(url)
-    full_domain = parsed_url.netloc
-    domain_parts = full_domain.split('.')
-    
-    if len(domain_parts) > 2:
-        subdomain = domain_parts[0]
-        domain_name = '.'.join(domain_parts[1:])
-    else:
-        subdomain = None  
-        domain_name = full_domain
-    
-    protocol = parsed_url.scheme
-    if include_notation:
-        protocol += "://"
-        if subdomain:
-            subdomain += "."
-        query_string = f"?{parsed_url.query}" if parsed_url.query else ""
-    else:
-        query_string = parsed_url.query
-
-    path = parsed_url.path
-    components = {
-        "protocol": protocol,
-        "subdomain": subdomain,
-        "domain_name": domain_name,
-        "path": path,
-        "query_string": query_string
-    }
-    if parts:
-        if isinstance(parts, str):
-            parts = [parts]
-        return {key: components[key] for key in parts if key in components}
-    return components
-
-
-
-
-
 class Mask:
     class bool:
         @staticmethod
@@ -257,6 +213,47 @@ class Mask:
                 return Mask.format.chr(unformatted, "format")
             return unformatted
 
+
+
+# def find_url_in_text(text):
+#     url_pattern = r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+[^ \n]*'
+#     urls = re.findall(url_pattern, text)
+#     return urls
+#    
+# def parse_url(url, include_notation=True, parts=None):
+#     parsed_url = urlparse(url)
+#     full_domain = parsed_url.netloc
+#     domain_parts = full_domain.split('.')
+#     
+#     if len(domain_parts) > 2:
+#         subdomain = domain_parts[0]
+#         domain_name = '.'.join(domain_parts[1:])
+#     else:
+#         subdomain = None  
+#         domain_name = full_domain
+#     
+#     protocol = parsed_url.scheme
+#     if include_notation:
+#         protocol += "://"
+#         if subdomain:
+#             subdomain += "."
+#         query_string = f"?{parsed_url.query}" if parsed_url.query else ""
+#     else:
+#         query_string = parsed_url.query
+# 
+#     path = parsed_url.path
+#     components = {
+#         "protocol": protocol,
+#         "subdomain": subdomain,
+#         "domain_name": domain_name,
+#         "path": path,
+#         "query_string": query_string
+#     }
+#     if parts:
+#         if isinstance(parts, str):
+#             parts = [parts]
+#         return {key: components[key] for key in parts if key in components}
+#     return components
 
 
 

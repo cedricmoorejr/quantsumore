@@ -25,11 +25,13 @@ import re
 # Custom
 from ..api.equity.parse import fin_statement, dividend
 from ..api.prep import stocks_asset
-from .._http.response_utils import Request, key_from_mapping, validateHTMLResponse
-from ..exceptions import FinancialStatementUnavailableError, DividendError
+from .._http.response_utils import Request, key_from_mapping
 from ..strata_utils import IterDict
 
 
+   
+
+   
 class APIClient:
     def __init__(self, asset):
         self.asset = asset
@@ -45,72 +47,50 @@ class APIClient:
             raise ValueError("Invalid period.")            
         urls = []
         make_method = getattr(self.asset, 'make')
-        
-        # urls.append(make_method(query='profile', ticker=ticker))
-        urls.append(make_method(query='financials', ticker=ticker, period=period))
-        urls.append(make_method(query='dividend_history', ticker=ticker))        
+        financials = make_method(query='financials', ticker=ticker, period=period)
+        dividends = make_method(query='dividend_history', ticker=ticker) 
+
+        # Handle financial data
+        if isinstance(financials, list):
+            urls.extend(financials)
+        else:
+            urls.append(financials)
+
+        # Handle dividend data
+        if isinstance(dividends, list):
+            urls.extend(dividends)
+        else:
+            urls.append(dividends)      
         return urls
 
-    def _categorize_content(self, content):
-        categorized_content = {}
+    def _categorize_content(self, content):        
+        categorized_content = {'dividend': [], 'financial_statements': []}
         url_pattern = re.compile(r'https?://(?:[\w-]+\.)+[\w-]+(?:/[\w.-]*)*')
         for entry in content:
             for url, data in entry.items():
-                # Verify the key is a valid URL
                 if url_pattern.search(url):
-                    # Determine category based on the keyword in the URL
                     if "dividend" in url:
-                        category = "dividend"
-                    # elif "profile" in url:
-                    #     category = "profile"
+                        categorized_content['dividend'].append({url: data})                    
                     elif "financials" in url:
-                        category = "financial_statements"
-
-                    if category in categorized_content:
-                        categorized_content[category].append({url: data})
-                    else:
-                        categorized_content[category] = [{url: data}]
+                        categorized_content['financial_statements'].append({url: data})
         return categorized_content
 
     def Process(self, ticker, period="Q"):
         urls = self._urls(ticker=ticker, period=period)
         content = self._make_request(urls)
-        
         categorized_content = self._categorize_content(content=content)
         results = {} 
         
         for which, which_content, in categorized_content.items():
-            if which == 'financial_statements':
-                url = IterDict.unique_url_keys(which_content, ignore_case=True, flatten=True)	
-                content_check = IterDict.search_keys(which_content, target_keys=["message", "data"], value_only=True, first_only=True, return_all=False, include_key_in_results=True)
-                message = (content_check["message"].rstrip() + ('' if re.search(r'\.$', content_check["message"].rstrip()) else '.') if content_check["message"] is not None else None) # Add a period if the trimmed text does not end with one               
-                contents = content_check["data"]                
-                if not contents:
-                    if not message:
-                        message = "No available financial statement data for the ticker symbol provided."
-                        raise FinancialStatementUnavailableError(message)
-                    raise FinancialStatementUnavailableError(message)  
-                else:
+            if which == 'financial_statements':             
+                if which_content:
                     obj = fin_statement.financials(json_content=which_content)            
                     results['financial_statements'] = [(obj.IncomeStatement, obj.BalanceSheet, obj.CashFlowStatement)]
                         
-            elif which == 'dividend':            
-                url = IterDict.unique_url_keys(which_content, ignore_case=True, flatten=True)	
-                content_check = IterDict.search_keys(which_content, target_keys=["message", "data"], value_only=True, first_only=True, return_all=False, include_key_in_results=True)
-                message = (content_check["message"].rstrip() + ('' if re.search(r'\.$', content_check["message"].rstrip()) else '.') if content_check["message"] is not None else None) # Add a period if the trimmed text does not end with one               
-                contents = content_check["data"]
-                try:
-                    if message:
-                        raise DividendError(url=url, ticker=None, message=message)            
-                    else:
-                        if contents:
-                            obj = dividend.dividend_history(json_content=which_content)            
-                            results['dividend'] = [(obj.DividendReport, obj.DividendData)]
-                except DividendError:
-                    results['dividend'] = f'Error: {message}' 
-                   
+            elif which == 'dividend':
+                if which_content:
+                    obj = dividend.dividend_history(json_content=which_content)            
+                    results['dividend'] = [(obj.DividendReport, obj.DividendData)]
         return results         
 
 process = APIClient(stocks_asset)
-
-

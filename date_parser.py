@@ -23,6 +23,7 @@ import datetime
 import re
 import pandas as pd
 import numpy as np
+import time
 
 class dt_parse:
     def __init__(self):
@@ -40,6 +41,7 @@ class dt_parse:
             '%A, %B %d %Y',
             '%Y-%m-%dT%H:%M:%SZ',
             '%a, %d %b %Y %H: %M:%S',
+            '%Y-%m',
         ]
         self.formats_with_dots = [fmt for fmt in self.date_formats if '.' in fmt]
         self.formats_without_dots = [fmt for fmt in self.date_formats if '.' not in fmt]
@@ -56,14 +58,12 @@ class dt_parse:
         datetime_class_name = 'datetime'
         date_class_name = 'date'
 
-        # Check if the object is a datetime object
         if obj.__class__.__name__ == datetime_class_name and hasattr(obj, 'hour'):
             if strf:
                 return obj.strftime(format)
             else:
                 return True
                 
-        # Check if the object is a date object
         elif obj.__class__.__name__ == date_class_name and not hasattr(obj, 'hour'):
             if strf:
                 return obj.strftime(format)            
@@ -87,7 +87,6 @@ class dt_parse:
         def process(date_string):
             date_str = re.sub(r'\s+', ' ', date_string).strip()
             
-            # Try the last successful format first
             if self.last_successful_format:
                 try:
                     parsed_date = datetime.datetime.strptime(date_str, self.last_successful_format)
@@ -97,9 +96,8 @@ class dt_parse:
                         return parsed_date.strftime(to_format)
                     return parsed_date
                 except ValueError:
-                    pass  # If it fails, proceed with other formats
+                    pass
 
-            # Try parsing with formats containing and not containing dots
             for format_list in [self.formats_with_dots, self.formats_without_dots]:
                 for date_format in format_list:
                     try:
@@ -113,7 +111,6 @@ class dt_parse:
                     except ValueError:
                         continue
 
-            # Try parsing with different separators
             new_separators = ['/', '-']
             for sep in new_separators:
                 for date_format in self.formats_with_dots:
@@ -129,7 +126,6 @@ class dt_parse:
                     except ValueError:
                         continue
 
-            # Fall back to using from_format and to_format if provided
             if from_format and to_format:
                 try:
                     parsed_date = datetime.datetime.strptime(date_str, from_format)
@@ -160,7 +156,6 @@ class dt_parse:
             raise ValueError("Unsupported data type. The input must be a str, list, numpy.ndarray, or pandas.Series.")
 
     def _is_dst(self, dt=None, timezone="US/Central"):
-        """ Determine whether Daylight Saving Time (DST) is in effect for a given datetime and timezone."""
         if dt is None:
             dt = datetime.datetime.utcnow()
         dst_start = datetime.datetime(dt.year, 3, 8)
@@ -185,7 +180,6 @@ class dt_parse:
         return new_date.strftime('%Y-%m-01')
     
     def now(self, utc=False, as_unix=False, as_string=False, format=None):
-        """ Returns current datetime, optionally in UTC, as a Unix timestamp, or as a string. """
         current_time = datetime.datetime.utcnow() if utc else datetime.datetime.now()
         if as_unix:
             return self.unix_timestamp(current_time)        
@@ -207,7 +201,6 @@ class dt_parse:
         return central_time
 
     def unix_timestamp(self, datetime_obj, utc=True, reset_time=False):
-        """Generate a UTC timestamp for a given datetime, optionally adjusting to UTC and resetting time to 00:00."""
         if utc:
             utc_datetime = datetime_obj.replace(tzinfo=datetime.timezone.utc)
             if reset_time:
@@ -217,6 +210,15 @@ class dt_parse:
             if reset_time:
                 datetime_obj = datetime_obj.replace(hour=0, minute=0, second=0, microsecond=0)
             return int(datetime_obj.timestamp())
+           
+    def from_unix_timestamp(self, unix_timestamp, format=None):
+        """ Converts a Unix timestamp to a human-readable date."""
+        if not isinstance(unix_timestamp, int):
+            return None        
+        time_struct = time.localtime(unix_timestamp)
+        if format:
+            return time.strftime(format, time_struct)      
+        return time.strftime('%Y-%m-%d %H:%M:%S', time_struct)
 
     def __dir__(self):
         return ['parse', 'now', 'unix_timestamp', 'nowCT', 'subtract_months', 'is_datetimeType']

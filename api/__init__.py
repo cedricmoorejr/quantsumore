@@ -26,5 +26,5 @@ from .forex.ForexAPI import engine as forex
 from .treasury.TreasuryAPI import engine as treasury
 from .cpi.ConsumerPriceIndexAPI import engine as cpi
 
-# Start configuration
-from .. import __config
+# # Start configuration
+# from .. import __config

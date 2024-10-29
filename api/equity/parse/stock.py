@@ -25,39 +25,201 @@ import re
 import pandas as pd
 import numpy as np
 import json
+from copy import deepcopy
 
 # Custom
 from ....date_parser import dtparse
-from ...parse_tools import market_find, extract_company_name, extract_ticker
-from ...._http.response_utils import clean_initial_content
+from ...._http.response_utils import validateHTMLResponse
 from ....strata_utils import IterDict
 from ....web_utils import HTMLclean
+from ...parse_tools import(
+    market_find,
+    extract_company_name,
+    extract_ticker,
+    convert_to_float, 
+    convert_date, 
+    parse_scaled_number,
+    extract_symbol_from_url
+)
+
+from ...shape_tools import(
+    filter_dataframe_columns, 
+    rename_dataframe_columns, 
+    apply_conversion_to_columns, 
+    is_valid_dataframe
+)
 
 
 ## Via JSON
 ##========================================================================
+class ipo:
+    def __init__(self, json_content=None):
+        self.data = None                    
+        self.error_messages = []
+        self.error = True           
+
+        if json_content:
+            self.json_content = IterDict.isNested(json_content)
+            
+        if self.json_content:
+            self.check_data()
+            self.display_error_messages()
+            if not self.error:
+                self.parse()
+
+    def display_error_messages(self):
+        if self.error_messages:
+            for message in self.error_messages:
+                print(message)
+                
+    def check_data(self):
+        json_content = self.json_content
+        def process_messages(data, verbose=False):
+            messages = []        
+            def clean(msgs):
+                try:
+                    messages_list = [f for f in msgs if 'code:' not in f]
+                    return [f.split("-")[-1].split(": ")[-1] for f in messages_list]
+                except:
+                    return msgs
+
+            def extract_message_fields(data):
+                result = {}
+                if isinstance(data, dict):
+                    for key, value in data.items():
+                        if 'message' in key.lower():
+                            result[key] = value
+                        elif isinstance(value, (dict, list)):
+                            result.update(extract_message_fields(value))
+                elif isinstance(data, list):
+                    for item in data:
+                        result.update(extract_message_fields(item))
+                return result
+
+            def process_entry(key, value):
+                if value is None:
+                    return 
+                if isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            for k, v in item.items():
+                                if v is not None:
+                                    messages.append(f"{key} - {k}: {v}")
+                        else:
+                            if item is not None:
+                                messages.append(f"{key}: {item}")
+                elif isinstance(value, dict):
+                    for sub_key, sub_value in value.items():
+                        process_entry(f"{key} - {sub_key}", sub_value)
+                else:
+                    messages.append(f"{key}: {value}")
+
+            extracted_data = extract_message_fields(data)
+            for key, value in extracted_data.items():
+                process_entry(key, value)
+            if verbose:
+                for message in messages:
+                    print(message)
+            else:
+                return clean(messages)
+        
+        validate_ipo_data = IterDict.find(json_content, target_key='totalResults')
+        if validate_ipo_data > 0:
+            self.error = False
+
+        error_messages_list = process_messages(json_content)             
+        if len(error_messages_list)  ==1 and error_messages_list[0] == 'Upcoming:No record found.':
+            error_messages_list = []            
+            self.error_messages = error_messages_list
+        
+    def parse(self):
+        try:
+            data = IterDict.extract_from(self.json_content)
+            df = pd.DataFrame(data)
+            df = filter_dataframe_columns(df, column_names=['proposedTickerSymbol', 'companyName', 'proposedExchange', 'proposedSharePrice', 'sharesOffered', 'pricedDate', 'dollarValueOfSharesOffered'])
+            df = rename_dataframe_columns(
+                df,
+                rename_dict={
+                    'proposedTickerSymbol': 'Ticker_Symbol',
+                    'companyName': 'Company_Name',
+                    'proposedExchange': 'Exchange',
+                    'proposedSharePrice': 'IPO_Price',
+                    'sharesOffered': 'Shares_Offered',
+                    'pricedDate': 'IPO_Date',
+                    'dollarValueOfSharesOffered': 'Total_Offer_Amount'
+                }
+            )
+            converted_data = apply_conversion_to_columns(df, 'Total_Offer_Amount', fun=convert_to_float)
+            converted_data = apply_conversion_to_columns(converted_data, 'IPO_Date', fun=convert_date)
+            self.data = converted_data
+        except:
+            self.data = None
+            
+    def DATA(self):
+        if not is_valid_dataframe(self.data):
+            if not self.error_messages:
+                return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        return self.data
+
+    def __dir__(self):
+        return ['DATA']
+
+
+
+
 class latest:
     def __init__(self, json_content=None):
         self.cleaned_data = None  
         self.data = None
-        # self.error = False       
+        self.error_messages = []
+        self.error = True           
 
-        if isinstance(json_content, list):
-            self.json_content = json_content
-        else:
-            self.json_content = [json_content] if json_content else []
-
+        if json_content:
+            self.json_content = IterDict.isNested(json_content)
+            
         if self.json_content:
-            self.parse()
+            self.check_data()
+            self.display_error_messages()
+            if not self.error:
+                self.parse()
 
-            if self.cleaned_data:
-                self._create_dataframe()
+                if self.cleaned_data:
+                    self._create_dataframe()
+
+    def display_error_messages(self):
+        if self.error_messages:
+            for x, t in self.error_messages:
+                print(f'{x}: {t}')                       
+
+    def check_data(self):
+        json_content = self.json_content
+        def verify_price_data(price_datasets):
+            acceptable_data = []
+            for entry in price_datasets:
+                (url, response_info), = entry.items()
+
+                if 'error' in response_info and response_info['error'] is not None:
+                    acceptable_data.append((url, False))
+                else:
+                    acceptable_data.append((url, True))
+            return acceptable_data
+           
+        validate_price_data = verify_price_data(json_content)
+        error_messages_list = []
+
+        for url, check in validate_price_data:
+            if not check: 
+                ticker = extract_symbol_from_url(url)
+                data = IterDict.find(json_content, target_key=url)
+                message = "Stock was either Delisted or Acquired." 
+                error_messages_list.append((ticker, message))
                 
-    def _clean_content(self, content):
-        return clean_initial_content(content)   
-        
-    def _query_time(self):
-        return dtparse.now(utc=True, as_unix=True) 
+            self.error_messages = error_messages_list
+            valid_urls = [url for url, is_valid in validate_price_data if is_valid]
+            self.json_content = [entry for entry in json_content if any(url in entry for url in valid_urls)]
+
+            if valid_urls:            
+                self.error = False
        
     def _create_dataframe(self):
         rows = self.cleaned_data
@@ -65,18 +227,12 @@ class latest:
         df['date'] = df['date'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
         df['firstTradeDate'] = df['firstTradeDate'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
         df['marketTime'] = df['marketTime'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
-        df['timeQueried'] = self._query_time()
+        df['timeQueried'] = dtparse.now(utc=True, as_unix=True) 
         df['timeQueried'] = df['timeQueried'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))        
         self.data = df
-
-    def _is_data(self, dataframe):
-        if dataframe is None or dataframe.empty:
-            return False
-        else:
-            return True
         
     def parse(self):
-        cleaned_content = self._clean_content(self.json_content)    	
+        cleaned_content = IterDict.find(self.json_content, first_only=False, target_key="response", wrap=False)    	
         rows = []
         for entry in cleaned_content:
             result = entry['chart']['result']
@@ -106,10 +262,11 @@ class latest:
                 rows.append(row)
         if rows:
             self.cleaned_data = rows
-
+            
     def DATA(self):
-        if not self._is_data(self.data):
-            return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.data):
+            if not self.error_messages:              	
+                return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.data
 
     def __dir__(self):
@@ -121,24 +278,55 @@ class historical:
     def __init__(self, json_content=None):
         self.cleaned_data = None  
         self.data = None
-        # self.error = False       
+        self.error_messages = []
+        self.error = True           
 
-        if isinstance(json_content, list):
-            self.json_content = json_content
-        else:
-            self.json_content = [json_content] if json_content else []
-
+        if json_content:
+            self.json_content = IterDict.isNested(json_content)
+            
         if self.json_content:
-            self.parse()
+            self.check_data() 
+            self.display_error_messages()  
+            if not self.error:
+                self.parse()
 
-            if self.cleaned_data:
-                self._create_dataframe()
+                if self.cleaned_data:
+                    self._create_dataframe()
+                    
+    def display_error_messages(self):
+        if self.error_messages:
+            for x, t in self.error_messages:
+                print(f'{x}: {t}')                       
 
-    def _clean_content(self, content):
-        return clean_initial_content(content)
-       
-    def _query_time(self):
-        return dtparse.now(utc=True, as_unix=True) 
+    def check_data(self):
+        json_content = self.json_content
+        def verify_price_data(price_datasets):
+            acceptable_data = []
+            for entry in price_datasets:
+                (url, response_info), = entry.items()
+
+                if 'error' in response_info and response_info['error'] is not None:
+                    acceptable_data.append((url, False))
+                else:
+                    acceptable_data.append((url, True))
+            return acceptable_data
+
+        validate_price_data = verify_price_data(json_content)
+        error_messages_list = []
+
+        for url, check in validate_price_data:
+            if not check: 
+                ticker = extract_symbol_from_url(url)
+                data = IterDict.find(json_content, target_key=url)
+                message = "Stock was either Delisted or Acquired." 
+                error_messages_list.append((ticker, message))
+                
+            self.error_messages = error_messages_list
+            valid_urls = [url for url, is_valid in validate_price_data if is_valid]
+            self.json_content = [entry for entry in json_content if any(url in entry for url in valid_urls)]
+
+            if valid_urls:            
+                self.error = False
            
     def _create_dataframe(self):
         rows = self.cleaned_data
@@ -146,18 +334,12 @@ class historical:
         df['date'] = df['date'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
         df['firstTradeDate'] = df['firstTradeDate'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
         df['marketTime'] = df['marketTime'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
-        df['timeQueried'] = self._query_time()
+        df['timeQueried'] = dtparse.now(utc=True, as_unix=True) 
         df['timeQueried'] = df['timeQueried'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))    
         self.data = df
 
-    def _is_data(self, dataframe):
-        if dataframe is None or dataframe.empty:
-            return False
-        else:
-            return True
-        
     def parse(self):
-        cleaned_content = self._clean_content(self.json_content)    	
+        cleaned_content = IterDict.find(self.json_content, first_only=False, target_key="response", wrap=False)    	
         rows = []
         for entry in cleaned_content:
             result = entry['chart']['result']
@@ -202,13 +384,13 @@ class historical:
                         "marketTime": meta.get("regularMarketTime", 0),                
                     }
                     rows.append(row)
-
         if rows:
             self.cleaned_data = rows
 
     def DATA(self):
-        if not self._is_data(self.data):
-            return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.data):
+            if not self.error_messages:
+                return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.data
 
     def __dir__(self):
@@ -221,46 +403,66 @@ class last:
     def __init__(self, json_content=None):
         self.cleaned_data = None          
         self.data = None
-        
-        if isinstance(json_content, list):
-            self.json_content = json_content
-        else:
-            self.json_content = [json_content] if json_content else []
+        self.error_messages = []
+        self.error = True           
 
+        if json_content:
+            self.json_content = IterDict.isNested(json_content)
+            
         if self.json_content:
-            self.parse()
+            self.check_data()  
+            self.display_error_messages()  
+            if not self.error:
+                self.parse()
 
-            if self.cleaned_data:
-                self._create_dataframe()
+                if self.cleaned_data:
+                    self._create_dataframe()
+                    
+    def display_error_messages(self):
+        if self.error_messages:
+            for x, t in self.error_messages:
+                print(f'{x}: {t}')                       
 
-    def _clean_content(self, content):
-        return clean_initial_content(content)   
-        
+    def check_data(self):
+        json_content = self.json_content
+        def verify_price_data(price_datasets):
+            acceptable_data = []
+            for entry in price_datasets:
+                (url, response_info), = entry.items()
+                if 'error' in response_info and response_info['error'] is not None:
+                    acceptable_data.append((url, False))
+                else:
+                    acceptable_data.append((url, True))
+            return acceptable_data
+
+        validate_price_data = verify_price_data(json_content)
+        error_messages_list = []
+
+        for url, check in validate_price_data:
+            if not check: 
+                ticker = extract_symbol_from_url(url)
+                data = IterDict.find(json_content, target_key=url)
+                message = "Stock was either Delisted or Acquired." 
+                error_messages_list.append((ticker, message))
+                
+            self.error_messages = error_messages_list
+            valid_urls = [url for url, is_valid in validate_price_data if is_valid]
+            self.json_content = [entry for entry in json_content if any(url in entry for url in valid_urls)]
+
+            if valid_urls:            
+                self.error = False
+           
     def _create_dataframe(self):
         rows = self.cleaned_data
         df = pd.DataFrame(rows)
         df['Timestamp'] = df['Timestamp'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
         self.data = df
-
-    def _is_data(self, dataframe):
-        if dataframe is None or dataframe.empty:
-            return False
-        else:
-            return True
         
     def parse(self):
-        cleaned_content = self._clean_content(self.json_content)
-        top_key = IterDict.top_key(cleaned_content, exclusion='error', exclusion_sensitive=True) 
+        cleaned_content = IterDict.extract_from(self.json_content, target_keys={'symbol', 'response'})
         structured_data = []
         
-        try:
-            data = cleaned_content[top_key]['result']
-        except TypeError:
-            data = cleaned_content[0][top_key]['result']
-        except KeyError:
-            return pd.DataFrame()
-        
-        for result in data:
+        for result in cleaned_content:
             symbol = result['symbol']
             meta = result['response'][0]['meta']
             timestamps = result['response'][0]['timestamp']
@@ -280,13 +482,13 @@ class last:
             self.cleaned_data = structured_data
 
     def DATA(self):
-        if not self._is_data(self.data):
-            return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.data):
+            if not self.error_messages:
+                return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.data
 
     def __dir__(self):
         return ['DATA']
-
 
 
 ## Via HTML
@@ -294,86 +496,108 @@ class last:
 class quote_statistics:
     def __init__(self, html_content=None):
         self.statistics = None
-        self.company_name = ''    
+        self.company_name = ''
         self.target_fields = [
             'Previous Close', 'Open', 'Bid', 'Ask', "Day's Range", '52 Week Range', 'Volume', 'Avg. Volume',
             'Market Cap (intraday)', 'Beta (5Y Monthly)', 'PE Ratio (TTM)', 'EPS (TTM)', 'Earnings Date',
             'Forward Dividend & Yield', 'Ex-Dividend Date', '1y Target Est'
         ]
-        
+        self.error = True
+
         if html_content:
-            self.html_content = HTMLclean.decode(html_content)
-            self.company_name = extract_company_name(self.html_content).name
-            self.exchange_validation = self.validate_stock_exchange(self.html_content)
-            self.parse(html=self.html_content, company_name=self.company_name)
-            
-    def validate_stock_exchange(self, html):
+            self.url = IterDict.top_key(html_content)        	
+            self.html_content = IterDict.HTMLcontent(html_content) 
+            if self.html_content:
+                self.html_content = HTMLclean.decode(self.html_content)
+                self.validate_content(self.html_content)
+                if not self.error:                
+                    self.company_name = extract_company_name(self.html_content).name
+                    self.parse(html=self.html_content, company_name=self.company_name)
+
+    def validate_content(self, html):
+        self.error = False
+
+        # Validate stock exchange
         market = market_find(html).market
-        return market is not None
+        if not market:
+            self.error = True
 
-    def extract_stats(self, html, company_name):
-        pattern = r'<span class="label yf-mrt107">(.*?)</span>\s*<span class="value yf-mrt107">(.*?)</span>'
-        matches = re.findall(pattern, html, re.DOTALL)
+        # Validate if correct html content
+        identifier = self.url
+        if identifier:
+            identifier = extract_symbol_from_url(identifier)
+            html_check = validateHTMLResponse(html).equity(ticker=identifier)
+            if not html_check:
+                self.error = True
         
-        if matches:
-            cleaned_data = [(label, re.sub(r'<.*?>', '', value)) for label, value in matches]
-            company_name = company_name if isinstance(company_name, str) else ''            
-            statistics_dict = {label: value.strip() for label, value in cleaned_data}
-            self.statistics = statistics_dict
-
-    def extract_stats_retry(self, html, company_name):
-        container_pattern = r'(<div[^>]*>.*?</div>)'
-        containers = re.findall(container_pattern, html, re.DOTALL)
+    def extract_stats(self, html, company_name):
+        containers = re.findall(r'(<div[^>]*>.*?</div>)', html, re.DOTALL)
         matched_html = ""
 
         for container in containers:
             if '<ul' in container and '<li' in container:
-                found_fields = [field for field in self.target_fields if field in container]
-                
+                found_fields = [field for field in self.target_fields if field in container]                
                 if found_fields:
                     matched_html += container + "\n"
-        
         if matched_html:
             matched_html = HTMLclean.decode(matched_html)
-            self.extract_stats(matched_html, company_name)
+            matches = re.findall(r'<span class="label yf-mrt107">(.*?)</span>\s*<span class="value yf-mrt107">(.*?)</span>', matched_html, re.DOTALL) 
+            if matches:
+                cleaned_data = [(label, re.sub(r'<.*?>', '', value)) for label, value in matches]
+                company_name = company_name if isinstance(company_name, str) else ''  
+                statistics_dict = {label: value.strip() for label, value in cleaned_data}
+                self.statistics = statistics_dict                
+        return None
 
     def parse(self, html, company_name):
-        self.extract_stats(html, company_name)        
-        if not self.statistics:
-            print("Primary extraction failed. Attempting backup extraction...")
-            self.extract_stats_retry(html, company_name)
-                    
+        self.extract_stats(html, company_name)
+
     def DATA(self):
         """Converts the sanitized data into a pandas DataFrame or returns error message."""
-        if not self.exchange_validation:
+        if self.error:
             return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.company_name, self.statistics
-           
+
     def __dir__(self):
         return ['DATA']
 
-
+       
+       
+       
 class profile:
     def __init__(self, html_content=None):
         self.company_description = 'Not found.'        
         self.detail_keys = ["Address", "Phone Number", "Website", "Sector", "Industry", "Full Time Employees"]        
         self.company_details = {key: None for key in self.detail_keys}
         self.company_execs = pd.DataFrame([['Not found'] * 5], columns=['Name', 'Title', 'Pay', 'Exercised', 'Year Born'])       
-        
-        self.exchanges = ['NasdaqGS', 'NYSE', 'NYSEArca']
-        self.exchange_type = None
         self.company_name = None        
-        self.exchange_validation = self.validate_stock_exchange()
-     
-        if html_content:
-            self.html_content = html_content
-            self.exchange_type = market_find(self.html_content)
-            self.company_name = extract_company_name(html_content).name
-            self.exchange_validation = self.validate_stock_exchange()
-            self.parse(self.html_content)
+        self.error = True
 
-    def validate_stock_exchange(self):
-        return bool(self.exchange_type and self.exchange_type.market in self.exchanges)
+        if html_content:
+            self.url = IterDict.top_key(html_content)        	
+            self.html_content = IterDict.HTMLcontent(html_content) 
+            if self.html_content:
+                self.html_content = HTMLclean.decode(self.html_content)
+                self.validate_content(self.html_content)
+                if not self.error:                
+                    self.company_name = extract_company_name(self.html_content).name
+                    self.parse(html=self.html_content)
+
+    def validate_content(self, html):
+        self.error = False
+
+        # Validate stock exchange
+        market = market_find(html).market
+        if not market:
+            self.error = True
+
+        # Validate if correct html content
+        identifier = self.url
+        if identifier:
+            identifier = extract_symbol_from_url(identifier)
+            html_check = validateHTMLResponse(html).equity(ticker=identifier)
+            if not html_check:
+                self.error = True
 
     def extract_bio(self, html):
         company_bio_pattern = r'<section[^>]*data-testid="description"[^>]*>.*?<p>(.*?)</p>'
@@ -452,10 +676,9 @@ class profile:
         self.extract_execs(html)  
        
     def DATA(self):
-        """ Combines all parsed data into a single dictionary."""
-        if not self.exchange_validation:
+        """Converts the sanitized data into a pandas DataFrame or returns error message."""
+        if self.error:
             return "Equity data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
-           
         full_report = {
             "Company Name": self.company_name,        	
             "Company Description": self.company_description,
@@ -466,6 +689,7 @@ class profile:
        
     def __dir__(self):
         return ['DATA']
+
 
 
 def __dir__():

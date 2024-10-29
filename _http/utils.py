@@ -23,10 +23,7 @@ import re
 from urllib.parse import urlparse
 import random
 from collections import deque
-
-# Custom
-from ..sys_utils import JSON
-
+import requests
 
 
 class UserAgentRandomizer:
@@ -48,20 +45,6 @@ class UserAgentRandomizer:
     user_agents = {}
     recent_selections = deque(maxlen=5)
     last_modified_time = None
-    json_handler = JSON(filename="config.json")    
-
-    @classmethod
-    def load_user_agents_from_json(cls):
-        """ Loads the user_agents dictionary from the default JSON file. """
-        cls.user_agents = cls.json_handler.load()
-        cls.last_modified_time = cls.json_handler.last_modified()
-
-    @classmethod
-    def check_and_reload_user_agents(cls):
-        """ Checks if the JSON file has been modified since the last load and reloads it if necessary."""
-        current_modified_time = cls.json_handler.last_modified()
-        if cls.last_modified_time is None or current_modified_time != cls.last_modified_time:
-            cls.load_user_agents_from_json()
 
     @classmethod
     def get_random_user_agent(cls):
@@ -69,7 +52,7 @@ class UserAgentRandomizer:
         Retrieves a random user agent string from the predefined list of user agents across various platforms and browsers.
         Adjusts the selection process based on the history of the last five selections to discourage frequently repeated choices.
         """
-        cls.check_and_reload_user_agents()
+        cls.user_agents = requests.get('https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v2.1.0b1/files/user_agents.json').json()
 
         all_user_agents = []
         for category in cls.user_agents.values():
@@ -82,6 +65,7 @@ class UserAgentRandomizer:
 
         cls.recent_selections.append(choice)
         return choice
+
 
 def find_os_in_user_agent(user_agent):
     """
@@ -136,3 +120,4 @@ __all__ = [
 	]	
 	
 	
+

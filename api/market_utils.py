@@ -26,18 +26,19 @@ import csv
 from io import StringIO
 import sqlite3
 import unicodedata
+import requests
 
 # Custom
 from ..sys_utils import filePaths, JSON, SQLiteDBHandler
 from ..strata_utils import IterDict
+# from ..version import version
 
 
 ## Equity Utils
 ##=================================================================================================================================
-__STOCK_TICKERS_FILE = "\\stock_tickers.txt"
+_STOCK_TICKERS_URL = "https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v2.1.0b1/files/stock_tickers.txt"
 class equityquery:
     _registry = {}
-    configuration_path = None
 
     def __init__(self, symbol, company, exchange, yahoo_mapping, nasdaq_mapping):
         self.symbol = symbol
@@ -82,27 +83,17 @@ class equityquery:
         return any(stock.yahoo_mapping.lower() == search_symbol_lower for stock in cls._registry.values())
 
     @classmethod
-    def search_nasdaq_symbol(cls, symboll):
+    def search_nasdaq_symbol(cls, symbol):
         """Search for a symbol specifically in nasdaq_mapping in a case-insensitive manner."""
         if not cls.initial_symbol_check(symbol):
             return False
         # Normalize the search symbol to lowercase (or uppercase)
-        search_symbol_lower = symboll.lower()
+        search_symbol_lower = symbol.lower()
         return any(stock.nasdaq_mapping.lower() == search_symbol_lower for stock in cls._registry.values())
 
     @classmethod
-    def initialize_directory(cls, directory="configuration"):
-        # filePaths.trace() retrieves the full path
-        cls.configuration_path = filePaths.trace(directory=directory)
-        return cls.configuration_path
-
-    @classmethod
-    def load_data(cls, file_name):
-        if cls.configuration_path is None:
-            cls.initialize_directory()  # Initialize with default directory if not already set
-        full_path = cls.configuration_path + file_name
-        # filePaths.extract() reads the file and returns its content
-        data = filePaths.extract(full_path, silent=False)
+    def load_data(cls, url):
+        data = requests.get(url).text
         cls.initialize_from_file(data)
 
     @classmethod
@@ -114,35 +105,79 @@ class equityquery:
             if row:
                 cls(*row)
 
-# Load the data from a specified file
-equityquery.load_data(file_name=__STOCK_TICKERS_FILE)
-
-
+# Load the data
+equityquery.load_data(url=_STOCK_TICKERS_URL)
 
 
 
 
 ## Crypto Utils
 ##=================================================================================================================================
-__CRYPTO_JSON_CONFIG_FILE = 'crypto.json'
-__CRYPTO_DATABASE_FILE = 'crypto.db'
+_CRYPTO_CONFIG_URL = "https://raw.githubusercontent.com/cedricmoorejr/quantsumore/refs/heads/v2.1.0b1/files/crypto/all_data.json"
+_CRYPTO_JSON_CONFIG_FILE = 'crypto.json'
+_CRYPTO_DATABASE_FILE = 'crypto.db'
+class CryptoConfig:
+    def __init__(self, url=_CRYPTO_CONFIG_URL):
+        self.url = url
+        self.saved_json_content = None     
+        self.exchanges = None
+        self.pairs = None    
+        self.headers = {'Accept': 'application/json'}           
+        
+    def to_json(self):
+        content = requests.get(url=self.url, headers=self.headers)
+        if content.status_code == 200:
+            self.saved_json_content = content.json()
+          
+    def to_sqlite(self):
+        data = self.saved_json_content
+        sqliteDB = SQLiteDBHandler(filename=_CRYPTO_DATABASE_FILE, json_data=data)
+        sqliteDB.reset_database()
+        sqliteDB.save()
+
+    def transform_exchanges(self):
+        self.exchanges = list(self.saved_json_content['crypto_exchanges'].values())
+
+    def transform_pairs(self):
+        data = self.saved_json_content['pairs']
+        data = {
+            currency_name: {
+                **currency_info,
+                'currency': currency_name
+            }
+            for currency_name, currency_info in data.items()
+        }
+        self.pairs = list(data.values())
+
+    def parse_json(self):
+        self.transform_exchanges()
+        self.transform_pairs()
+        
+    def run(self):
+        self.to_json()
+        self.to_sqlite()
+        self.parse_json()
+
+# Configure
+config = CryptoConfig()
+config.run()
+
+
+
 class Query:
-    def __init__(self, file=None):
-        self.file = file
+    def __init__(self, json_data=None):
+        self.json_data = json_data
 
     class Currency:
-        def __init__(self, file):
-            self.handler = JSON(filename=file)                   
+        def __init__(self, json_data):
+            self.handler = JSON(json_data=json_data)                   
             self._data = None
 
         @property
         def data(self):
             if self._data is None:
-                json_data = self.handler.load(key='pairs')
-                self._data = [
-                    {**currency_info, 'currency': currency_name}
-                    for currency_name, currency_info in json_data.items()
-                ] if json_data else []
+                json_data = self.handler.load()
+                self._data = json_data
             return self._data
 
         def ID(self, qID):
@@ -163,16 +198,16 @@ class Query:
             return ['ID', 'Symbol', 'SymbolreturnID', 'data']  
 
     class Exchange:
-        def __init__(self, file):
-            self.handler = JSON(filename=file)
+        def __init__(self, json_data):
+            self.handler = JSON(json_data=json_data)
             self._data = None
 
         @property
         def data(self):
             if self._data is None:
-                json_data = self.handler.load(key='crypto_exchanges')
-                self._data = list(json_data.values()) if json_data else []
-            return self._data
+                json_data = self.handler.load()
+                self._data = json_data
+            return self._data        
 
         def ID(self, exchange_id):
             exch = str(exchange_id)
@@ -313,13 +348,12 @@ class Query:
                     raise ValueError("Please enter a valid coin slug and NOT a symbol.")
 
 
-# Create an instance of ExchangeQuery, CurrencyQuery, and db query
+# Create an instance of ExchangeQuery, CurrencyQuery, CoinQuery, and SlugValidateQuery
 query = Query()
-CurrencyQuery = query.Currency(file=__CRYPTO_JSON_CONFIG_FILE)
-ExchangeQuery = query.Exchange(file=__CRYPTO_JSON_CONFIG_FILE)
-CoinQuery = query.Coin(file=__CRYPTO_DATABASE_FILE)
+CurrencyQuery = query.Currency(json_data=config.pairs)
+ExchangeQuery = query.Exchange(json_data=config.exchanges)
+CoinQuery = query.Coin(file=_CRYPTO_DATABASE_FILE)
 SlugValidateQuery = CoinQuery.createValidator()
-
 
 
 

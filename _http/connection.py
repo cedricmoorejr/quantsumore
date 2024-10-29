@@ -354,14 +354,7 @@ class HTTPLite:
 
     @staticmethod
     def _make_unusable(*args, **kwargs):
-        """
-        A static method designed to replace callable methods in the HTTPLite class instance once it is destroyed.
-        This method ensures that any subsequent attempts to use the destroyed instance will raise an error, 
-        signaling that the instance is no longer functional.
-
-        Raises:
-            RuntimeError: Indicates that the instance has been destroyed and is no longer usable.
-        """          
+        """ A static method designed to replace callable methods in the HTTPLite class instance once it is destroyed. """          
         raise RuntimeError("This instance has been destroyed and is no longer usable.")
 
 

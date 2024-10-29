@@ -27,7 +27,67 @@ from datetime import datetime
 import threading
 import time
 import queue
-from ...sys_utils import filePaths
+
+
+class AssetFinder:
+    class fPath:
+        def __init__(self, unique_identifier="## -- quantsumore -- ##"):
+            self.unique_identifier = unique_identifier
+
+        def _root(self):
+            """Finds the root directory marked by a unique identifier in its __init__.py."""
+            current_directory = os.path.dirname(os.path.abspath(__file__))
+            while current_directory != os.path.dirname(current_directory):
+                init_file_path = os.path.join(current_directory, '__init__.py')
+                if os.path.isfile(init_file_path):
+                    with open(init_file_path, 'r') as f:
+                        if self.unique_identifier in f.read():
+                            return current_directory
+                current_directory = os.path.dirname(current_directory)
+            return None
+
+        def _find_file(self, directory, file_name):
+            """Searches for a file within the given directory."""
+            if not os.path.splitext(file_name)[1]:
+                file_name += '.py'
+            for dirpath, dirnames, filenames in os.walk(directory):
+                if file_name in filenames:
+                    return os.path.join(dirpath, file_name)
+            return None
+
+        def _find_directory(self, root_directory, target_directory):
+            """Searches for a directory within the given root directory."""
+            for dirpath, dirnames, _ in os.walk(root_directory):
+                if target_directory in dirnames:
+                    return os.path.join(dirpath, target_directory)
+            return None
+
+        def return_path(self, file=None, directory=None):
+            """Find either a file or directory based on input."""
+            if file and not directory:
+                return self._find_file(directory=self._root(), file_name=file)
+            elif directory and not file:
+                return self._find_directory(root_directory=self._root(), target_directory=directory)
+            else:
+                return None
+    
+    def __init__(self, encoding='utf-8'):
+        self.encoding = encoding
+        self.path_handler = self.fPath()
+                
+    def trace(self, file=None, directory=None):
+        return self.path_handler.return_path(file=file, directory=directory) 
+
+
+picPath = AssetFinder()
+
+
+
+
+
+
+
+
 
 
 
@@ -82,7 +142,7 @@ class InflationCalculatorApp(tk.Tk):
         self.deiconify()
 
         # Set the window icon using an absolute path
-        script_dir = filePaths.trace(directory="assets")
+        script_dir = picPath.trace(directory="assets")
         icon_path = os.path.join(script_dir, 'icon.ico')
         self.iconbitmap(icon_path)
 

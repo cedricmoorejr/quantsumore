@@ -20,13 +20,15 @@
 
 
 from copy import deepcopy
+import re
 
 # Custom
 from ..prep import stocks_asset
 from .parse import stock, fin_statement, dividend
 from ..._http.response_utils import Request, key_from_mapping, validateHTMLResponse
-from ...exceptions import FinancialStatementUnavailableError, HTTP404TickerError, RetrievalError, DividendError
 from ...strata_utils import IterDict
+
+
 
 
 class APIClient:
@@ -45,9 +47,8 @@ class APIClient:
         """ Fetches company profile data for a given ticker symbol."""     	
         make_method = getattr(self.asset, 'make')
         url = make_method(query='profile', ticker=ticker)
-        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
-        html_check = validateHTMLResponse(html_content).equity(ticker=ticker)
-        if html_check:
+        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
+        if html_content:
             obj = stock.profile(html_content)
             data = obj.DATA()
             data = self._ensure_company_description_period(data)
@@ -146,7 +147,7 @@ class APIClient:
         """    	
         make_method = getattr(self.asset, 'make')
         url = make_method(query='stats', ticker=ticker)
-        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False)
+        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
         html_check = validateHTMLResponse(html_content).equity(ticker=ticker)
         if html_check:
             obj = stock.quote_statistics(html_content)
@@ -218,11 +219,6 @@ class APIClient:
             A dividend data object that contains historical and current dividend information for the specified `ticker`. 
             The object includes the dividend data parsed from the response in JSON format.
 
-        Raises:
-        ------
-        RetrievalError
-            If the request fails, a RetrievalError is raised to inform the user that the dividend data could not be retrieved.
-
         Notes:
         -----
         - The method constructs a request URL using the asset's `make` method, tailored to query dividend information, 
@@ -235,14 +231,10 @@ class APIClient:
         make_method = getattr(self.asset, 'make')
         url = make_method(query='dividend_history', ticker=ticker)
         content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        content_check = IterDict.search_keys(content, target_keys="data", value_only=True, first_only=False, return_all=False, include_key_in_results=False)
-        if content_check:            
+        if content:            
             obj = dividend.dividend_history(content)
-            return (obj.DividendReport, obj.DividendData)
-        else:
-            message = IterDict.search_keys(content, target_keys="message", value_only=True, first_only=False, return_all=False, include_key_in_results=False)
-            raise DividendError(url=url, ticker=None, message=message)
-           
+            return (obj.DividendReport, obj.DividendData)       
+        
     def Lastn(self, ticker, interval="1m"):
         """
         Retrieves the latest stock price data for the specified ticker symbol over a given time interval.
@@ -281,14 +273,10 @@ class APIClient:
         make_method = getattr(self.asset, 'make')
         url = make_method(query='last', ticker=ticker, interval=interval)
         content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        content_check = IterDict.search_keys(content, target_keys="spark", value_only=True, first_only=False, return_all=False, include_key_in_results=False)
-        if content_check:
+        if content:
             obj = stock.last(content)
             return obj.DATA()
-        else:
-            message = IterDict.search_keys(content, target_keys="error", value_only=True, first_only=False, return_all=False, include_key_in_results=False)
-            raise HTTP404TickerError(message)
-           
+
     def sLatest(self, ticker):
         """
         Retrieves the latest stock price for a company based on its ticker symbol.
@@ -314,15 +302,12 @@ class APIClient:
         It handles the distinction between active trading hours and after-hours or closed market scenarios,
         ensuring that the most relevant price is returned.
         """    	
-        try:
-            make_method = getattr(self.asset, 'make')
-            url = make_method(query='price', ticker=ticker, start=dtparse.now(as_string=True), end=dtparse.now(as_string=True))
-            content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-            if content:
-                obj = stock.latest(content)
-                return obj.DATA()
-        except:
-            raise RetrievalError(message="Failed to retrieve the latest stock price")
+        make_method = getattr(self.asset, 'make')
+        url = make_method(query='price', ticker=ticker, start=dtparse.now(as_string=True), end=dtparse.now(as_string=True))
+        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
+        if content:
+            obj = stock.latest(content)
+            return obj.DATA()
 
     def Financials(self, ticker, period="Quarterly"):
         """
@@ -369,20 +354,50 @@ class APIClient:
         period = key_from_mapping(period, valid_periods, invert=False)
         if not period:
             raise ValueError("Invalid period.")
-           
         make_method = getattr(self.asset, 'make')
         url = make_method(query='financials', ticker=ticker, period=period)
         content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        content_check = IterDict.search_keys(content, target_keys="data", value_only=True, first_only=False, return_all=False, include_key_in_results=False) 
-        if content_check:            
+        if content:            
             obj = fin_statement.financials(json_content=content)
             return (obj.IncomeStatement, obj.BalanceSheet, obj.CashFlowStatement)
-        else:
-            message = IterDict.search_keys(content, target_keys="message", value_only=True, first_only=False, return_all=False, include_key_in_results=False) 
-            raise FinancialStatementUnavailableError(message)
+
+    def IPO(self, date=None):
+        """
+        Retrieves IPO data for the specified date or date range.
+
+        This method fetches information related to initial public offerings (IPOs) such as the ticker symbols, company names, 
+        proposed exchanges, share prices, and the number of shares offered. It is designed to provide details about companies going public 
+        within a specified period.
+
+        Parameters:
+        ----------
+        date : str, optional
+            The date or date range for which to retrieve IPO data. The date should be in a format recognized by the API endpoint.
+            Example: '2024-01' for January 2024.
+
+        Returns:
+        -------
+        object
+            An object that contains IPO data parsed from the response in JSON format. This object includes structured information 
+            about each IPO listing retrieved for the given period.
+
+        Notes:
+        -----
+        - The method constructs a request URL using the asset's `make` method, tailored to query IPO information for a specific period, 
+          and sends the request to retrieve the data.
+        - The `stock.ipo` function is used to process the JSON response and create a structured IPO data object from the returned content.
+        - This method assumes the availability of an API or a method within `self.asset` that can generate appropriate endpoint URLs for 
+          accessing IPO data based on the given period.
+        """
+        make_method = getattr(self.asset, 'make')
+        url = make_method(query='ipo', period=date)
+        content = Request(url, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
+        if content:
+            obj = stock.ipo(content)
+            return obj.DATA         
            
     def __dir__(self):
-        return ['CompanyBio','CompanyExecutives', 'CompanyDetails', 'Stats', 'sHistorical', 'sLatest', 'Lastn', 'Financials', 'Dividends']            
+        return ['CompanyBio','CompanyExecutives', 'CompanyDetails', 'Stats', 'sHistorical', 'sLatest', 'Lastn', 'Financials', 'Dividends', 'IPO']            
 
 
 engine = APIClient(stocks_asset)

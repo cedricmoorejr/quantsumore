@@ -264,13 +264,10 @@ class WriteExcel:
         ws = self.__create_or_replace_sheet(sheet_name, overwrite=True)
         self.__apply_styles(sheet_name)
 
-        # Define right alignment style for all cells except the first column
         right_align_style = Alignment(horizontal="right")
 
-        # Define a very light grey fill
         light_grey_fill = PatternFill(start_color='DADADA', end_color='DADADA', fill_type='solid')
         
-        # Write the DataFrame index name in cell A1 and apply bold style
         index_name = df.index.name if df.index.name is not None else "Ending:"
         a1_cell = ws.cell(row=1, column=1, value=index_name)
         a1_cell.style = f"header_font_style_{sheet_name}"
@@ -280,18 +277,15 @@ class WriteExcel:
         parent_accounts = reporting_structure[sheet_name]["parent_accounts"]
         subtotal_total_accounts = reporting_structure[sheet_name]["subtotal_total_accounts"]
 
-        # Write headers
-        for col_idx, column_name in enumerate(df.columns, start=2):  # Start from column B
+        for col_idx, column_name in enumerate(df.columns, start=2):
             header_cell = ws.cell(row=1, column=col_idx, value=column_name)
             header_cell.style = f"header_font_style_{sheet_name}"
             header_cell.alignment = right_align_style
 
-        # Write data rows with indentation, specific styling, and right alignment
         for row_idx, (index, row_data) in enumerate(df.iterrows(), start=2):
-            indent = indentation_levels.get(index.strip(), 0)  # Determine the level of indentation
-            row_name = f"{'    ' * indent}{index}"  # Add spaces based on the indentation level
+            indent = indentation_levels.get(index.strip(), 0)
+            row_name = f"{'    ' * indent}{index}"
 
-            # Determine if the row should be bolded
             is_bold = index in parent_accounts or index in subtotal_total_accounts
             row_style_name = f"bold_font_style_{sheet_name}" if is_bold else f"data_font_style_{sheet_name}"
             name_cell = ws.cell(row=row_idx, column=1, value=row_name)
@@ -299,11 +293,9 @@ class WriteExcel:
 
             for col_idx, value in enumerate(row_data, start=2):
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
-                # Apply number formatting and bold formatting conditionally
                 cell.style = f"bold_number_format_style_{sheet_name}" if is_bold else f"number_format_style_{sheet_name}"
-                cell.alignment = right_align_style  # Apply right alignment
+                cell.alignment = right_align_style
 
-                # Apply single underline for subtotals and double underline for final totals
                 if index in subtotal_total_accounts[:-1]:
                     cell.border = Border(bottom=Side(style="thin"))
                 elif index in subtotal_total_accounts[-1]:
@@ -315,7 +307,7 @@ class WriteExcel:
     def save(self, filename=None, overwrite=True):
         """Save the workbook to the specified filename, with optional overwrite."""    	
         try:
-            if not self.wb.sheetnames: # Check if any sheets exist, if not, create a new blank sheet named 'Sheet1'
+            if not self.wb.sheetnames:
                 self.wb.create_sheet('Sheet1')
             if filename is None:
                 filename = f'output_{datetime.datetime.now().strftime("%Y-%m-%d %H_%M_%S")}_{random.randint(1000, 5000)}.xlsx'

@@ -27,7 +27,10 @@ import time
 
 # Custom
 from ....web_utils import HTMLclean
-from ...market_utils import ExchangeQuery
+from ...market_utils import ExchangeQuery, CoinQuery
+from ...parse_tools import extract_slug_from_url, extract_cryptoID_from_url
+from ...shape_tools import normalize_time, is_valid_dataframe
+from ....strata_utils import IterDict
 
 
 class live_quote:
@@ -35,36 +38,107 @@ class live_quote:
         self.crypto_exchange = cryptoExchange
         self.crypto_exchange_ids = None        
         self.data = None
-        self.error = False
+        self.error_messages = []
+        self.error = True 
 
-        if isinstance(json_content, list):
-            self.json_content = json_content
-        else:
-            self.json_content = [json_content] if json_content else []
-
+        if json_content:
+            self.json_content = IterDict.isNested(json_content)
+            
         if self.crypto_exchange:
             if not isinstance(self.crypto_exchange , list):
-                self.crypto_exchange  = [self.crypto_exchange]
-
+                self.crypto_exchange  = [self.crypto_exchange]            
+            
         if self.json_content:
-            self.parse()
+            self.check_data()  
+            self.display_error_messages()  
+            if not self.error:
+                self.parse()
 
-    def inspect_json(self):
-        if not self.json_content or 'data' not in self.json_content[0]:
-            raise Exception("No data available for the cryptocurrency.")
+    def display_error_messages(self):
+        if self.error_messages:
+            for x, t in self.error_messages:
+                print(f'{x}: {t}')   
 
-    def normalize_time(self, column_names):
-        """Normalize the time part of datetime in the specified column to 00:00:00."""
-        if self.data.empty:
-            return None
-        df = self.data
-        if not isinstance(column_names, list):
-            column_names = [column_names]
-        for column_name in column_names:
-            df[column_name] = pd.to_datetime(df[column_name]) # Ensure the column is in datetime format
-            df[column_name] = df[column_name].dt.normalize() # Normalize time to midnight
-        self.data = df
+    def check_data(self):
+        json_content = self.json_content    
+        def validate_api_responses(api_responses):
+            validation_list = []
+            for index, response in enumerate(api_responses):
+                for url, content in response.items():
+                    error_message = content.get('response', {}).get('status', {}).get('error_message', "")
+                    if error_message != "SUCCESS":
+                        validation_list.append((url, False))
+                    else:
+                        validation_list.append((url, True))
+            return validation_list
         
+        def process_messages(data, verbose=False):
+            messages = []        
+            def clean(msgs):
+                try:
+                    messages_list = [f for f in msgs if 'code:' not in f]
+                    return [f.split("-")[-1].split(": ")[-1] for f in messages_list]
+                except:
+                    return msgs
+
+            def extract_message_fields(data):
+                result = {}
+                if isinstance(data, dict):
+                    for key, value in data.items():
+                        if 'error_message' in key.lower():
+                            result[key] = value
+                        elif isinstance(value, (dict, list)):
+                            result.update(extract_message_fields(value))
+                elif isinstance(data, list):
+                    for item in data:
+                        result.update(extract_message_fields(item))
+                return result
+
+            def process_entry(key, value):
+                if value is None:
+                    return 
+                if isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            for k, v in item.items():
+                                if v is not None:
+                                    messages.append(f"{key} - {k}: {v}")
+                        else:
+                            if item is not None:
+                                messages.append(f"{key}: {item}")
+                elif isinstance(value, dict):
+                    for sub_key, sub_value in value.items():
+                        process_entry(f"{key} - {sub_key}", sub_value)
+                else:
+                    messages.append(f"{key}: {value}")
+                    
+            extracted_data = extract_message_fields(data)
+            for key, value in extracted_data.items():
+                process_entry(key, value)
+            if verbose:
+                for message in messages:
+                    print(message)
+            else:
+                return clean(messages)
+        
+        validate_crypto_content = validate_api_responses(json_content)
+        error_messages_list = []
+
+        for url, check in validate_crypto_content:
+            if not check: 
+                slug_name = extract_slug_from_url(url)
+                data = IterDict.find(content, target_key=url)
+                n_message = process_messages(data)
+                message = n_message[0] if n_message else None 
+                error_messages_list.append((slug_name, message))
+                
+            self.error_messages = error_messages_list
+            valid_urls = [url for url, is_valid in validate_crypto_content if is_valid]
+            self.json_content = [entry for entry in json_content if any(url in entry for url in valid_urls)]
+
+            if valid_urls:            
+                self.error = False
+
     def clean_exchanges(self):
         if self.crypto_exchange:            
             exchanges = self.crypto_exchange
@@ -116,7 +190,7 @@ class live_quote:
 
     def iterate(self):
         rows = []
-        dataset = self.json_content
+        dataset = IterDict.find(self.json_content, False, 'response')
         for data in dataset:
             result = self.process_json(data)
             if result:
@@ -125,23 +199,19 @@ class live_quote:
 
         flattened_data = [item for sublist in row_data for item in sublist]
         df = pd.DataFrame(flattened_data)
-        df['timeQueried'] = pd.to_datetime(df['timeQueried'] )
+        df['timeQueried'] = pd.to_datetime(df['timeQueried'])
         df['lastUpdated'] = pd.to_datetime(df['lastUpdated'])
-        
+        df = normalize_time(df, 'lastUpdated')        
         self.data = df
                 
     def parse(self):
-        try:
-            self.inspect_json()
-            self.clean_exchanges()
-            self.iterate()
-            self.normalize_time("lastUpdated")
-        except Exception as e:
-            self.error = True
+        self.clean_exchanges()
+        self.iterate()
 
     def DATA(self):
-        if self.error:
-            return "Crypto currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.data):
+            if not self.error_messages:
+                return "Crypto currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.data
 
     def __dir__(self):
@@ -154,45 +224,120 @@ class live_quote:
 class crypto_historical:
     def __init__(self, json_content=None):
         self.data = None
-        self.error = False
+        self.error_messages = []
+        self.error = True 
 
-        if isinstance(json_content, list):
-            self.json_content = json_content
-        else:
-            self.json_content = [json_content] if json_content else []
-
+        if json_content:
+            self.json_content = IterDict.isNested(json_content)
+            
         if self.json_content:
-            self.parse()
+            self.check_data()  
+            self.display_error_messages()  
+            if not self.error:
+                self.parse()
 
-    def inspect_json(self):
-        if not self.json_content or 'data' not in self.json_content[0]:
-            raise Exception("No data available for the cryptocurrency.")
+    def display_error_messages(self):
+        if self.error_messages:
+            for x, t in self.error_messages:
+                print(f'{x}: {t}')   
 
-    def normalize_time(self, column_names):
-        """Normalize the time part of datetime in the specified column to 00:00:00."""
-        if self.data.empty:
-            return None
-        df = self.data
-        if not isinstance(column_names, list):
-            column_names = [column_names]
-        for column_name in column_names:
-            df[column_name] = pd.to_datetime(df[column_name])
-            df[column_name] = df[column_name].dt.normalize()
-        self.data = df
+    def check_data(self):
+        json_content = self.json_content    
+        def validate_api_responses(api_responses):
+            validation_list = []
+            for index, response in enumerate(api_responses):
+                for url, content in response.items():
+                    error_message = content.get('response', {}).get('status', {}).get('error_message', "")
+                    quotes = content.get('response', {}).get('data', {}).get('quotes', None)
+                    if quotes == [] or quotes is None:
+                        quotes_valid = False
+                    else:
+                        quotes_valid = True
+                    if error_message != "SUCCESS" or not quotes_valid:
+                        validation_list.append((url, False))
+                    else:
+                        validation_list.append((url, True))
+            return validation_list
+        
+        def process_messages(data, verbose=False):
+            messages = []        
+            def clean(msgs):
+                try:
+                    messages_list = [f for f in msgs if 'code:' not in f]
+                    return [f.split("-")[-1].split(": ")[-1] for f in messages_list]
+                except:
+                    return msgs
 
-    def _is_data(self, dataframe):
-        if dataframe is None:
-            return True
-        elif dataframe.empty:
-            return True
-        else:
-            return False
-           
+            def extract_message_fields(data):
+                result = {}
+                if isinstance(data, dict):
+                    for key, value in data.items():
+                        if 'error_message' in key.lower():
+                            result[key] = value
+                        elif isinstance(value, (dict, list)):
+                            result.update(extract_message_fields(value))
+                elif isinstance(data, list):
+                    for item in data:
+                        result.update(extract_message_fields(item))
+                return result
+
+            def process_entry(key, value):
+                if value is None:
+                    return 
+                if isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            for k, v in item.items():
+                                if v is not None:
+                                    messages.append(f"{key} - {k}: {v}")
+                        else:
+                            if item is not None:
+                                messages.append(f"{key}: {item}")
+                elif isinstance(value, dict):
+                    for sub_key, sub_value in value.items():
+                        process_entry(f"{key} - {sub_key}", sub_value)
+                else:
+                    messages.append(f"{key}: {value}")
+                    
+            extracted_data = extract_message_fields(data)
+            for key, value in extracted_data.items():
+                process_entry(key, value)
+            if verbose:
+                for message in messages:
+                    print(message)
+            else:
+                return clean(messages)
+        
+        validate_crypto_content = validate_api_responses(json_content)
+        error_messages_list = []
+
+        for url, check in validate_crypto_content:
+            if not check: 
+                crypto_id = extract_cryptoID_from_url(url)
+                found_slug = CoinQuery.ID(crypto_id)
+                slug_name = IterDict.search_keys_in(found_slug, "name") 
+                data = IterDict.find(json_content, target_key=url)
+                check_quote_values = IterDict.search_keys_in(data, "quotes")
+                if not check_quote_values:
+                    message = "No data exists for the specified time periods."
+                else:        
+                    n_message = process_messages(data)
+                    message = n_message[0] if n_message else None 
+                error_messages_list.append((slug_name, message))
+                
+            self.error_messages = error_messages_list
+            valid_urls = [url for url, is_valid in validate_crypto_content if is_valid]
+            self.json_content = [entry for entry in json_content if any(url in entry for url in valid_urls)]
+
+            if valid_urls:            
+                self.error = False
+
     def process_json(self):
         rows = []
 
         # Iterate through each entry in json_content
-        for content in self.json_content:
+        dataset = IterDict.find(self.json_content, False, 'response')
+        for content in dataset:
             data = content.get('data', {})
             status = content.get('status', {})
             individual_data = []
@@ -202,10 +347,6 @@ class crypto_historical:
                 row = {
                     'symbol': data.get('symbol', pd.NA),
                     'name': data.get('name', pd.NA),
-                    # 'timeOpen': quote.get('timeOpen', pd.NA),
-                    # 'timeClose': quote.get('timeClose', pd.NA),
-                    # 'timeHigh': quote.get('timeHigh', pd.NA),
-                    # 'timeLow': quote.get('timeLow', pd.NA),
                     'open': quote.get('quote', {}).get('open', pd.NA),
                     'high': quote.get('quote', {}).get('high', pd.NA),
                     'low': quote.get('quote', {}).get('low', pd.NA),
@@ -217,11 +358,8 @@ class crypto_historical:
                 }
                 individual_data.append(row)
 
-            # Create a DataFrame from the individual data collected
             df = pd.DataFrame(individual_data)
             rows.append(df)
-
-        # Concatenate all individual DataFrames into a single DataFrame
         data = pd.concat(rows, ignore_index=True) if rows else None
 
         column_order = [
@@ -232,30 +370,19 @@ class crypto_historical:
         ]
 
         data = data[column_order]
-
-        # Convert date columns to datetime if not already
-        # data['timeOpen'] = pd.to_datetime(data['timeOpen'])
-        # data['timeClose'] = pd.to_datetime(data['timeClose'])
-        # data['timeHigh'] = pd.to_datetime(data['timeHigh'])
-        # data['timeLow'] = pd.to_datetime(data['timeLow'])
         data.rename(columns={'timestamp':'date'}, inplace=True)
         data['date'] = pd.to_datetime(data['date'])
+        data = normalize_time(data, 'date')          
         data['time_queried'] = pd.to_datetime(data['time_queried'])
-
         self.data = data
 
     def parse(self):
-        try:
-            self.inspect_json()
-            self.process_json()
-            self.normalize_time("date")
-        except Exception as e:
-            self.error = True
-            print(f"Error: {e}")
+        self.process_json()
 
     def DATA(self):
-        if self.error:
-            return "Crypto currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+        if not is_valid_dataframe(self.data):
+            if not self.error_messages:
+                return "Crypto currency data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
         return self.data
 
     def __dir__(self):

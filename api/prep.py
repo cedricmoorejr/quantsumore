@@ -63,7 +63,7 @@ class identifier_validation:
         return ['stock_ticker', 'fx_currency', 'crypto_slug_name', 'validated_identifier']
 
 
-def _normalize_dates(start_date, end_date=None, future_date_check=False, date_format="unix"):
+def _normalize_dates(start_date, end_date=None, future_date_check=False, date_format="unix", clip=None):
     """
     Normalizes and validates start and end dates, ensuring they conform to specified constraints.
 
@@ -79,7 +79,9 @@ def _normalize_dates(start_date, end_date=None, future_date_check=False, date_fo
       relative to the current date and time. Defaults to False.
     - date_format (str, optional): The format in which to return the dates. Can be 'unix' for Unix timestamp,
       'utc_unix', or a valid strftime format string. Defaults to 'unix'.
-    """	
+    - clip (str, optional): Specifies which date to omit from the output ('start' or 'end'). If None, both
+      dates are returned.
+    """
     if not end_date:
         end_date = dtparse.now(utc=True)
     else:
@@ -108,7 +110,13 @@ def _normalize_dates(start_date, end_date=None, future_date_check=False, date_fo
         start_date = start_date.strftime(date_format)
         end_date = end_date.strftime(date_format)            
             
-    return start_date, end_date
+    if clip == "start":
+        return end_date
+    elif clip == "end":
+        return start_date
+    else:
+        return start_date, end_date
+
 
 
 
@@ -121,6 +129,7 @@ class Equity:
         self.base_url_v3 = 'aHR0cHM6Ly9xdWVyeTEuZmluYW5jZS55YWhvby5jb20vdjcvZmluYW5jZS9zcGFyaz9zeW1ib2xzPQ=='        
         self.base_url_v4 = 'aHR0cHM6Ly9hcGkubmFzZGFxLmNvbS9hcGkvY29tcGFueS8='          
         self.base_url_v5 = 'aHR0cHM6Ly9hcGkubmFzZGFxLmNvbS9hcGkvcXVvdGUv'         
+        self.base_url_v6 = 'aHR0cHM6Ly9hcGkubmFzZGFxLmNvbS9hcGkvaXBvL2NhbGVuZGFyP2RhdGU9'        
 
     def _normalize_tickers(self, tickers):
         if isinstance(tickers, str):
@@ -147,7 +156,8 @@ class Equity:
             if Type == "div_payout":
                 return f"{Mask.format.chr(self.base_url_v5, 'format')}{identifier}/dividends?assetclass=stocks"               
             return f"{Mask.format.chr(self.base_url_v1, 'format')}{identifier}/"
-           
+        elif Type == "ipo" and period1:
+            return f"{Mask.format.chr(self.base_url_v6, 'format')}{period1}" 
         url = (
             f"{Mask.format.chr(self.base_url_v2, 'format')}{identifier}?"
             "formatted=true&includeAdjustedClose=true&interval=1d&userYfid=false&lang=en-US&region=US"
@@ -156,6 +166,15 @@ class Equity:
         return url
 
     def make(self, query, *args, **kwargs):
+    	
+        if query.lower() == "ipo":
+            period = kwargs.get('period')
+            if period:
+                period = _normalize_dates(period, future_date_check=True, date_format="%Y-%m", clip="end")
+            else:
+                period = dtparse.now(as_string=True, format="%Y-%m")
+            return self._construct_url(identifier=None, period1=period, period2=None, financial_period=period, financial_interval=None, Type="ipo")  
+           
         ticker = args[0] if len(args) > 0 else kwargs.get('ticker')
         start = kwargs.get('start', None)
         end = kwargs.get('end', None)
@@ -179,9 +198,9 @@ class Equity:
         if query.lower() == "financials":
             period = kwargs.get('period', None)
             if isinstance(ticker, list):
-                ticker = ticker[0]             
+                ticker = ticker[0]
             return self._construct_url(identifier=ticker, period1=None, period2=None, financial_period=period, financial_interval=None, Type="nasdaq_company")
-           
+
         if query.lower() == "dividend_history":
             if isinstance(ticker, list) and len(ticker) > 1:
                 # If contains multiple tickers
@@ -190,9 +209,9 @@ class Equity:
                 return urls if len(urls) > 1 else urls[0]
             else:
                 if isinstance(ticker, list):
-                    ticker = ticker[0]                  
-                return self._construct_url(identifier=ticker, period1=None, period2=None, financial_period=None, financial_interval=None, Type="div_payout") 
-           
+                    ticker = ticker[0]
+                return self._construct_url(identifier=ticker, period1=None, period2=None, financial_period=None, financial_interval=None, Type="div_payout")
+
         if query.lower() == "price":
             if start and end:
                 # start, end = self._normalize_dates(start, end)
@@ -380,7 +399,6 @@ class Crypto:
             slug = args[0] if len(args) > 0 else kwargs.get('slug')
             if slug is None:
                 raise ValueError("Slug name must be provided for 'historical' queries.")
-            
             slug = [slug] if isinstance(slug, str) else slug    
             
             start = args[1] if len(args) > 1 else kwargs.get('start')

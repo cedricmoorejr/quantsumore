@@ -25,39 +25,225 @@ import json
 import pandas as pd
 from datetime import datetime, timedelta
 import re
+import string
+import atexit
+import shutil
+import errno
+import os
+import _io
+from random import Random as RandomGenerator
+
+
+def add_flag_if_available(flag_name, base_flags):
+    return base_flags | getattr(os, flag_name, 0)
+
+base_flags = os.O_RDWR | os.O_CREAT | os.O_EXCL # Base flags for opening files
+text_file_open_flags = add_flag_if_available('O_NOFOLLOW', base_flags) # Text file flags, optionally add O_NOFOLLOW
+binary_file_open_flags = add_flag_if_available('O_BINARY', text_file_open_flags) # Binary file flags, start from text file flags and optionally add O_BINARY
+MAX_TEMP_TRIES = getattr(os, 'TMP_MAX', 10000) # Define maximum attempts for temporary file naming, default to 10000
+
+
+class RandomNameGenerator:
+    characters = "abcdefghijklmnopqrstuvwxyz0123456789_"
+    @property
+    def random_instance(self):
+        current_pid = os.getpid()
+        if current_pid != getattr(self, '_pid_bound_random', None):
+            self._random = RandomGenerator()
+            self._pid_bound_random = current_pid
+        return self._random
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        allowed_chars = self.characters
+        choose_random = self.random_instance.choice
+        random_name = [choose_random(allowed_chars) for _ in range(8)]
+        return ''.join(random_name)
+
+
+def get_potential_temp_dirs():
+    temp_dirs = []
+    for env_var in 'TMPDIR', 'TEMP', 'TMP':
+        env_dir = os.getenv(env_var)
+        if env_dir:
+            temp_dirs.append(env_dir)
+
+    if os.name == 'nt':
+        temp_dirs.extend([
+            os.path.expanduser(r'~\AppData\Local\Temp'),
+            os.path.expandvars(r'%SYSTEMROOT%\Temp'),
+            r'c:\temp', r'c:\tmp', r'\temp', r'\tmp'
+        ])
+    else:
+        temp_dirs.extend(['/tmp', '/var/tmp', '/usr/tmp'])
+
+    try:
+        temp_dirs.append(os.getcwd())
+    except (AttributeError, OSError):
+        temp_dirs.append(os.curdir)
+
+    return temp_dirs
+
+
+def find_default_temp_dir():
+    name_generator = RandomNameGenerator()
+    potential_temp_dirs = get_potential_temp_dirs()
+
+    for directory in potential_temp_dirs:
+        if directory != os.curdir:
+            directory = os.path.abspath(directory)
+        for attempt in range(100):
+            temp_name = next(name_generator)
+            temp_file_path = os.path.join(directory, temp_name)
+            try:
+                file_descriptor = os.open(temp_file_path, binary_file_open_flags, 0o600)
+                try:
+                    try:
+                        with _io.open(file_descriptor, 'wb', closefd=False) as temp_file:
+                            temp_file.write(b'temp_data')
+                    finally:
+                        os.close(file_descriptor)
+                finally:
+                    os.unlink(temp_file_path)
+                return directory
+            except FileExistsError:
+                pass
+            except PermissionError:
+                if (os.name == 'nt' and os.path.isdir(directory) and
+                    os.access(directory, os.W_OK)):
+                    continue
+                break 
+            except OSError:
+                break 
+    raise FileNotFoundError(errno.ENOENT, "No usable temporary directory found in %s" % potential_temp_dirs)
+
+
+class TempDirectory:
+    """
+    A class for creating and managing temporary directories.
+
+    Attributes:
+        base_temp_dir (str): The base directory where temporary directories will be created.
+
+    Methods:
+        Dir():
+            Creates a temporary directory with a random name and registers it for cleanup.
+            Returns the path of the created temporary directory.
+
+        Omit(path):
+            Deletes a specified temporary directory and prints a message about the deletion.
+
+        Clean():
+            Cleans up all temporary directories created by this class in the base_temp_dir.
+
+        DirFile(filename, extension):
+            Creates a file with a specified name and extension in the temporary directory.
+            Returns the path of the temporary directory containing the new file.
+
+    Example Usage:
+        temp_dir_creator = TempDirectory()
+        temp_dir_with_file = temp_dir_creator.DirFile("sample", "txt")
+        print(f"Temporary directory with file created at: {temp_dir_with_file}")        
+    """
+    
+    def __init__(self):
+        """
+        Initializes the TempDirectory instance.
+
+        It checks for the existence of the TEMP or TMP environment variable and sets
+        base_temp_dir accordingly. Raises an exception if no temporary directory
+        environment variable is found.
+        """
+        self.base_temp_dir = find_default_temp_dir()
+        if not self.base_temp_dir:
+            raise Exception("No temporary directory environment variable found.")
+
+    def Dir(self):
+        """
+        Creates a temporary directory and registers it for cleanup.
+
+        Returns:
+            str: The path of the created temporary directory.
+        """
+        rng = RandomGenerator()
+        parts = []
+        for part_length in [8, 4, 4, 4, 7]:
+            part = ''.join(rng.choices(string.ascii_letters + string.digits, k=part_length))
+            parts.append(part)
+
+        temp_dir_name = "quantsumore-" + "-".join(parts)
+        temp_dir_path = os.path.join(self.base_temp_dir, temp_dir_name)
+
+        os.makedirs(temp_dir_path, exist_ok=True)
+        atexit.register(self.Omit, temp_dir_path)
+
+        return temp_dir_path 
+
+    def Omit(self, path):
+        """
+        Deletes a specified temporary directory and prints a message about the deletion.
+
+        Args:
+            path (str): The path of the temporary directory to be deleted.
+        """
+        shutil.rmtree(path, ignore_errors=True)
+        print(f"Temporary directory {path} has been deleted.")
+
+    def DirFile(self, filename, extension):
+        """
+        Creates a file with a specified name and extension in the temporary directory.
+        Automatically removes a leading '.' from the extension if present.
+        If the extension is 'xlsx', a blank Excel workbook is created.
+
+        Args:
+            filename (str): The name of the file to be created.
+            extension (str): The file extension, with or without a leading '.'.
+
+        Returns:
+            str: The full path of the newly created file.
+        """
+        temp_dir_path = self.Dir()
+        extension = extension.lstrip('.')
+        full_file_path = os.path.join(temp_dir_path, f"{filename}.{extension}")
+        with open(full_file_path, 'w') as file:
+            pass
+        return full_file_path
+    
+    def Clean(self):
+        """
+        Cleans up all temporary directories created by this class in the base_temp_dir.
+        """
+        for item in os.listdir(self.base_temp_dir):
+            if "quantsumore-" in item:
+                path = os.path.join(self.base_temp_dir, item)
+                if os.path.isdir(path):
+                    shutil.rmtree(path, ignore_errors=True)
+
+
+
 
 class FilePathFinder:
     """Handles finding, reading, writing, and modifying file paths and contents."""	
     
     class fPath:
-        """Nested class to manage file path finding within a project structure marked by a unique identifier."""    	
-        def __init__(self, unique_identifier="## -- quantsumore -- ##"):
-            self.unique_identifier = unique_identifier
+        """Nested class to manage file path finding within a project structure marked by a unique identifier."""
+        def __init__(self, temp_dir):
+            self.temporary_directory = temp_dir
 
-        def _root(self):
-            """Finds the root directory marked by a unique identifier in its __init__.py."""
-            current_directory = os.path.dirname(os.path.abspath(__file__))
-            while current_directory != os.path.dirname(current_directory):
-                init_file_path = os.path.join(current_directory, '__init__.py')
-                if os.path.isfile(init_file_path):
-                    with open(init_file_path, 'r') as f:
-                        if self.unique_identifier in f.read():
-                            return current_directory
-                current_directory = os.path.dirname(current_directory)
-            return None
-
-        def _find_file(self, directory, file_name):
+        def _find_file(self, file_name):
             """Searches for a file within the given directory."""
             if not os.path.splitext(file_name)[1]:
                 file_name += '.py'
-            for dirpath, dirnames, filenames in os.walk(directory):
+            for dirpath, dirnames, filenames in os.walk(self.temporary_directory):
                 if file_name in filenames:
                     return os.path.join(dirpath, file_name)
             return None
 
-        def _find_directory(self, root_directory, target_directory):
+        def _find_directory(self, target_directory):
             """Searches for a directory within the given root directory."""
-            for dirpath, dirnames, _ in os.walk(root_directory):
+            for dirpath, dirnames, _ in os.walk(self.temporary_directory):
                 if target_directory in dirnames:
                     return os.path.join(dirpath, target_directory)
             return None
@@ -65,15 +251,17 @@ class FilePathFinder:
         def return_path(self, file=None, directory=None):
             """Find either a file or directory based on input."""
             if file and not directory:
-                return self._find_file(directory=self._root(), file_name=file)
+                return self._find_file(file_name=file)
             elif directory and not file:
-                return self._find_directory(root_directory=self._root(), target_directory=directory)
+                return self._find_directory(target_directory=directory)
             else:
                 return None
     
-    def __init__(self, encoding='utf-8'):
+    def __init__(self, temp_dir, encoding='utf-8'):
         self.encoding = encoding
-        self.path_handler = self.fPath()
+        self.path_handler = self.fPath(temp_dir)
+        self.directory = self.path_handler.temporary_directory
+       
                 
     def trace(self, file=None, directory=None):
         """Retrieves the path for a specified file or directory.
@@ -164,76 +352,70 @@ class FilePathFinder:
         """    	
         if old is None and pattern is None:
             raise ValueError("Either 'old' or 'pattern' must be provided for replacement.")
-           
         s = self.extract(file)
-        
         if old is not None:
             s = s.replace(old, new)
-            
         if pattern is not None:
             s = re.sub(pattern, new, s)
-            
         self.inscribe(file, s)
 
 
+tempDir = TempDirectory()
+directory = tempDir.Dir()
+filePaths = FilePathFinder(directory)
 
 class JSON:
-    def __init__(self, filename, directory="configuration", json_data=None):
-        self.json_data = json_data       
-        self.filename = filename
-        self.json_dir = filePaths.trace(directory=directory)
-        if self.json_dir is None:
-            raise FileNotFoundError(f"Directory '{directory}' not found in the expected paths.")
-        try:
+    def __init__(self, filename=None, directory=directory, json_data=None):
+        self.json_data = json_data
+        if json_data is None:
+            if filename is None:
+                raise ValueError("Either filename or json_data must be provided.")
+            self.filename = filename
+            self.json_dir = directory
+            if self.json_dir is None:
+                raise FileNotFoundError(f"Directory '{directory}' not found in the expected paths.")
             self.json_path = os.path.join(self.json_dir, self.filename)
-        except TypeError:
-            if json_data:
-                self.json_path = None        
-                self.flattened_json_data = None
-                self.dataframe_json_data = None        
-        
-    def save(self, data):
-        try:
-            if isinstance(data, str):
-                with open(self.json_path, 'w', encoding='utf-8') as json_file:
-                    json_file.write(data)
-                
-            elif isinstance(data, dict):
-                with open(self.json_path, 'w', encoding='utf-8') as json_file:
-                    json.dump(data, json_file, indent=4)
-            
-        except Exception as e:
-            print(f"An error occurred while saving data to {self.json_path}: {e}")
+        else:
+            self.filename = filename if filename else "data.json"
+            self.json_path = None
     
-    def load(self, json_data=None, key=None):
-        data = json_data if json_data is not None else self.json_data
-        
-        if data:
-            if isinstance(data, str):
-                json_content = json.loads(data)
-                json_content = json_content.get(key) if key else json_content
-                self.json_data = json_content
-                return json_content
-            elif isinstance(data, dict):
-                json_content = data.get(key) if key else data
-                self.json_data = json_content
-                return json_content
-            else:
-                raise  
-
-        if not self.json_path:
-            raise ValueError("File path is not specified for loading data.")
-        try:
-            with open(self.json_path, 'r', encoding='utf-8') as json_file:
-                data = json.load(json_file)[key] if key else json.load(json_file)
+    def save(self, data, force_save_to_file=False):
+        if force_save_to_file or self.json_path:
+            if self.json_path is None:
+                raise ValueError("File path not set. Provide a filename and directory for file operations.")
+            try:
+                with open(self.json_path, 'w', encoding='utf-8') as json_file:
+                    if isinstance(data, dict):
+                        json.dump(data, json_file, indent=4)
+                    else:
+                        json_file.write(data)
+            except Exception as e:
+                print(f"An error occurred while saving data to {self.json_path}: {e}")
+        else:
+            self.json_data = data
+    
+    def load(self, from_file=False, key=None):
+        if from_file and self.json_path:
+            try:
+                with open(self.json_path, 'r', encoding='utf-8') as json_file:
+                    data = json.load(json_file)
+                    if key:
+                        data = data.get(key, None)  # Safely fetch the key if it exists
+                    self.json_data = data
+                    return data
+            except FileNotFoundError:
+                print(f"No such file: '{self.json_path}'")
+            except json.JSONDecodeError:
+                print(f"Error decoding JSON from the file: '{self.json_path}'")
+            except Exception as e:
+                print(f"An error occurred while loading data from {self.json_path}: {e}")
+        elif self.json_data:
+            data = self.json_data
+            if key:
+                data = data.get(key, None)  # Safely fetch the key if it exists
             return data
-        except FileNotFoundError:
-            print(f"No such file: '{self.json_path}'")
-        except json.JSONDecodeError:
-            print(f"Error decoding JSON from the file: '{self.json_path}'")
-        except Exception as e:
-            print(f"An error occurred while loading data from {self.json_path}: {e}")
-        return None
+        else:
+            raise ValueError("No data available to load. Provide json_data or enable file loading.")
 
     def flatten(self, initial_path, keys, data=None):
         """ Flatten the JSON data based on the provided path and keys. """
@@ -246,7 +428,6 @@ class JSON:
                     data = data[part]
         except KeyError as e:
             raise KeyError(f"Path error: {e}")
-
         flattened = {}
         try:
             for key in keys:
@@ -320,15 +501,17 @@ class JSON:
                 return False
         return True
        
-
+       
+       
 class SQLiteDBHandler:
-    def __init__(self, filename, directory="configuration"):
+    def __init__(self, filename, directory=directory, json_data=None):
         self.filename = filename
-        self.db_dir = filePaths.trace(directory=directory)
+        self.db_dir = directory
         self.db_path = os.path.join(self.db_dir, self.filename)
         self.path = self.Path()        
         self.conn = None
         self.cursor = None
+        self.json_data = json_data        
 
     def connect(self):
         """Establish a new database connection if one doesn't already exist."""
@@ -364,9 +547,10 @@ class SQLiteDBHandler:
         ''')
         self.conn.commit()
 
-    def parse_json(self, json_content):
+    def parse_json(self):
         """Parse JSON content to prepare for database insertion."""
-        data = JSON(json_content).load(key="cryptos")
+        data = self.json_data
+        data = data["cryptos"]
         return [(item['id'], item['name'], item['symbol'], item['slug'], item['is_active'], item['status'], item['rank']) for item in data.values()]
 
     def insert_data(self, transformed_data):
@@ -385,12 +569,12 @@ class SQLiteDBHandler:
             ''', item)
         self.conn.commit()
 
-    def save(self, json_content):
+    def save(self):
         """Process JSON content and save to the database."""
         try:
             self.connect()
             self.ensure_database()
-            transformed_data = self.parse_json(json_content)
+            transformed_data = self.parse_json()
             self.insert_data(transformed_data)
         except Exception as e:
             print(f"An error occurred during the save process: {e}")
@@ -409,30 +593,11 @@ class SQLiteDBHandler:
         else:
             return None
 
-    def last_modified(self, as_string=False):
-        """Return the last modification time of the database file."""
-        if self.file_exists():
-            timestamp = os.path.getmtime(self.db_path)
-            if as_string:
-                return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-            return datetime.fromtimestamp(timestamp)
-        else:
-            return None 
-
-    def is_outdated(self):
-        """Check if the last modification of the file was more than a month ago."""
-        if self.file_exists():
-            last_modification_time = os.path.getmtime(self.db_path)
-            last_modification_date = datetime.fromtimestamp(last_modification_time)
-            if datetime.now() - last_modification_date > timedelta(days=30):
-                return True
-            else:
-                return False
-        return True
 
 
 
-filePaths = FilePathFinder()
+
+
 
 
 def __dir__():

@@ -93,7 +93,7 @@ class APIClient:
         """    	
         make_method = getattr(self.asset, 'make')
         url = make_method(query='live', slug=slug, baseCurrencySymbol=baseCurrencySymbol, quoteCurrencySymbol=quoteCurrencySymbol, limit=limit, exchangeType=exchangeType)
-        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=False, no_content=False)        
+        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)         
         if content:
             obj = crypto.live_quote(content, cryptoExchange=cryptoExchange)
             data = obj.DATA()
@@ -159,7 +159,7 @@ class APIClient:
             raise ValueError("Start and end dates must be provided for historical data requests.")
         make_method = getattr(self.asset, 'make')
         url = make_method(query='historical', slug=slug, start=start, end=end)
-        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=False, no_content=False) 
+        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)         
         if content:
             obj = crypto.crypto_historical(content)
             data = obj.DATA()
