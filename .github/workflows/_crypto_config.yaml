@@ -22,7 +22,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add files/crypto/exchanges.json files/crypto/cryptos.json
+          git add files/crypto/exchanges.json files/crypto/cryptocurency.json
           git status
           if [ -z "$(git diff --staged)" ]; then
             echo "No changes to commit"
