@@ -1,68 +1,400 @@
 {
    "pairs":{
-      "825":{
-         "quoteCurrencyId":825,
-         "quoteSymbol":"USDT"
+      "United Arab Emirates Dirham (د.إ)":{
+         "currencyId":2813,
+         "currencySymbol":"AED"
       },
-      "26081":{
-         "quoteCurrencyId":26081,
-         "quoteSymbol":"FDUSD"
+      "Albanian Lek (L)":{
+         "currencyId":3526,
+         "currencySymbol":"ALL"
       },
-      "2781":{
-         "quoteCurrencyId":2781,
-         "quoteSymbol":"USD"
+      "Armenian Dram (֏)":{
+         "currencyId":3527,
+         "currencySymbol":"AMD"
       },
-      "2798":{
-         "quoteCurrencyId":2798,
-         "quoteSymbol":"KRW"
+      "Argentine Peso ($)":{
+         "currencyId":2821,
+         "currencySymbol":"ARS"
       },
-      "2810":{
-         "quoteCurrencyId":2810,
-         "quoteSymbol":"TRY"
+      "Australian Dollar ($)":{
+         "currencyId":2782,
+         "currencySymbol":"AUD"
       },
-      "1":{
-         "quoteCurrencyId":1,
-         "quoteSymbol":"BTC"
+      "Azerbaijani Manat (₼)":{
+         "currencyId":3528,
+         "currencySymbol":"AZN"
       },
-      "3408":{
-         "quoteCurrencyId":3408,
-         "quoteSymbol":"USDC"
+      "Bosnia-Herzegovina Convertible Mark (KM)":{
+         "currencyId":3529,
+         "currencySymbol":"BAM"
       },
-      "2790":{
-         "quoteCurrencyId":2790,
-         "quoteSymbol":"EUR"
+      "Bangladeshi Taka (৳)":{
+         "currencyId":3530,
+         "currencySymbol":"BDT"
       },
-      "2791":{
-         "quoteCurrencyId":2791,
-         "quoteSymbol":"GBP"
+      "Bulgarian Lev (лв)":{
+         "currencyId":2814,
+         "currencySymbol":"BGN"
       },
-      "2783":{
-         "quoteCurrencyId":2783,
-         "quoteSymbol":"BRL"
+      "Bahraini Dinar (.د.ب)":{
+         "currencyId":3531,
+         "currencySymbol":"BHD"
       },
-      "2563":{
-         "quoteCurrencyId":2563,
-         "quoteSymbol":"TUSD"
+      "Bermudan Dollar ($)":{
+         "currencyId":3532,
+         "currencySymbol":"BMD"
       },
-      "2797":{
-         "quoteCurrencyId":2797,
-         "quoteSymbol":"JPY"
+      "Bolivian Boliviano (Bs.)":{
+         "currencyId":2832,
+         "currencySymbol":"BOB"
       },
-      "2782":{
-         "quoteCurrencyId":2782,
-         "quoteSymbol":"AUD"
+      "Brazilian Real (R$)":{
+         "currencyId":2783,
+         "currencySymbol":"BRL"
       },
-      "2785":{
-         "quoteCurrencyId":2785,
-         "quoteSymbol":"CHF"
+      "Belarusian Ruble (Br)":{
+         "currencyId":3533,
+         "currencySymbol":"BYN"
       },
-      "4943":{
-         "quoteCurrencyId":4943,
-         "quoteSymbol":"DAI"
+      "Canadian Dollar ($)":{
+         "currencyId":2784,
+         "currencySymbol":"CAD"
       },
-      "2784":{
-         "quoteCurrencyId":2784,
-         "quoteSymbol":"CAD"
+      "Swiss Franc (Fr)":{
+         "currencyId":2785,
+         "currencySymbol":"CHF"
+      },
+      "Chilean Peso ($)":{
+         "currencyId":2786,
+         "currencySymbol":"CLP"
+      },
+      "Chinese Yuan (¥)":{
+         "currencyId":2787,
+         "currencySymbol":"CNY"
+      },
+      "Colombian Peso ($)":{
+         "currencyId":2820,
+         "currencySymbol":"COP"
+      },
+      "Costa Rican Colón (₡)":{
+         "currencyId":3534,
+         "currencySymbol":"CRC"
+      },
+      "Cuban Peso ($)":{
+         "currencyId":3535,
+         "currencySymbol":"CUP"
+      },
+      "Czech Koruna (Kč)":{
+         "currencyId":2788,
+         "currencySymbol":"CZK"
+      },
+      "Danish Krone (kr)":{
+         "currencyId":2789,
+         "currencySymbol":"DKK"
+      },
+      "Dominican Peso ($)":{
+         "currencyId":3536,
+         "currencySymbol":"DOP"
+      },
+      "Algerian Dinar (د.ج)":{
+         "currencyId":3537,
+         "currencySymbol":"DZD"
+      },
+      "Egyptian Pound (£)":{
+         "currencyId":3538,
+         "currencySymbol":"EGP"
+      },
+      "Euro (€)":{
+         "currencyId":2790,
+         "currencySymbol":"EUR"
+      },
+      "Pound Sterling (£)":{
+         "currencyId":2791,
+         "currencySymbol":"GBP"
+      },
+      "Georgian Lari (₾)":{
+         "currencyId":3539,
+         "currencySymbol":"GEL"
+      },
+      "Ghanaian Cedi (₵)":{
+         "currencyId":3540,
+         "currencySymbol":"GHS"
+      },
+      "Guatemalan Quetzal (Q)":{
+         "currencyId":3541,
+         "currencySymbol":"GTQ"
+      },
+      "Hong Kong Dollar ($)":{
+         "currencyId":2792,
+         "currencySymbol":"HKD"
+      },
+      "Honduran Lempira (L)":{
+         "currencyId":3542,
+         "currencySymbol":"HNL"
+      },
+      "Croatian Kuna (kn)":{
+         "currencyId":2815,
+         "currencySymbol":"HRK"
+      },
+      "Hungarian Forint (Ft)":{
+         "currencyId":2793,
+         "currencySymbol":"HUF"
+      },
+      "Indonesian Rupiah (Rp)":{
+         "currencyId":2794,
+         "currencySymbol":"IDR"
+      },
+      "Israeli New Shekel (₪)":{
+         "currencyId":2795,
+         "currencySymbol":"ILS"
+      },
+      "Indian Rupee (₹)":{
+         "currencyId":2796,
+         "currencySymbol":"INR"
+      },
+      "Iraqi Dinar (ع.د)":{
+         "currencyId":3543,
+         "currencySymbol":"IQD"
+      },
+      "Iranian Rial (﷼)":{
+         "currencyId":3544,
+         "currencySymbol":"IRR"
+      },
+      "Icelandic Króna (kr)":{
+         "currencyId":2818,
+         "currencySymbol":"ISK"
+      },
+      "Jamaican Dollar ($)":{
+         "currencyId":3545,
+         "currencySymbol":"JMD"
+      },
+      "Jordanian Dinar (د.ا)":{
+         "currencyId":3546,
+         "currencySymbol":"JOD"
+      },
+      "Japanese Yen (¥)":{
+         "currencyId":2797,
+         "currencySymbol":"JPY"
+      },
+      "Kenyan Shilling (Sh)":{
+         "currencyId":3547,
+         "currencySymbol":"KES"
+      },
+      "Kyrgystani Som (с)":{
+         "currencyId":3548,
+         "currencySymbol":"KGS"
+      },
+      "Cambodian Riel (៛)":{
+         "currencyId":3549,
+         "currencySymbol":"KHR"
+      },
+      "South Korean Won (₩)":{
+         "currencyId":2798,
+         "currencySymbol":"KRW"
+      },
+      "Kuwaiti Dinar (د.ك)":{
+         "currencyId":3550,
+         "currencySymbol":"KWD"
+      },
+      "Kazakhstani Tenge (₸)":{
+         "currencyId":3551,
+         "currencySymbol":"KZT"
+      },
+      "Lebanese Pound (ل.ل)":{
+         "currencyId":3552,
+         "currencySymbol":"LBP"
+      },
+      "Sri Lankan Rupee (Rs)":{
+         "currencyId":3553,
+         "currencySymbol":"LKR"
+      },
+      "Moroccan Dirham (د.م.)":{
+         "currencyId":3554,
+         "currencySymbol":"MAD"
+      },
+      "Moldovan Leu (L)":{
+         "currencyId":3555,
+         "currencySymbol":"MDL"
+      },
+      "Macedonian Denar (ден)":{
+         "currencyId":3556,
+         "currencySymbol":"MKD"
+      },
+      "Myanma Kyat (Ks)":{
+         "currencyId":3557,
+         "currencySymbol":"MMK"
+      },
+      "Mongolian Tugrik (₮)":{
+         "currencyId":3558,
+         "currencySymbol":"MNT"
+      },
+      "Mauritian Rupee (₨)":{
+         "currencyId":2816,
+         "currencySymbol":"MUR"
+      },
+      "Mexican Peso ($)":{
+         "currencyId":2799,
+         "currencySymbol":"MXN"
+      },
+      "Malaysian Ringgit (RM)":{
+         "currencyId":2800,
+         "currencySymbol":"MYR"
+      },
+      "Namibian Dollar ($)":{
+         "currencyId":3559,
+         "currencySymbol":"NAD"
+      },
+      "Nigerian Naira (₦)":{
+         "currencyId":2819,
+         "currencySymbol":"NGN"
+      },
+      "Nicaraguan Córdoba (C$)":{
+         "currencyId":3560,
+         "currencySymbol":"NIO"
+      },
+      "Norwegian Krone (kr)":{
+         "currencyId":2801,
+         "currencySymbol":"NOK"
+      },
+      "Nepalese Rupee (₨)":{
+         "currencyId":3561,
+         "currencySymbol":"NPR"
+      },
+      "New Zealand Dollar ($)":{
+         "currencyId":2802,
+         "currencySymbol":"NZD"
+      },
+      "Omani Rial (ر.ع.)":{
+         "currencyId":3562,
+         "currencySymbol":"OMR"
+      },
+      "Panamanian Balboa (B/.)":{
+         "currencyId":3563,
+         "currencySymbol":"PAB"
+      },
+      "Peruvian Sol (S/.)":{
+         "currencyId":2822,
+         "currencySymbol":"PEN"
+      },
+      "Philippine Peso (₱)":{
+         "currencyId":2803,
+         "currencySymbol":"PHP"
+      },
+      "Pakistani Rupee (₨)":{
+         "currencyId":2804,
+         "currencySymbol":"PKR"
+      },
+      "Polish Złoty (zł)":{
+         "currencyId":2805,
+         "currencySymbol":"PLN"
+      },
+      "Qatari Rial (ر.ق)":{
+         "currencyId":3564,
+         "currencySymbol":"QAR"
+      },
+      "Romanian Leu (lei)":{
+         "currencyId":2817,
+         "currencySymbol":"RON"
+      },
+      "Serbian Dinar (дин.)":{
+         "currencyId":3565,
+         "currencySymbol":"RSD"
+      },
+      "Russian Ruble (₽)":{
+         "currencyId":2806,
+         "currencySymbol":"RUB"
+      },
+      "Saudi Riyal (ر.س)":{
+         "currencyId":3566,
+         "currencySymbol":"SAR"
+      },
+      "Swedish Krona (kr)":{
+         "currencyId":2807,
+         "currencySymbol":"SEK"
+      },
+      "Singapore Dollar (S$)":{
+         "currencyId":2808,
+         "currencySymbol":"SGD"
+      },
+      "South Sudanese Pound (£)":{
+         "currencyId":3567,
+         "currencySymbol":"SSP"
+      },
+      "Thai Baht (฿)":{
+         "currencyId":2809,
+         "currencySymbol":"THB"
+      },
+      "Tunisian Dinar (د.ت)":{
+         "currencyId":3568,
+         "currencySymbol":"TND"
+      },
+      "Turkish Lira (₺)":{
+         "currencyId":2810,
+         "currencySymbol":"TRY"
+      },
+      "Trinidad and Tobago Dollar ($)":{
+         "currencyId":3569,
+         "currencySymbol":"TTD"
+      },
+      "New Taiwan Dollar (NT$)":{
+         "currencyId":2811,
+         "currencySymbol":"TWD"
+      },
+      "Ukrainian Hryvnia (₴)":{
+         "currencyId":2824,
+         "currencySymbol":"UAH"
+      },
+      "Ugandan Shilling (Sh)":{
+         "currencyId":3570,
+         "currencySymbol":"UGX"
+      },
+      "United States Dollar ($)":{
+         "currencyId":2781,
+         "currencySymbol":"USD"
+      },
+      "Uruguayan Peso ($)":{
+         "currencyId":3571,
+         "currencySymbol":"UYU"
+      },
+      "Uzbekistan Som (so'm)":{
+         "currencyId":3572,
+         "currencySymbol":"UZS"
+      },
+      "Sovereign Bolivar (Bs.)":{
+         "currencyId":3573,
+         "currencySymbol":"VES"
+      },
+      "Vietnamese Dong (₫)":{
+         "currencyId":2823,
+         "currencySymbol":"VND"
+      },
+      "South African Rand (R)":{
+         "currencyId":2812,
+         "currencySymbol":"ZAR"
+      },
+      "Tether":{
+         "currencyId":825,
+         "currencySymbol":"USDT"
+      },
+      "First Digital USD":{
+         "currencyId":26081,
+         "currencySymbol":"FDUSD"
+      },
+      "Bitcoin":{
+         "currencyId":1,
+         "currencySymbol":"BTC"
+      },
+      "USD Coin":{
+         "currencyId":3408,
+         "currencySymbol":"USDC"
+      },
+      "TrueUSD":{
+         "currencyId":2563,
+         "currencySymbol":"TUSD"
+      },
+      "Dai":{
+         "currencyId":4943,
+         "currencySymbol":"DAI"
       }
    }
 }
