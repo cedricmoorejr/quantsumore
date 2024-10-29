@@ -108,3 +108,14 @@ def save_to_file(data, file_path):
 if __name__ == "__main__":
     process_exchanges(exchanges_url)
     process_cryptos(cryptos_url)
+
+
+with open('files/crypto/cryptocurrency.json', 'r') as file:
+    cryptos = json.load(file)
+with open('files/crypto/exchanges.json', 'r') as file:
+    exchanges = json.load(file)
+with open('files/crypto/pairs.json', 'r') as file:
+    pairs = json.load(file)
+    
+combined_data = {**cryptos, **exchanges, **pairs}
+save_to_file(combined_data, 'files/crypto/all_data.json')
