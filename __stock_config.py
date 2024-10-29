@@ -24,12 +24,25 @@ import pandas as pd
 from io import StringIO
 from copy import deepcopy
 import re
+import base64
+import random
+import json
 
-NASDAQ_STOCK_LIST_URL = "http://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt"
-NYSE_STOCK_LIST_URL = "https://www.nyse.com/publicdocs/nyse/symbols/ELIGIBLESTOCKS_NYSEAmerican.xls"
+    
+NASDAQ_STOCK_LIST_URL = base64.b64decode('aHR0cDovL3d3dy5uYXNkYXF0cmFkZXIuY29tL2R5bmFtaWMvc3ltZGlyL25hc2RhcWxpc3RlZC50eHQ=').decode('utf-8')
+NYSE_STOCK_LIST_URL = base64.b64decode('aHR0cHM6Ly93d3cubnlzZS5jb20vcHVibGljZG9jcy9ueXNlL3N5bWJvbHMvRUxJR0lCTEVTVE9DS1NfTllTRUFtZXJpY2FuLnhscw==').decode('utf-8')
+
+# Load user agents
+with open('files/user_agents.json', 'r') as file:
+    user_agents = json.load(file)
+
+key = random.choice(list(user_agents['Desktop User-Agents'].keys()))
+randkey = str(random.randint(1, 5))
+ua = user_agents['Desktop User-Agents'][key][randkey]
+headers = {'User-Agent': ua, 'Accept': 'application/json'}
 
 def get_stock_ticker_data(url):
-    response = requests.get(url)
+    response = requests.get(url, headers=headers, timeout=10)
     data_str = response.content.decode('ISO-8859-1').replace('\r', '')
     data = StringIO(data_str)
     delimiters = ['\t', '|']
