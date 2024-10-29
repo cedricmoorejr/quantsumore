@@ -14,19 +14,23 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
+      
       - name: Install dependencies
         run: pip install requests
+      
       - name: Run Python script to download crypto data
         run: python __crypto_config.py
-      - name: Commit and Push
+      
+      - name: Commit and Push exchanges.json
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add files/crypto/exchanges.json files/crypto/cryptocurency.json
-          git status
-          if [ -z "$(git diff --staged)" ]; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update crypto data"
-            git push
-          fi
+          git add files/crypto/exchanges.json
+          git diff --staged --exit-code || (git commit -m "Update exchanges data" && git push)
+      
+      - name: Commit and Push cryptocurrency.json
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add files/crypto/cryptocurrency.json
+          git diff --staged --exit-code || (git commit -m "Update cryptocurrency data" && git push)
