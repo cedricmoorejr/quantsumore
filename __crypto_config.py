@@ -28,7 +28,9 @@ import random
 exchanges_url = base64.b64decode('aHR0cHM6Ly9zMy5jb2lubWFya2V0Y2FwLmNvbS9nZW5lcmF0ZWQvY29yZS9leGNoYW5nZS9leGNoYW5nZXMuanNvbg==').decode('utf-8')
 cryptos_url = base64.b64decode('aHR0cHM6Ly9zMy5jb2lubWFya2V0Y2FwLmNvbS9nZW5lcmF0ZWQvY29yZS9jcnlwdG8vY3J5cHRvcy5qc29u').decode('utf-8')
 
-user_agents = 'files/user_agents.json'
+with open('files/user_agents.json', 'r') as file:
+    user_agents = json.load(file)
+    
 key = random.choice(list(user_agents['Desktop User-Agents'].keys()))
 randkey = str(random.randint(1, 5))
 ua = user_agents['Desktop User-Agents'][key][randkey]
