@@ -18,6 +18,7 @@
 # limitations under the License.
 
 
+import os
 import json
 import requests
 import base64
@@ -27,22 +28,21 @@ import random
 exchanges_url = base64.b64decode('aHR0cHM6Ly9zMy5jb2lubWFya2V0Y2FwLmNvbS9nZW5lcmF0ZWQvY29yZS9leGNoYW5nZS9leGNoYW5nZXMuanNvbg==').decode('utf-8')
 cryptos_url = base64.b64decode('aHR0cHM6Ly9zMy5jb2lubWFya2V0Y2FwLmNvbS9nZW5lcmF0ZWQvY29yZS9jcnlwdG8vY3J5cHRvcy5qc29u').decode('utf-8')
 
+# Load user agents
 with open('files/user_agents.json', 'r') as file:
     user_agents = json.load(file)
-    
+
 key = random.choice(list(user_agents['Desktop User-Agents'].keys()))
 randkey = str(random.randint(1, 5))
 ua = user_agents['Desktop User-Agents'][key][randkey]
-headers = requests.get('https://httpbin.org/headers').json()
-
-# Update User-Agent in headers
-headers['User-Agent'] = ua
-
+headers = {'User-Agent': ua, 'Accept': 'application/json'}
 
 def fetch_data(url):
     try:
+        print(f"Fetching data from: {url}")
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
+        print("Data fetched successfully.")
         return response.json()
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data from {url}: {e}")
@@ -70,6 +70,7 @@ def process_exchanges(url):
     output = {"crypto_exchanges": crypto_exchanges}
     file_path = "files/crypto/exchanges.json"
     save_to_file(output, file_path)
+    print(f"Exchange data saved to {file_path}")
 
 def process_cryptos(url):
     data = fetch_data(url)
@@ -94,6 +95,7 @@ def process_cryptos(url):
     output = {"cryptos": cryptos}
     file_path = "files/crypto/cryptocurrency.json"
     save_to_file(output, file_path)
+    print(f"Crypto data saved to {file_path}")
 
 def save_to_file(data, file_path):
     try:
@@ -103,9 +105,6 @@ def save_to_file(data, file_path):
     except IOError as e:
         print(f"Error saving file {file_path}: {e}")
 
-
 if __name__ == "__main__":
     process_exchanges(exchanges_url)
     process_cryptos(cryptos_url)
-          
-    
