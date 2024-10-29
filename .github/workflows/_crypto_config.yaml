@@ -1,9 +1,9 @@
-name: Download and Process Crypto Exchanges
+name: Download and Process Crypto Data
 
 on:
   workflow_dispatch: 
   schedule:
-    - cron: '0 1 * * 1-5'  # crypto download at 1 AM on weekdays
+    - cron: '0 1 * * 1-5'  # Run at 1 AM on weekdays
 
 jobs:
   download-and-save:
@@ -23,5 +23,10 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add files/crypto/exchanges.json files/crypto/cryptocurency.json
-          git commit -m "Update crypto listed data"
-          git push  
+          git status
+          if [ -z "$(git diff --staged)" ]; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update crypto data"
+            git push
+          fi
