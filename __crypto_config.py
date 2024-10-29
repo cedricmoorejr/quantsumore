@@ -23,20 +23,48 @@ import requests
 import json
 import base64
 
-# URL for crypto exchanges file
-url = base64.b64decode('aHR0cHM6Ly9zMy5jb2lubWFya2V0Y2FwLmNvbS9nZW5lcmF0ZWQvY29yZS9jcnlwdG8vY3J5cHRvcy5qc29u').decode('utf-8')
+exchanges_url = base64.b64decode('aHR0cHM6Ly9zMy5jb2lubWFya2V0Y2FwLmNvbS9nZW5lcmF0ZWQvY29yZS9leGNoYW5nZS9leGNoYW5nZXMuanNvbg==').decode('utf-8')
+cryptos_url = base64.b64decode('aHR0cHM6Ly9zMy5jb2lubWFya2V0Y2FwLmNvbS9nZW5lcmF0ZWQvY29yZS9jcnlwdG8vY3J5cHRvcy5qc29u').decode('utf-8')
 
-def download_crypto_exchange_list():
-    response = requests.get(url)
+def process_exchanges(url):
+    response = requests.get(url, headers={'Accept': 'application/json'})
+    data = response.json()
+    crypto_exchanges = {}
+    for value in data["values"]:
+        exchange_id = str(value[0])
+        crypto_exchanges[exchange_id] = {
+            "exchangeId": exchange_id,
+            "exchangeName": value[1],
+            "exchangeSlug": value[2]
+        }
+    output = {"crypto_exchanges": crypto_exchanges}
+    file_path = "files/crypto/exchanges.json"   
+    with open(file_path, 'w') as file:
+        json.dump(output, file, indent=4)
 
-    if response.status_code == 200:
-        data = response.json()        
-        file_path = "files/crypto.json"        
-        with open(file_path, 'w') as file:
-            json.dump(data, file, indent=4)
-        print(f"File saved as {file_path}")
-    else:
-        print(f"Failed to download file: Status code {response.status_code}")
+
+def process_cryptos(url):
+    response = requests.get(url, headers={'Accept': 'application/json'})
+    data = response.json()
+    cryptos = {}
+    for value in data["values"]:
+        crypto_id = str(value[0]) 
+        cryptos[crypto_id] = {
+            "id": value[0],
+            "name": value[1],
+            "symbol": value[2],
+            "slug": value[3],
+            "is_active": value[4],
+            "status": value[5],
+            "rank": value[6]
+        }
+    output = {"cryptos": cryptos}    
+    file_path = "files/crypto/cryptocurency.json"
+    with open(file_path, 'w') as file:
+        json.dump(output, file, indent=4)
+
 
 if __name__ == "__main__":
-    download_crypto_exchange_list()
+    process_exchanges(exchanges_url)
+    process_cryptos(cryptos_url)
+    
