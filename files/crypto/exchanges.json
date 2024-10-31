@@ -8475,21 +8475,6 @@
             "exchangeName": "CommEX",
             "exchangeSlug": "commex"
         },
-        "8084": {
-            "exchangeId": "8084",
-            "exchangeName": "SmarDex (BSC)",
-            "exchangeSlug": "smardex-bsc"
-        },
-        "8085": {
-            "exchangeId": "8085",
-            "exchangeName": "SmarDex (Arbitrum)",
-            "exchangeSlug": "smardex-arbitrum"
-        },
-        "8086": {
-            "exchangeId": "8086",
-            "exchangeName": "SmarDex (Polygon)",
-            "exchangeSlug": "smardex-polygon"
-        },
         "8105": {
             "exchangeId": "8105",
             "exchangeName": "KiloEx",
@@ -8579,11 +8564,6 @@
             "exchangeId": "8189",
             "exchangeName": "Uniswap v3 (ZKsync)",
             "exchangeSlug": "uniswap-v3-zksync"
-        },
-        "8281": {
-            "exchangeId": "8281",
-            "exchangeName": "SmarDex (Base)",
-            "exchangeSlug": "smardex-base"
         },
         "8282": {
             "exchangeId": "8282",
