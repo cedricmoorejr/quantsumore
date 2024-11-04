@@ -9190,6 +9190,11 @@
             "exchangeName": "Niza Global",
             "exchangeSlug": "niza-global"
         },
+        "10146": {
+            "exchangeId": "10146",
+            "exchangeName": "KaiaSwap",
+            "exchangeSlug": "kaiaswap"
+        },
         "10152": {
             "exchangeId": "10152",
             "exchangeName": "FIXT",
