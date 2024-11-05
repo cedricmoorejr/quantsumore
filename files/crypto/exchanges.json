@@ -8765,6 +8765,11 @@
             "exchangeName": "UEEx",
             "exchangeSlug": "ueex"
         },
+        "8906": {
+            "exchangeId": "8906",
+            "exchangeName": "Alien Base v3",
+            "exchangeSlug": "alien-base-v3"
+        },
         "8912": {
             "exchangeId": "8912",
             "exchangeName": "Ekubo Protocol",
