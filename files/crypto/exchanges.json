@@ -9450,6 +9450,11 @@
             "exchangeName": "Minswap v2",
             "exchangeSlug": "minswap-v2"
         },
+        "11209": {
+            "exchangeId": "11209",
+            "exchangeName": "Wingriders v2",
+            "exchangeSlug": "wingriders-v2"
+        },
         "11216": {
             "exchangeId": "11216",
             "exchangeName": "Ekubo",
