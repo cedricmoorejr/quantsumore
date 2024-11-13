@@ -9459,6 +9459,11 @@
             "exchangeId": "11216",
             "exchangeName": "Ekubo",
             "exchangeSlug": "ekubo"
+        },
+        "11290": {
+            "exchangeId": "11290",
+            "exchangeName": "STON.fi v2",
+            "exchangeSlug": "ston-fi-v2"
         }
     }
 }
