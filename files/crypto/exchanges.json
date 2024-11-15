@@ -9464,6 +9464,11 @@
             "exchangeId": "11290",
             "exchangeName": "STON.fi v2",
             "exchangeSlug": "ston-fi-v2"
+        },
+        "11313": {
+            "exchangeId": "11313",
+            "exchangeName": "TGEX",
+            "exchangeSlug": "tgex"
         }
     }
 }
