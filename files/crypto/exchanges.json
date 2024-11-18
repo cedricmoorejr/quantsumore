@@ -835,11 +835,6 @@
             "exchangeName": "Sistemkoin",
             "exchangeSlug": "sistemkoin"
         },
-        "391": {
-            "exchangeId": "391",
-            "exchangeName": "CoinTiger",
-            "exchangeSlug": "cointiger"
-        },
         "392": {
             "exchangeId": "392",
             "exchangeName": "B2BX",
@@ -9469,6 +9464,11 @@
             "exchangeId": "11313",
             "exchangeName": "TGEX",
             "exchangeSlug": "tgex"
+        },
+        "11319": {
+            "exchangeId": "11319",
+            "exchangeName": "Cellana",
+            "exchangeSlug": "cellana"
         }
     }
 }
