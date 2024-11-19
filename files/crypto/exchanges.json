@@ -9469,6 +9469,11 @@
             "exchangeId": "11319",
             "exchangeName": "Cellana",
             "exchangeSlug": "cellana"
+        },
+        "11339": {
+            "exchangeId": "11339",
+            "exchangeName": "SAFEX Exchange",
+            "exchangeSlug": "safex-exchange"
         }
     }
 }
