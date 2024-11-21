@@ -9474,6 +9474,11 @@
             "exchangeId": "11339",
             "exchangeName": "SAFEX Exchange",
             "exchangeSlug": "safex-exchange"
+        },
+        "11356": {
+            "exchangeId": "11356",
+            "exchangeName": "Arkham",
+            "exchangeSlug": "arkham"
         }
     }
 }
