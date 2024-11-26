@@ -70,8 +70,8 @@ def get_stock_ticker_data(url):
         dataframe = dataframe[['Symbol', 'Security Name', 'Exchange', 'yahoo_mapping', 'nasdaq_mapping']]
         dataframe.columns = ['Symbol', 'Company', 'Exchange', 'yahoo_mapping', 'nasdaq_mapping']
     elif "NYSEAmerican" in url:
-        dataframe = dataframe[~dataframe["Symbol"].str.contains('\+', case=False, na=False)]
-        dataframe = dataframe[~dataframe["Symbol"].str.contains('\^', case=False, na=False)]
+        dataframe = dataframe[~dataframe["Symbol"].str.contains('\\+', case=False, na=False)]
+        dataframe = dataframe[~dataframe["Symbol"].str.contains('\\^', case=False, na=False)]
         dataframe = dataframe[~dataframe["Company"].str.contains('TEST STOCK', case=False, na=False)]
         dataframe = dataframe[~dataframe["Symbol"].str.contains('TEST', case=False, na=False)]
         dataframe.loc[:, "Exchange"] = "NYSE"
