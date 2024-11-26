@@ -8442,7 +8442,7 @@
         },
         "8005": {
             "exchangeId": "8005",
-            "exchangeName": "NativeX",
+            "exchangeName": "Native",
             "exchangeSlug": "nativex"
         },
         "8006": {
@@ -8884,6 +8884,11 @@
             "exchangeId": "9335",
             "exchangeName": "Sideswap",
             "exchangeSlug": "sideswap"
+        },
+        "9364": {
+            "exchangeId": "9364",
+            "exchangeName": "Uniswap v2 (Arbitrum)",
+            "exchangeSlug": "uniswap-v2-arbitrum"
         },
         "9365": {
             "exchangeId": "9365",
