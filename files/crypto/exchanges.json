@@ -9484,6 +9484,11 @@
             "exchangeId": "11356",
             "exchangeName": "Arkham",
             "exchangeSlug": "arkham"
+        },
+        "11385": {
+            "exchangeId": "11385",
+            "exchangeName": "BitKan",
+            "exchangeSlug": "bitkan"
         }
     }
 }
