@@ -8575,6 +8575,11 @@
             "exchangeName": "PancakeSwap v2 (opBNB)",
             "exchangeSlug": "pancakeswap-v2-opbnb"
         },
+        "8377": {
+            "exchangeId": "8377",
+            "exchangeName": "Thala",
+            "exchangeSlug": "thala"
+        },
         "8388": {
             "exchangeId": "8388",
             "exchangeName": "Salavi Exchange",
@@ -9484,6 +9489,11 @@
             "exchangeId": "11385",
             "exchangeName": "BitKan",
             "exchangeSlug": "bitkan"
+        },
+        "11421": {
+            "exchangeId": "11421",
+            "exchangeName": "OX.FUN",
+            "exchangeSlug": "ox-fun"
         }
     }
 }
