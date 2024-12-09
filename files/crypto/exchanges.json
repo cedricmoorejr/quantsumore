@@ -6347,7 +6347,7 @@
         },
         "1600": {
             "exchangeId": "1600",
-            "exchangeName": "OKCoin Japan",
+            "exchangeName": "OKJ",
             "exchangeSlug": "okcoin-japan"
         },
         "1601": {
@@ -8647,8 +8647,8 @@
         },
         "8563": {
             "exchangeId": "8563",
-            "exchangeName": "BITFLEX",
-            "exchangeSlug": "bitflex"
+            "exchangeName": "Coinflare",
+            "exchangeSlug": "coinflare"
         },
         "8566": {
             "exchangeId": "8566",
@@ -9477,7 +9477,7 @@
         },
         "11339": {
             "exchangeId": "11339",
-            "exchangeName": "SAFEX Exchange",
+            "exchangeName": "SAFEX",
             "exchangeSlug": "safex-exchange"
         },
         "11356": {
