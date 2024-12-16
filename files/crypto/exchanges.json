@@ -9494,6 +9494,16 @@
             "exchangeId": "11421",
             "exchangeName": "OX.FUN",
             "exchangeSlug": "ox-fun"
+        },
+        "11475": {
+            "exchangeId": "11475",
+            "exchangeName": "Sundaeswap v3",
+            "exchangeSlug": "sundaeswap-v3"
+        },
+        "11476": {
+            "exchangeId": "11476",
+            "exchangeName": "SundaeSwap",
+            "exchangeSlug": "sundaeswap-v1"
         }
     }
 }
