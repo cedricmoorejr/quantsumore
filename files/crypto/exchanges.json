@@ -8030,11 +8030,6 @@
             "exchangeName": "Fastex",
             "exchangeSlug": "fastex"
         },
-        "7435": {
-            "exchangeId": "7435",
-            "exchangeName": "Kanga",
-            "exchangeSlug": "kanga"
-        },
         "7440": {
             "exchangeId": "7440",
             "exchangeName": "Klayswap v3",
