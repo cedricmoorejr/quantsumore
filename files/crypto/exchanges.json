@@ -9430,6 +9430,11 @@
             "exchangeName": "Camelot v2 (ApeChain)",
             "exchangeSlug": "camelot-v2-apechain"
         },
+        "11169": {
+            "exchangeId": "11169",
+            "exchangeName": "Kayen",
+            "exchangeSlug": "kayen"
+        },
         "11178": {
             "exchangeId": "11178",
             "exchangeName": "Uniswap v2 (World Chain)",
