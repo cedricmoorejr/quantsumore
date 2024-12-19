@@ -7395,11 +7395,6 @@
             "exchangeName": "Zyberswap",
             "exchangeSlug": "zyberswap"
         },
-        "5860": {
-            "exchangeId": "5860",
-            "exchangeName": "MiaSwap",
-            "exchangeSlug": "miaswap"
-        },
         "5869": {
             "exchangeId": "5869",
             "exchangeName": "LFJ v2 (Avalanche)",
@@ -9485,10 +9480,20 @@
             "exchangeName": "Arkham",
             "exchangeSlug": "arkham"
         },
+        "11360": {
+            "exchangeId": "11360",
+            "exchangeName": "MiaSwap",
+            "exchangeSlug": "miaswap-onus"
+        },
         "11385": {
             "exchangeId": "11385",
             "exchangeName": "BitKan",
             "exchangeSlug": "bitkan"
+        },
+        "11419": {
+            "exchangeId": "11419",
+            "exchangeName": "Shido Dex",
+            "exchangeSlug": "shido-dex"
         },
         "11421": {
             "exchangeId": "11421",
