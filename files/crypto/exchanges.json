@@ -9504,6 +9504,11 @@
             "exchangeId": "11476",
             "exchangeName": "SundaeSwap",
             "exchangeSlug": "sundaeswap-v1"
+        },
+        "11512": {
+            "exchangeId": "11512",
+            "exchangeName": "DYORSwap",
+            "exchangeSlug": "dyorswap-sonic"
         }
     }
 }
