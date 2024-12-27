@@ -6602,7 +6602,7 @@
         },
         "1653": {
             "exchangeId": "1653",
-            "exchangeName": "ZOOMEX",
+            "exchangeName": "Zoomex",
             "exchangeSlug": "zoomex"
         },
         "1654": {
@@ -9475,9 +9475,14 @@
             "exchangeName": "Arkham",
             "exchangeSlug": "arkham"
         },
+        "11359": {
+            "exchangeId": "11359",
+            "exchangeName": "Miaswap v3",
+            "exchangeSlug": "miaswap-v3"
+        },
         "11360": {
             "exchangeId": "11360",
-            "exchangeName": "MiaSwap",
+            "exchangeName": "MiaSwap v2",
             "exchangeSlug": "miaswap-onus"
         },
         "11385": {
