@@ -9515,6 +9515,11 @@
             "exchangeName": "DYORSwap",
             "exchangeSlug": "dyorswap-sonic"
         },
+        "11514": {
+            "exchangeId": "11514",
+            "exchangeName": "Solidly",
+            "exchangeSlug": "solidly-sonic"
+        },
         "11563": {
             "exchangeId": "11563",
             "exchangeName": "Aevo",
