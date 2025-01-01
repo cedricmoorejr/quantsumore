@@ -7709,36 +7709,37 @@ OM,"Outset Medical, Inc. Common Stock",Both,OM,OM
 OMAB,Grupo Aeroportuario del Centro Norte S.A.B. de C.V,Both,OMAB,OMAB
 OMC,Omnicom Group Inc.,NYSE,OMC,OMC
 OMCC,Old Market Capital Corporation - Common Stock,NASDAQ,OMCC,OMCC
-OMCL,Omnicell Inc,Both,OMCL,OMCL
-OMER,Omeros Corporation,Both,OMER,OMER
-OMEX,"Odyssey Marine Exploration, Inc",Both,OMEX,OMEX
+OMCL,"Omnicell, Inc. - Common Stock",Both,OMCL,OMCL
+OMER,Omeros Corporation - Common Stock,Both,OMER,OMER
+OMEX,"Odyssey Marine Exploration, Inc. - Common Stock",Both,OMEX,OMEX
 OMF,"OneMain Holdings, Inc.",NYSE,OMF,OMF
 OMFL,Invesco Russell 1000 Dynamic Multifactor ETF,NYSE,OMFL,OMFL
 OMFS,Invesco Russell 2000 Dynamic Multifactor ETF,NYSE,OMFS,OMFS
-OMGA,"Omega Therapeutics, Inc. Common Stock",Both,OMGA,OMGA
-OMH,Ohmyhome Limited - Ordinary Shares,Both,OMH,OMH
+OMGA,"Omega Therapeutics, Inc. - Common Stock",Both,OMGA,OMGA
+OMH,Ohmyhome Limited Ordinary Shares,Both,OMH,OMH
 OMI,"Owens & Minor, Inc.",NYSE,OMI,OMI
 OMIC,"Singular Genomics Systems, Inc. - Common Stock",Both,OMIC,OMIC
 OMQS,OMNIQ Corp. Common Stock,NYSE,OMQS,OMQS
-ON,ON Semiconductor Corp,Both,ON,ON
+ON,ON Semiconductor Corporation - Common Stock,Both,ON,ON
 ONB,Old National Bancorp - Common Stock,Both,ONB,ONB
 ONBPO,"Old National Bancorp - Depositary Shares, Each Representing a 1/40th Interest in a Share of Series C Preferred Stock",Both,ONBPO,ONBPO
 ONBPP,"Old National Bancorp - Depositary Shares, Each Representing a 1/40th Interest in a Share of Series A Preferred Stock",Both,ONBPP,ONBPP
-ONCO,"Onconetix, Inc. Common Stock",Both,ONCO,ONCO
+ONCO,"Onconetix, Inc.  - Common Stock",Both,ONCO,ONCO
 ONCT,"Oncternal Therapeutics, Inc. Common Stock",NYSE,ONCT,ONCT
 ONCY,Oncolytics Biotech Inc. - Common Shares,Both,ONCY,ONCY
 OND,ProShares On-Demand ETF,NYSE,OND,OND
-ONDS,Ondas Holdings Inc. - Common Stock,Both,ONDS,ONDS
+ONDS,Ondas Holdings Inc. Common Stock,Both,ONDS,ONDS
+ONEG,OneConstruction Group Limited - Ordinary Shares,NASDAQ,ONEG,ONEG
 ONEO,SPDR Russell 1000 Momentum Focus ETF,NYSE,ONEO,ONEO
 ONEQ,Fidelity Nasdaq Composite Index ETF,Both,ONEQ,ONEQ
 ONEV,SPDR Russell 1000 Low Volatility ETF,NYSE,ONEV,ONEV
-ONEW,OneWater Marine Inc. - Class A Common Stock,Both,ONEW,ONEW
+ONEW,OneWater Marine Inc. Class A Common Stock,Both,ONEW,ONEW
 ONEY,SPDR Russell 1000 Yield Focus ETF,NYSE,ONEY,ONEY
-ONFO,Onfolio Holdings Inc. Common Stock,Both,ONFO,ONFO
-ONFOW,Onfolio Holdings Inc. Warrant,Both,ONFOW,ONFOW
+ONFO,Onfolio Holdings Inc. - Common Stock,Both,ONFO,ONFO
+ONFOW,Onfolio Holdings Inc. - Warrant,Both,ONFOW,ONFOW
 ONL,Orion Office REIT Inc.,NYSE,ONL,ONL
 ONLN,ProShares Online Retail ETF,NYSE,ONLN,ONLN
-ONMD,OneMedNet Corp - Class A Common Stock,Both,ONMD,ONMD
+ONMD,OneMedNet Corp Class A Common Stock,Both,ONMD,ONMD
 ONMDW,OneMedNet Corp - Warrant,Both,ONMDW,ONMDW
 ONOF,Global X Adaptive U.S. Risk Management ETF,NYSE,ONOF,ONOF
 ONON,On Holding AG,NYSE,ONON,ONON
@@ -7751,7 +7752,7 @@ ONYXU,Onyx Acquisition Co. I Unit,NYSE,ONYXU,ONYXU
 ONYXW,Onyx Acquisition Co. I Warrant,NYSE,ONYXW,ONYXW
 OOMA,"Ooma, Inc. Common Stock",NYSE,OOMA,OOMA
 OOTO,Direxion Daily Travel & Vacation Bull 2X Shares,NYSE,OOTO,OOTO
-OP,OceanPal Inc. - Common Stock,Both,OP,OP
+OP,OceanPal Inc. Common Stock,Both,OP,OP
 OPA,Magnum Opus Acquisition Limited,NYSE,OPA,OPA
 OPA.U,"Magnum Opus Acquisition Limited Units, each consisting of one Class A ordinary share and one-half re",NYSE,OPA-U,OPA.U
 OPAD,Offerpad Solutions Inc.,NYSE,OPAD,OPAD
@@ -7762,7 +7763,7 @@ OPEN,Opendoor Technologies Inc  - Common Stock,Both,OPEN,OPEN
 OPER,ClearShares Ultra-Short Maturity ETF,NYSE,OPER,OPER
 OPFI,OppFi Inc.,NYSE,OPFI,OPFI
 OPGN,"OpGen, Inc",NYSE,OPGN,OPGN
-OPHC,"OptimumBank Holdings, Inc. - Common Stock",Both,OPHC,OPHC
+OPHC,"OptimumBank Holdings, Inc.",NYSE,OPHC,OPHC
 OPI,Office Properties Income Trust Common Shares of Beneficial Interest,Both,OPI,OPI
 OPINL,Office Properties Income Trust 6.375% Senior Notes due 2050,Both,OPINL,OPINL
 OPK,Opko Health Inc.,Both,OPK,OPK
@@ -11271,7 +11272,7 @@ WKSP,"Worksport, Ltd. Common Stock",Both,WKSP,WKSP
 WKSPW,"Worksport, Ltd. Warrant",NYSE,WKSPW,WKSPW
 WLAC,Willow Lane Acquisition Corp. - Class A Ordinary Shares,NASDAQ,WLAC,WLAC
 WLACU,Willow Lane Acquisition Corp. - Unit,NASDAQ,WLACU,WLACU
-WLACW,Willow Lane Acquisition Corp. - warrants,NASDAQ,WLACW,WLACW
+WLACW,Willow Lane Acquisition Corp. - Warrants,NASDAQ,WLACW,WLACW
 WLDN,"Willdan Group, Inc. - Common Stock",Both,WLDN,WLDN
 WLDR,Affinity World Leaders Equity ETF,NYSE,WLDR,WLDR
 WLDS,Wearable Devices Ltd. - Ordinary Share,Both,WLDS,WLDS
