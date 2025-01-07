@@ -9524,6 +9524,11 @@
             "exchangeId": "11563",
             "exchangeName": "Aevo",
             "exchangeSlug": "aevo"
+        },
+        "11608": {
+            "exchangeId": "11608",
+            "exchangeName": "CEEX exchange",
+            "exchangeSlug": "ceex-exchange"
         }
     }
 }
