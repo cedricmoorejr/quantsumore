@@ -8555,6 +8555,11 @@
             "exchangeName": "Nonkyc.io Exchange",
             "exchangeSlug": "nonkyc"
         },
+        "8305": {
+            "exchangeId": "8305",
+            "exchangeName": "Wagmi (Kava)",
+            "exchangeSlug": "wagmi-kava"
+        },
         "8353": {
             "exchangeId": "8353",
             "exchangeName": "PancakeSwap v2 (opBNB)",
@@ -8804,6 +8809,11 @@
             "exchangeId": "9173",
             "exchangeName": "Avascriptions",
             "exchangeSlug": "avascriptions"
+        },
+        "9178": {
+            "exchangeId": "9178",
+            "exchangeName": "Wagmi (Metis)",
+            "exchangeSlug": "wagmi-metis"
         },
         "9181": {
             "exchangeId": "9181",
@@ -9315,6 +9325,11 @@
             "exchangeName": "TNNS PROX",
             "exchangeSlug": "tnns-prox"
         },
+        "10847": {
+            "exchangeId": "10847",
+            "exchangeName": "Wagmi (IOTA)",
+            "exchangeSlug": "wagmi-iota"
+        },
         "10866": {
             "exchangeId": "10866",
             "exchangeName": "3EX",
@@ -9519,6 +9534,11 @@
             "exchangeId": "11514",
             "exchangeName": "Solidly",
             "exchangeSlug": "solidly-sonic"
+        },
+        "11545": {
+            "exchangeId": "11545",
+            "exchangeName": "Wagmi (Sonic)",
+            "exchangeSlug": "wagmi-sonic"
         },
         "11563": {
             "exchangeId": "11563",
