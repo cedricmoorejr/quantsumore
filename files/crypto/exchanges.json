@@ -9327,7 +9327,7 @@
         },
         "10847": {
             "exchangeId": "10847",
-            "exchangeName": "Wagmi (IOTA)",
+            "exchangeName": "Wagmi (IOTA EVM)",
             "exchangeSlug": "wagmi-iota"
         },
         "10866": {
@@ -9549,6 +9549,11 @@
             "exchangeId": "11608",
             "exchangeName": "CEEX exchange",
             "exchangeSlug": "ceex-exchange"
+        },
+        "11618": {
+            "exchangeId": "11618",
+            "exchangeName": "Splash",
+            "exchangeSlug": "splash"
         }
     }
 }
