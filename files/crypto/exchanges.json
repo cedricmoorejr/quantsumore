@@ -8840,11 +8840,6 @@
             "exchangeName": "Hibt",
             "exchangeSlug": "hibt"
         },
-        "9243": {
-            "exchangeId": "9243",
-            "exchangeName": "Splash",
-            "exchangeSlug": "splash-trade"
-        },
         "9244": {
             "exchangeId": "9244",
             "exchangeName": "Dojoswap",
