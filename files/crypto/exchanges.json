@@ -9549,6 +9549,11 @@
             "exchangeId": "11618",
             "exchangeName": "Splash",
             "exchangeSlug": "splash"
+        },
+        "11646": {
+            "exchangeId": "11646",
+            "exchangeName": "DuckSwap",
+            "exchangeSlug": "duckswap"
         }
     }
 }
