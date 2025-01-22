@@ -9554,6 +9554,16 @@
             "exchangeId": "11646",
             "exchangeName": "DuckSwap",
             "exchangeSlug": "duckswap"
+        },
+        "11664": {
+            "exchangeId": "11664",
+            "exchangeName": "Cryptomus",
+            "exchangeSlug": "cryptomus"
+        },
+        "11665": {
+            "exchangeId": "11665",
+            "exchangeName": "Dzengi.com",
+            "exchangeSlug": "dzengi-com"
         }
     }
 }
