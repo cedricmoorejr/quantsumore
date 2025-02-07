@@ -8785,6 +8785,11 @@
             "exchangeName": "SquadSwap v2",
             "exchangeSlug": "squadswap-v2"
         },
+        "8989": {
+            "exchangeId": "8989",
+            "exchangeName": "Pharaoh Exchange",
+            "exchangeSlug": "pharaoh-exchange"
+        },
         "9015": {
             "exchangeId": "9015",
             "exchangeName": "Websea",
@@ -8908,7 +8913,7 @@
         "9449": {
             "exchangeId": "9449",
             "exchangeName": "Echobit",
-            "exchangeSlug": "bitoy"
+            "exchangeSlug": "echobit"
         },
         "9450": {
             "exchangeId": "9450",
