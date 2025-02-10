@@ -9569,6 +9569,26 @@
             "exchangeId": "11665",
             "exchangeName": "Dzengi.com",
             "exchangeSlug": "dzengi-com"
+        },
+        "11742": {
+            "exchangeId": "11742",
+            "exchangeName": "Kyo Finance V3",
+            "exchangeSlug": "kyo-finance-v3"
+        },
+        "11747": {
+            "exchangeId": "11747",
+            "exchangeName": "Kodiak v3",
+            "exchangeSlug": "kodiak-v3"
+        },
+        "11748": {
+            "exchangeId": "11748",
+            "exchangeName": "Kodiak v2",
+            "exchangeSlug": "kodiak-v2"
+        },
+        "11761": {
+            "exchangeId": "11761",
+            "exchangeName": "Kyo Finance V2",
+            "exchangeSlug": "kyo-finance-v2"
         }
     }
 }
