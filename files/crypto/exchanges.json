@@ -9575,6 +9575,11 @@
             "exchangeName": "Kyo Finance V3",
             "exchangeSlug": "kyo-finance-v3"
         },
+        "11746": {
+            "exchangeId": "11746",
+            "exchangeName": "Uniswap v3 (Abstract)",
+            "exchangeSlug": "uniswap-v3-abstract"
+        },
         "11747": {
             "exchangeId": "11747",
             "exchangeName": "Kodiak v3",
@@ -9584,6 +9589,11 @@
             "exchangeId": "11748",
             "exchangeName": "Kodiak v2",
             "exchangeSlug": "kodiak-v2"
+        },
+        "11749": {
+            "exchangeId": "11749",
+            "exchangeName": "Uniswap v2(Abstract)",
+            "exchangeSlug": "uniswap-v2-abstract"
         },
         "11761": {
             "exchangeId": "11761",
