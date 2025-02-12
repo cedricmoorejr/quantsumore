@@ -9599,6 +9599,11 @@
             "exchangeId": "11761",
             "exchangeName": "Kyo Finance V2",
             "exchangeSlug": "kyo-finance-v2"
+        },
+        "11805": {
+            "exchangeId": "11805",
+            "exchangeName": "Bex (Bera)",
+            "exchangeSlug": "bex-bera"
         }
     }
 }
