@@ -25,6 +25,8 @@ import re
 # Custom
 from .connection import http_client
 from ..web_utils import url_encode_decode, HTMLclean
+from ..api.parse_tools import extract_html_element_by_keyword, remove_html_tags, extract_by_keyword, extract_ticker
+
 
 def normalize_response(response, target_key="response", onlyNormalize=False, keep_structure=False):
     """
@@ -107,7 +109,8 @@ class validateHTMLResponse:
     """	    
     def __init__(self, html):
         if not self.__is_valid_html_str(html):
-            return False
+            # return False
+            raise ValueError("Provided HTML content is not valid.")            
         self.html = HTMLclean.decode(html)
         
     def __is_valid_html_str(self, html):
@@ -138,20 +141,13 @@ class validateHTMLResponse:
         
     def __ticker_search(self, ticker):
         html_content = self.html        
-        ticker = re.sub(r'\s+', '', ticker).upper()
-        section_pattern = r'<div class="top yf-1s1umie">(.*?)</div>\s*</div>\s*</div>'
-        section_match = re.search(section_pattern, html_content, re.DOTALL)
-        if section_match:
-            section_content = section_match.group(0)
-        ticker_section_match = re.search(r'<section[^>]*class="container yf-xxbei9 paddingRight"[^>]*>(.*?)</section>', section_content, re.DOTALL)        
-        if ticker_section_match:
-            ticker_section_content = ticker_section_match.group(1)
-            s = re.sub(r'\s*<.*?>\s*', '', ticker_section_content)  
-            ticker_match = re.search(r'\(([^)]+)\)$', s)
-            if ticker_match:
-                found_ticker = ticker_match.group(1)
-                if found_ticker == ticker:
-                    return True
+        symbol = re.sub(r'\s+', '', symbol).upper()
+        ticker_match = extract_ticker(html_content).ticker
+       
+        if ticker_match:
+            found_ticker = remove_html_tags(ticker_match)
+            if found_ticker == symbol:
+                return True            
         return False
 
     def __currencypair_search(self, currency_pair):
@@ -180,13 +176,15 @@ class validateHTMLResponse:
     def equity(self, ticker):
         html_content = self.html
         if self.__ticker_search(ticker=ticker):
-            profile_check = re.search(r'<section data-testid="description".*?<h3.*?>\s*Description\s*</h3>.*?</section>', html_content, re.IGNORECASE | re.DOTALL)
-            stats_check = re.search(r'<div\s+data-testid="quote-statistics"[^>]*>.*?<ul[^>]*>.*?</ul>.*?</div>', html_content, re.IGNORECASE | re.DOTALL)
+            # profile_check = re.search(r'<section data-testid="description".*?<h3.*?>\s*Description\s*</h3>.*?</section>', html_content, re.IGNORECASE | re.DOTALL)
+            # stats_check = re.search(r'<div\s+data-testid="quote-statistics"[^>]*>.*?<ul[^>]*>.*?</ul>.*?</div>', html_content, re.IGNORECASE | re.DOTALL)        	
+            profile_check = extract_by_keyword(html_content, keyword=["Key Executives", "Corporate Governance", "Description"], tag_name="h3")
+            stats_check = extract_by_keyword(html_content, keyword=["Financial Highlights", "Valuation Measures", "Trading Information"], tag_name="h3")
             if profile_check or stats_check:
                 return True
         return False
        
-   
+       
 def clean_initial_content(content):
     """
     Clean the input content by removing entries with URL keys and extracting the contents within their 'response' sub-key.

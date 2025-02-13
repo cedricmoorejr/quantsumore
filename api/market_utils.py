@@ -36,7 +36,7 @@ from ..strata_utils import IterDict
 
 ## Equity Utils
 ##=================================================================================================================================
-_STOCK_TICKERS_URL = "https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v2.1.0b1/files/stock_tickers.txt"
+_STOCK_TICKERS_URL = "https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v2.1.4b1/files/stock_tickers.txt"
 class equityquery:
     _registry = {}
 
@@ -113,7 +113,7 @@ equityquery.load_data(url=_STOCK_TICKERS_URL)
 
 ## Crypto Utils
 ##=================================================================================================================================
-_CRYPTO_CONFIG_URL = "https://raw.githubusercontent.com/cedricmoorejr/quantsumore/refs/heads/v2.1.0b1/files/crypto/all_data.json"
+_CRYPTO_CONFIG_URL = "https://raw.githubusercontent.com/cedricmoorejr/quantsumore/refs/heads/v2.1.4b1/files/crypto/all_data.json"
 _CRYPTO_JSON_CONFIG_FILE = 'crypto.json'
 _CRYPTO_DATABASE_FILE = 'crypto.db'
 class CryptoConfig:

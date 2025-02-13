@@ -24,6 +24,167 @@ import pandas as pd
 
 # Custom
 from ..date_parser import dtparse
+# from ..web_utils import url_encode_decode
+
+
+
+# Precompile regex patterns for efficiency
+_SCRIPT_STYLE_RE = re.compile(
+    r'<(?:script|style)[^>]*>.*?</(?:script|style)>',
+    flags=re.IGNORECASE | re.DOTALL
+)
+_COMMENT_RE = re.compile(
+    r'<!--.*?-->',
+    flags=re.DOTALL
+)
+_TAG_RE = re.compile(
+    r'<[^>]+>'
+)
+_WHITESPACE_RE = re.compile(
+    r'\s+'
+)
+
+def remove_html_tags(html_string):
+    """
+    Removes HTML tags, script/style blocks, and HTML comments from the input string using regex.
+    """
+    # 1. Remove script/style blocks
+    text = _SCRIPT_STYLE_RE.sub('', html_string)
+    # 2. Remove HTML comments
+    text = _COMMENT_RE.sub('', text)
+    # 3. Remove all remaining HTML tags
+    text = _TAG_RE.sub('', text)
+    # 4. Normalize whitespace
+    text = _WHITESPACE_RE.sub(' ', text).strip()
+    
+    return text
+
+
+def extract_html_element_by_keyword(html_content, keyword, tag_name="section"):
+    """
+    Extract an HTML element containing a specific keyword.
+
+    This function searches the provided HTML content for the first occurrence of a given keyword.
+    It then looks backwards to find the nearest opening tag of the specified tag name (default is "section")
+    that appears before the keyword. Using a regex to handle nested tags of the same type, the function
+    extracts and returns the entire HTML element, including its content. If the keyword or the matching tag
+    is not found, or if the HTML is malformed, the function returns None.
+
+    Args:
+        html_content (str): The HTML content as a string.
+        keyword (str or list): The keyword(s) to locate within the desired HTML element.
+        tag_name (str): The name of the HTML tag to extract (default is "section").
+
+    Returns:
+        str or None: The full HTML element as a string if found, otherwise None.
+    """
+    import html as HTML
+
+    html_content = HTML.unescape(html_content)
+    
+    # Determine the first occurrence of any keyword in the HTML content.
+    keyword_index = -1
+    found_keyword = None
+
+    if isinstance(keyword, list):
+        for key in keyword:
+            index = html_content.find(key)
+            if index != -1:
+                found_keyword = key
+                keyword_index = index
+                break  # Exit as soon as a match is found
+
+        if keyword_index == -1:
+            # print("No matching keyword found in the HTML content.")
+            return None
+    else:
+        # Locate the single keyword in the HTML content.
+        keyword_index = html_content.find(keyword)
+        if keyword_index == -1:
+            # print("Keyword not found in the HTML content.")
+            return None
+        found_keyword = keyword  # Store the found keyword
+
+    # Find the nearest opening tag (e.g., <section>) before the keyword.
+    element_start_index = html_content.rfind(f"<{tag_name}", 0, keyword_index)
+    if element_start_index == -1:
+        # print(f"No opening <{tag_name}> tag found before the keyword '{found_keyword}'.")
+        return None
+
+    # Compile a regex to match opening or closing tags of the specified tag name.
+    element_pattern = re.compile(rf"</?{tag_name}\b", re.IGNORECASE)
+    nesting_depth = 0
+    element_end_index = None
+
+    # Iterate over all occurrences of the tag in the HTML.
+    for match in element_pattern.finditer(html_content, element_start_index):
+        tag_fragment = match.group()  # Matches either '<tag_name' or '</tag_name>'
+        if tag_fragment.startswith("</"):
+            nesting_depth -= 1  # Found a closing tag.
+        else:
+            nesting_depth += 1  # Found an opening tag.
+
+        # When nesting depth returns to zero, we've closed the initial tag.
+        if nesting_depth == 0:
+            closing_bracket_index = html_content.find(">", match.start())
+            if closing_bracket_index == -1:
+                # print(f"Malformed HTML: closing '>' not found for <{tag_name}> tag.")
+                return None
+            element_end_index = closing_bracket_index
+            break
+
+    if element_end_index is None:
+        # print(f"Matching closing </{tag_name}> tag not found.")
+        return None
+
+    # Extract and return the complete HTML element.
+    extracted_element = html_content[element_start_index:element_end_index+1]
+    return extracted_element
+
+
+def extract_by_keyword(html_content, keyword, tag_name="section", first_only=True):
+    """
+    Extract HTML element(s) of a given tag type that contain a specific keyword.
+    
+    Args:
+        html_content (str): The HTML content as a string.
+        keyword (str or list): The keyword(s) to locate within the desired HTML element(s).
+        tag_name (str): The HTML tag name to search for (default is "section").
+        first_only (bool): If True, return only the first occurrence found (default).
+                           If False, return a list of all matching elements.
+                           
+    Returns:
+        str or list or None: If first_only is True, returns the first matching element as a string,
+                             or None if no match is found.
+                             If first_only is False, returns a list of all matching elements (as strings),
+                             which may be empty if no match is found.
+    """
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html_content, "html.parser")
+    matches = []
+    
+    for element in soup.find_all(tag_name):
+        text = element.get_text()
+        if isinstance(keyword, list):
+            # Check if any keyword in the list appears in the element's text.
+            if any(key in text for key in keyword):
+                if first_only:
+                    return str(element)
+                else:
+                    matches.append(str(element))
+        else:
+            if keyword in text:
+                if first_only:
+                    return str(element)
+                else:
+                    matches.append(str(element))
+                    
+    if first_only:
+        return None
+    else:
+        return matches
+
+
 
 class extract_company_name:
     def __init__(self, html):
@@ -76,6 +237,68 @@ class extract_company_name:
         return ['name']            
            
 
+class extract_ticker:
+    """ From YahooFinance """
+    def __init__(self, html):
+        self.ticker = None
+        if html:
+            self.html = html
+            self.safely_find_ticker(html=html)
+
+    def safely_find_ticker(self, html):
+        import html as HTML
+        html = HTML.unescape(html_content)
+        start_tag = '<title>'
+        end_tag = '</title>'
+        start_pos = self.html.find(start_tag)
+        end_pos = self.html.find(end_tag, start_pos)
+        if start_pos != -1 and end_pos != -1:
+            title_content = self.html[start_pos + len(start_tag):end_pos]
+            cleaned_content = HTMLclean.decode(title_content)
+            match = re.search(r'\((.*?)\)', cleaned_content)
+            if match:
+                self.ticker = match.group(1)            
+        return None
+
+
+# class market_find:
+#     def __init__(self, html):
+#         self.market = None
+#         self.exchanges = ['NasdaqGS', 'NYSE', 'NYSEArca']
+#         
+#         if html:
+#             self.html = html
+#             self._extract_exchange_text(html=html)
+#             
+#     def _extract_exchange_text(self, html):
+#         try:
+#             section_pattern = r'<div class="top yf-1s1umie">(.*?)</div>\s*</div>\s*</div>'
+#             section_match = re.search(section_pattern, html, re.DOTALL)
+# 
+#             if section_match:
+#                 section_content = section_match.group(0)
+#             else:
+#                 raise ValueError("No section match found")
+# 
+#             exchange_pattern = r'<span class="exchange yf-wk4yba">.*?<span>(.*?)</span>.*?<span>(.*?)</span>'
+#             exchange_match = re.search(exchange_pattern, section_content, re.DOTALL)
+# 
+#             if exchange_match:
+#                 exchange_info = list(exchange_match.groups())
+#                 for exchange in self.exchanges:
+#                     if any(exchange in item for item in exchange_info):
+#                         self.market = exchange
+#                         break
+#             else:
+#                 raise ValueError("No exchange match found")
+# 
+#         except Exception:
+#             print("No exchange match found")
+#             self.market = None
+# 
+#     def __dir__(self):
+#         return ['market']
+
 class market_find:
     def __init__(self, html):
         self.market = None
@@ -87,23 +310,13 @@ class market_find:
             
     def _extract_exchange_text(self, html):
         try:
-            section_pattern = r'<div class="top yf-1s1umie">(.*?)</div>\s*</div>\s*</div>'
-            section_match = re.search(section_pattern, html, re.DOTALL)
+            section = extract_html_element_by_keyword(html, keyword=[e + " - " for e in self.exchanges], tag_name="section")    
+            text = extract_html_element_by_keyword(section, keyword=self.exchanges, tag_name="span")
+            text_clean = remove_html_tags(text)
 
-            if section_match:
-                section_content = section_match.group(0)
-            else:
-                raise ValueError("No section match found")
-
-            exchange_pattern = r'<span class="exchange yf-wk4yba">.*?<span>(.*?)</span>.*?<span>(.*?)</span>'
-            exchange_match = re.search(exchange_pattern, section_content, re.DOTALL)
-
-            if exchange_match:
-                exchange_info = list(exchange_match.groups())
-                for exchange in self.exchanges:
-                    if any(exchange in item for item in exchange_info):
-                        self.market = exchange
-                        break
+            if text_clean:
+                # Check which exchange name the text starts with
+                self.market = next((exchange for exchange in self.exchanges if text_clean.startswith(exchange)), None)
             else:
                 raise ValueError("No exchange match found")
 
@@ -153,55 +366,7 @@ class extract_sector:
         return ['sector']
 
 
-# class extract_ticker:
-#     """ From YahooFinance """
-#     def __init__(self, html):
-#         self.ticker = None
-#         if html:
-#             self.html = html
-#             self.safely_find_ticker(html=html)
-#                 
-#     def safely_find_ticker(self, html):
-#         section_pattern = r'<div class="top yf-1s1umie">(.*?)</div>\s*</div>\s*</div>'
-#         section_match = re.search(section_pattern, html, re.DOTALL)
-# 
-#         if section_match:
-#             section_content = section_match.group(0)
-# 
-#         ticker_section_match = re.search(r'<section[^>]*class="container yf-xxbei9 paddingRight"[^>]*>(.*?)</section>', section_content, re.DOTALL)        
-#         if ticker_section_match:
-#             ticker_section_content = ticker_section_match.group(1)
-#             s = re.sub(r'\s*<.*?>\s*', '', ticker_section_content)  
-#             ticker_match = re.search(r'\(([^)]+)\)$', s)
-#             if ticker_match:
-#                 self.ticker = ticker_match.group(1)      
-#         return None
-
-class extract_ticker:
-    """ From YahooFinance """
-    def __init__(self, html):
-        self.ticker = None
-        if html:
-            self.html = html
-            self.safely_find_ticker(html=html)
-                
-    def safely_find_ticker(self, html):
-        section_pattern = r'<div class="top yf-1s1umie">(.*?)</div>\s*</div>\s*</div>'
-        section_match = re.search(section_pattern, html, re.DOTALL)
-
-        if section_match:
-            section_content = section_match.group(1)  # Ensure extracting the content within the group
-
-            ticker_section_match = re.search(r'<section[^>]*class="container yf-xxbei9 paddingRight"[^>]*>(.*?)</section>', section_content, re.DOTALL)        
-            if ticker_section_match:
-                ticker_section_content = ticker_section_match.group(1)
-                s = re.sub(r'\s*<.*?>\s*', '', ticker_section_content)
-                ticker_match = re.search(r'\(([^)]+)\)$', s)
-                if ticker_match:
-                    self.ticker = ticker_match.group(1)      
-        else:
-            return None
-
+       
 class isDelisted:
     """ From YahooFinance """	
     def __init__(self, html):
@@ -231,6 +396,8 @@ class isDelisted:
             self.listed = True
     def __dir__(self):
         return ['listed']
+
+
 
 def convert_to_float(value, roundn=0):
     """
@@ -289,7 +456,7 @@ def extract_currency_pair_from_url(url):
     pattern = r'ratepair=([A-Z]+)|/quotes/%5E([A-Z]+)'
     match = re.search(pattern, url, re.IGNORECASE)
     if match:
-        return match.group(1)
+        return match.group(1) if match.group(1) is not None else match.group(2)
     else:
         return None
        
@@ -328,39 +495,15 @@ def convert_to_yield(dyield):
         return round(dyield, 4)
     return None
 
-      
-def convert_to_float(value, roundn=0):
-    """
-    Converts a given value to a float, removing any dollar signs and commas.
-    If the value contains a percentage sign or a slash, it is not converted.
-    
-    Args:
-    value (str): The string value to convert.
-    
-    Returns:
-    float or original value: Returns the float conversion if applicable, or the original value.
-    """
-    try:
-        value = re.sub(r'[\$,]', '', str(value))
-        if '%' not in value and '/' not in value:
-            if roundn:
-                return round(float(value),roundn)
-            return float(value)
-        else:
-            return value
-    except ValueError:
-        return value
-
-
 
 
 
 
 
 def __dir__():
-    return ['market_find', 'extract_company_name', 'extract_sector', 'extract_ticker', 'isDelisted']
+    return ['market_find', 'extract_company_name', 'extract_sector', 'extract_ticker', 'isDelisted', 'extract_html_element_by_keyword', 'remove_html_tags', 'extract_by_keyword']
 
-__all__ = ['market_find', 'extract_company_name', 'extract_sector', 'extract_ticker', 'isDelisted']
+__all__ = ['market_find', 'extract_company_name', 'extract_sector', 'extract_ticker', 'isDelisted', 'extract_html_element_by_keyword', 'remove_html_tags', 'extract_by_keyword']
 
 
 

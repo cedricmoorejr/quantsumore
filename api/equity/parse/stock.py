@@ -39,7 +39,8 @@ from ...parse_tools import(
     convert_to_float, 
     convert_date, 
     parse_scaled_number,
-    extract_symbol_from_url
+    extract_symbol_from_url,
+    extract_html_element_by_keyword
 )
 
 from ...shape_tools import(
@@ -491,8 +492,9 @@ class last:
         return ['DATA']
 
 
-## Via HTML
-##========================================================================
+
+
+#────────── Via HTML ───────────────────────────────────────────────────────────────────────────────────
 class quote_statistics:
     def __init__(self, html_content=None):
         self.statistics = None
@@ -530,8 +532,28 @@ class quote_statistics:
             if not html_check:
                 self.error = True
         
+    # def extract_stats(self, html, company_name):
+    #     containers = re.findall(r'(<div[^>]*>.*?</div>)', html, re.DOTALL)
+    #     matched_html = ""
+    # 
+    #     for container in containers:
+    #         if '<ul' in container and '<li' in container:
+    #             found_fields = [field for field in self.target_fields if field in container]                
+    #             if found_fields:
+    #                 matched_html += container + "\n"
+    #     if matched_html:
+    #         matched_html = HTMLclean.decode(matched_html)
+    #         matches = re.findall(r'<span class="label yf-mrt107">(.*?)</span>\s*<span class="value yf-mrt107">(.*?)</span>', matched_html, re.DOTALL) 
+    #         if matches:
+    #             cleaned_data = [(label, re.sub(r'<.*?>', '', value)) for label, value in matches]
+    #             company_name = company_name if isinstance(company_name, str) else ''  
+    #             statistics_dict = {label: value.strip() for label, value in cleaned_data}
+    #             self.statistics = statistics_dict                
+    #     return None
+
     def extract_stats(self, html, company_name):
-        containers = re.findall(r'(<div[^>]*>.*?</div>)', html, re.DOTALL)
+        section_content = extract_html_element_by_keyword(html, "quote-statistics", tag_name="div")
+        containers = re.findall(r'(<div[^>]*>.*?</div>)', section_content, re.DOTALL)
         matched_html = ""
 
         for container in containers:
@@ -539,14 +561,36 @@ class quote_statistics:
                 found_fields = [field for field in self.target_fields if field in container]                
                 if found_fields:
                     matched_html += container + "\n"
+                    
         if matched_html:
             matched_html = HTMLclean.decode(matched_html)
-            matches = re.findall(r'<span class="label yf-mrt107">(.*?)</span>\s*<span class="value yf-mrt107">(.*?)</span>', matched_html, re.DOTALL) 
-            if matches:
-                cleaned_data = [(label, re.sub(r'<.*?>', '', value)) for label, value in matches]
-                company_name = company_name if isinstance(company_name, str) else ''  
-                statistics_dict = {label: value.strip() for label, value in cleaned_data}
-                self.statistics = statistics_dict                
+
+            stats = {}
+            # Find each <li> ... </li> block (non-greedy)
+            li_blocks = re.findall(r'<li[^>]*>(.*?)</li>', html, re.DOTALL)
+            
+            for block in li_blocks:
+                # Extract the label using a regex that targets the <span> with class "label"
+                label_match = re.search(
+                    r'<span[^>]*class="[^"]*\blabel\b[^"]*"[^>]*>(.*?)</span>',
+                    block,
+                    re.DOTALL
+                )
+                # Extract the value using a regex that targets the <span> with class "value"
+                value_match = re.search(
+                    r'<span[^>]*class="[^"]*\bvalue\b[^"]*"[^>]*>(.*?)</span>',
+                    block,
+                    re.DOTALL
+                )
+                
+                if label_match and value_match:
+                    label = label_match.group(1).strip()
+                    value_html = value_match.group(1).strip()
+                    # Remove any inner HTML tags from the value (for example, <fin-streamer> tags)
+                    value = re.sub(r'<[^>]+>', '', value_html).strip()
+                    stats[label] = value
+                self.statistics = stats
+               
         return None
 
     def parse(self, html, company_name):

@@ -52,7 +52,7 @@ class UserAgentRandomizer:
         Retrieves a random user agent string from the predefined list of user agents across various platforms and browsers.
         Adjusts the selection process based on the history of the last five selections to discourage frequently repeated choices.
         """
-        cls.user_agents = requests.get('https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v2.1.0b1/files/user_agents.json').json()
+        cls.user_agents = requests.get('https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v2.1.4b1/files/user_agents.json').json()
 
         all_user_agents = []
         for category in cls.user_agents.values():

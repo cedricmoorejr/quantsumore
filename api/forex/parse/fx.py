@@ -21,7 +21,7 @@
 import re
 import pandas as pd
 import json
-import html
+# import html
 from copy import deepcopy
 import time
 
@@ -32,7 +32,8 @@ from ....date_parser import dtparse
 from ...._http.response_utils import validateHTMLResponse, clean_initial_content
 from ....strata_utils import IterDict
 from ...shape_tools import is_valid_dataframe, fix_and_validate_dict_string_or_list, process_dict_or_list, remove_nested_keys, combine_dicts, rename_keys, reorder_dict
-from ...parse_tools import convert_to_float, extract_currency_pair_from_url
+from ...parse_tools import convert_to_float, extract_currency_pair_from_url, extract_html_element_by_keyword
+
 
 
 
@@ -356,11 +357,11 @@ class live_bid_ask:
         return ['DATA']
 
 
-## Via HTML
-##========================================================================
+
+
+#────────── Via HTML ───────────────────────────────────────────────────────────────────────────────────
 class live_quote:
     def __init__(self, html_content=None):
-        self.html_content = html_content
         self.currency_pair = None
         self.timestamp = None
         self.bid_ask_prices = None
@@ -550,10 +551,9 @@ class live_quote:
 
 
 
-
 class conversion:
     def __init__(self, html_content=None, conversion_amount=1):
-        self.html_content = html_content
+        # self.html_content = html_content
         self.currency_pair = None
         self.exchange_rate = None
         self.converted_exchange_rate = None        
