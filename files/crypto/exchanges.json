@@ -9600,10 +9600,20 @@
             "exchangeName": "Kyo Finance V2",
             "exchangeSlug": "kyo-finance-v2"
         },
+        "11804": {
+            "exchangeId": "11804",
+            "exchangeName": "Pharaoh Exchange v1",
+            "exchangeSlug": "pharaoh-exchange-v1"
+        },
         "11805": {
             "exchangeId": "11805",
             "exchangeName": "Bex (Bera)",
             "exchangeSlug": "bex-bera"
+        },
+        "11806": {
+            "exchangeId": "11806",
+            "exchangeName": "XBO.com",
+            "exchangeSlug": "xbo-com"
         }
     }
 }
