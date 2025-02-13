@@ -6,7 +6,7 @@ on:
     - cron: '0 1 * * 1-5'  # Run at 1 AM on weekdays    
   push:
     branches:
-      - v2.1.0b1
+      - v2.1.4b1
 jobs:
   download-and-save:
     runs-on: ubuntu-latest
