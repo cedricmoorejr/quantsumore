@@ -9614,6 +9614,31 @@
             "exchangeId": "11806",
             "exchangeName": "XBO.com",
             "exchangeSlug": "xbo-com"
+        },
+        "11829": {
+            "exchangeId": "11829",
+            "exchangeName": "Uniswap v3 (Unichain)",
+            "exchangeSlug": "uniswap-v3-unichain"
+        },
+        "11830": {
+            "exchangeId": "11830",
+            "exchangeName": "Uniswap v2(Unichain)",
+            "exchangeSlug": "uniswap-v2-unichain"
+        },
+        "11831": {
+            "exchangeId": "11831",
+            "exchangeName": "StoryHunt",
+            "exchangeSlug": "storyhunt"
+        },
+        "11832": {
+            "exchangeId": "11832",
+            "exchangeName": "PiperX v3",
+            "exchangeSlug": "piperx-v3"
+        },
+        "11833": {
+            "exchangeId": "11833",
+            "exchangeName": "PiperX v2",
+            "exchangeSlug": "piperx-v2"
         }
     }
 }
