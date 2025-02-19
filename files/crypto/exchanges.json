@@ -9639,6 +9639,11 @@
             "exchangeId": "11833",
             "exchangeName": "PiperX v2",
             "exchangeSlug": "piperx-v2"
+        },
+        "11857": {
+            "exchangeId": "11857",
+            "exchangeName": "Bitwyre Exchange",
+            "exchangeSlug": "bitwyre"
         }
     }
 }
