@@ -9644,6 +9644,21 @@
             "exchangeId": "11857",
             "exchangeName": "Bitwyre Indonesia",
             "exchangeSlug": "bitwyre-id"
+        },
+        "11910": {
+            "exchangeId": "11910",
+            "exchangeName": "HyperSwap v2",
+            "exchangeSlug": "hyperswap-v2"
+        },
+        "11911": {
+            "exchangeId": "11911",
+            "exchangeName": "HyperSwap v3",
+            "exchangeSlug": "hyperswap-v3"
+        },
+        "11921": {
+            "exchangeId": "11921",
+            "exchangeName": "Darkex Exchange",
+            "exchangeSlug": "darkex-exchange"
         }
     }
 }
