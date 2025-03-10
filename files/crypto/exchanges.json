@@ -9645,6 +9645,11 @@
             "exchangeName": "Bitwyre Indonesia",
             "exchangeSlug": "bitwyre-id"
         },
+        "11889": {
+            "exchangeId": "11889",
+            "exchangeName": "LFJ v0 (Avalanche)",
+            "exchangeSlug": "lfj-v0-avalanche"
+        },
         "11910": {
             "exchangeId": "11910",
             "exchangeName": "HyperSwap v2",
