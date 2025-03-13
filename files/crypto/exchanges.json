@@ -9187,7 +9187,7 @@
         },
         "10109": {
             "exchangeId": "10109",
-            "exchangeName": "Niza Global",
+            "exchangeName": "Niza.io",
             "exchangeSlug": "niza-global"
         },
         "10146": {
@@ -9660,6 +9660,16 @@
             "exchangeName": "HyperSwap v3",
             "exchangeSlug": "hyperswap-v3"
         },
+        "11918": {
+            "exchangeId": "11918",
+            "exchangeName": "Uniswap v2 (Soneium)",
+            "exchangeSlug": "uniswap-v2-soneium"
+        },
+        "11920": {
+            "exchangeId": "11920",
+            "exchangeName": "Uniswap v3 (Soneium)",
+            "exchangeSlug": "uniswap-v3-soneium"
+        },
         "11921": {
             "exchangeId": "11921",
             "exchangeName": "Darkex Exchange",
@@ -9669,6 +9679,16 @@
             "exchangeId": "11955",
             "exchangeName": "Uniswap v4 (Ethereum)",
             "exchangeSlug": "uniswap-v4"
+        },
+        "11956": {
+            "exchangeId": "11956",
+            "exchangeName": "Uniswap v4 (Optimism)",
+            "exchangeSlug": "uniswap-v4-optimism"
+        },
+        "11968": {
+            "exchangeId": "11968",
+            "exchangeName": "Iguanadex",
+            "exchangeSlug": "iguanadex"
         }
     }
 }
