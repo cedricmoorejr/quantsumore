@@ -9675,6 +9675,21 @@
             "exchangeName": "Darkex Exchange",
             "exchangeSlug": "darkex-exchange"
         },
+        "11950": {
+            "exchangeId": "11950",
+            "exchangeName": "Uniswap v4 (Arbitrum)",
+            "exchangeSlug": "uniswap-v4-arbitrum"
+        },
+        "11951": {
+            "exchangeId": "11951",
+            "exchangeName": "Uniswap v4 (Base)",
+            "exchangeSlug": "uniswap-v4-base"
+        },
+        "11952": {
+            "exchangeId": "11952",
+            "exchangeName": "Uniswap v4 (Polygon)",
+            "exchangeSlug": "uniswap-v4-polygon"
+        },
         "11955": {
             "exchangeId": "11955",
             "exchangeName": "Uniswap v4 (Ethereum)",
@@ -9685,10 +9700,30 @@
             "exchangeName": "Uniswap v4 (Optimism)",
             "exchangeSlug": "uniswap-v4-optimism"
         },
+        "11957": {
+            "exchangeId": "11957",
+            "exchangeName": "Uniswap v4 (Blast)",
+            "exchangeSlug": "uniswap-v4-blast"
+        },
+        "11958": {
+            "exchangeId": "11958",
+            "exchangeName": "Uniswap v4 (World Chain)",
+            "exchangeSlug": "uniswap-v4-world-chain"
+        },
+        "11959": {
+            "exchangeId": "11959",
+            "exchangeName": "Uniswap v4 (Avalanche)",
+            "exchangeSlug": "uniswap-v4-avalanche"
+        },
         "11968": {
             "exchangeId": "11968",
             "exchangeName": "Iguanadex",
             "exchangeSlug": "iguanadex"
+        },
+        "11978": {
+            "exchangeId": "11978",
+            "exchangeName": "GaiaEx",
+            "exchangeSlug": "gaiaex"
         }
     }
 }
