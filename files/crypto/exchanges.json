@@ -9724,6 +9724,11 @@
             "exchangeId": "11978",
             "exchangeName": "GaiaEx",
             "exchangeSlug": "gaiaex"
+        },
+        "11989": {
+            "exchangeId": "11989",
+            "exchangeName": "Levex",
+            "exchangeSlug": "levex"
         }
     }
 }
