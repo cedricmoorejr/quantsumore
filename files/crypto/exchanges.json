@@ -5717,8 +5717,8 @@
         },
         "1452": {
             "exchangeId": "1452",
-            "exchangeName": "APX",
-            "exchangeSlug": "apollox"
+            "exchangeName": "Astherus Orderbook Perp",
+            "exchangeSlug": "astherus-orderbook-perp"
         },
         "1454": {
             "exchangeId": "1454",
@@ -8582,13 +8582,13 @@
         },
         "8411": {
             "exchangeId": "8411",
-            "exchangeName": "APX v2 (Arbitrum)",
-            "exchangeSlug": "apollox-v2-arbitrum"
+            "exchangeName": "AstherusEX (Arb)",
+            "exchangeSlug": "astherusex-arbitrum"
         },
         "8418": {
             "exchangeId": "8418",
-            "exchangeName": "APX v2 (BSC)",
-            "exchangeSlug": "apollox-v2-bsc"
+            "exchangeName": "AstherusEX (BSC)",
+            "exchangeSlug": "astherusex-bsc"
         },
         "8441": {
             "exchangeId": "8441",
@@ -9729,6 +9729,11 @@
             "exchangeId": "11989",
             "exchangeName": "Levex",
             "exchangeSlug": "levex"
+        },
+        "12030": {
+            "exchangeId": "12030",
+            "exchangeName": "CoinP",
+            "exchangeSlug": "coinp"
         }
     }
 }
