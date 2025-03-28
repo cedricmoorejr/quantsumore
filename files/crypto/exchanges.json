@@ -8910,6 +8910,11 @@
             "exchangeName": "Uniswap v2 (Polygon)",
             "exchangeSlug": "uniswap-v2-polygon"
         },
+        "9415": {
+            "exchangeId": "9415",
+            "exchangeName": "Uniswap v2 (BSC)",
+            "exchangeSlug": "uniswap-v2-bsc"
+        },
         "9449": {
             "exchangeId": "9449",
             "exchangeName": "Echobit",
@@ -9380,6 +9385,11 @@
             "exchangeName": "BTX Exchange",
             "exchangeSlug": "btx-exchange"
         },
+        "10978": {
+            "exchangeId": "10978",
+            "exchangeName": "Biswap v3",
+            "exchangeSlug": "biswap-v3"
+        },
         "10992": {
             "exchangeId": "10992",
             "exchangeName": "AIA Exchange",
@@ -9689,6 +9699,11 @@
             "exchangeId": "11952",
             "exchangeName": "Uniswap v4 (Polygon)",
             "exchangeSlug": "uniswap-v4-polygon"
+        },
+        "11953": {
+            "exchangeId": "11953",
+            "exchangeName": "Uniswap v4 (BSC)",
+            "exchangeSlug": "uniswap-v4-bsc"
         },
         "11955": {
             "exchangeId": "11955",
