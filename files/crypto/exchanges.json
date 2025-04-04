@@ -9749,6 +9749,11 @@
             "exchangeId": "12030",
             "exchangeName": "CoinP",
             "exchangeSlug": "coinp"
+        },
+        "12062": {
+            "exchangeId": "12062",
+            "exchangeName": "PumpSwap",
+            "exchangeSlug": "pumpswap"
         }
     }
 }
