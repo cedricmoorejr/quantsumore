@@ -2530,11 +2530,6 @@
             "exchangeName": "Bitnordex",
             "exchangeSlug": "bitnordex"
         },
-        "766": {
-            "exchangeId": "766",
-            "exchangeName": "ATAIX",
-            "exchangeSlug": "ataix"
-        },
         "767": {
             "exchangeId": "767",
             "exchangeName": "VB",
@@ -8187,7 +8182,7 @@
         },
         "7699": {
             "exchangeId": "7699",
-            "exchangeName": "Biton",
+            "exchangeName": "BitonEx",
             "exchangeSlug": "biton"
         },
         "7701": {
@@ -9754,6 +9749,11 @@
             "exchangeId": "12062",
             "exchangeName": "PumpSwap",
             "exchangeSlug": "pumpswap"
+        },
+        "12088": {
+            "exchangeId": "12088",
+            "exchangeName": "BYEX",
+            "exchangeSlug": "byex"
         }
     }
 }
