@@ -1360,11 +1360,6 @@
             "exchangeName": "Bitzon",
             "exchangeSlug": "bitzon"
         },
-        "516": {
-            "exchangeId": "516",
-            "exchangeName": "dYdX",
-            "exchangeSlug": "dydx"
-        },
         "517": {
             "exchangeId": "517",
             "exchangeName": "CoinW",
@@ -5712,8 +5707,8 @@
         },
         "1452": {
             "exchangeId": "1452",
-            "exchangeName": "Astherus Orderbook Perp",
-            "exchangeSlug": "astherus-orderbook-perp"
+            "exchangeName": "Aster Pro",
+            "exchangeSlug": "aster-pro"
         },
         "1454": {
             "exchangeId": "1454",
@@ -7295,11 +7290,6 @@
             "exchangeName": "Apex Protocol",
             "exchangeSlug": "apex-protocol"
         },
-        "5455": {
-            "exchangeId": "5455",
-            "exchangeName": "Orderly Network",
-            "exchangeSlug": "orderly-network"
-        },
         "5481": {
             "exchangeId": "5481",
             "exchangeName": "Pangea Swap",
@@ -8577,13 +8567,13 @@
         },
         "8411": {
             "exchangeId": "8411",
-            "exchangeName": "AstherusEX (Arb)",
-            "exchangeSlug": "astherusex-arbitrum"
+            "exchangeName": "Aster Simple (Arb)",
+            "exchangeSlug": "aster-simple-arb"
         },
         "8418": {
             "exchangeId": "8418",
-            "exchangeName": "AstherusEX (BSC)",
-            "exchangeSlug": "astherusex-bsc"
+            "exchangeName": "Aster Simple (BSC)",
+            "exchangeSlug": "aster-simple-bsc"
         },
         "8441": {
             "exchangeId": "8441",
@@ -9337,7 +9327,7 @@
         },
         "10885": {
             "exchangeId": "10885",
-            "exchangeName": "Orderly Network (EVM)",
+            "exchangeName": "Orderly",
             "exchangeSlug": "orderly-network-evm"
         },
         "10893": {
@@ -9550,6 +9540,16 @@
             "exchangeName": "Aevo",
             "exchangeSlug": "aevo"
         },
+        "11569": {
+            "exchangeId": "11569",
+            "exchangeName": "Shadow Exchange",
+            "exchangeSlug": "shadow-exchange"
+        },
+        "11592": {
+            "exchangeId": "11592",
+            "exchangeName": "SwapX Algebra",
+            "exchangeSlug": "swapx-sonic"
+        },
         "11608": {
             "exchangeId": "11608",
             "exchangeName": "CEEX exchange",
@@ -9754,6 +9754,11 @@
             "exchangeId": "12088",
             "exchangeName": "BYEX",
             "exchangeSlug": "byex"
+        },
+        "12099": {
+            "exchangeId": "12099",
+            "exchangeName": "AstralX",
+            "exchangeSlug": "astralx"
         }
     }
 }
