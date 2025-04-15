@@ -4415,11 +4415,6 @@
             "exchangeName": "Digitex Futures",
             "exchangeSlug": "digitex-futures"
         },
-        "1165": {
-            "exchangeId": "1165",
-            "exchangeName": "PancakeSwap",
-            "exchangeSlug": "pancakeswap"
-        },
         "1166": {
             "exchangeId": "1166",
             "exchangeName": "Polkastarter",
