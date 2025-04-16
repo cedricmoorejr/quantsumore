@@ -8455,6 +8455,11 @@
             "exchangeName": "LYOTRADE",
             "exchangeSlug": "lyotrade"
         },
+        "8116": {
+            "exchangeId": "8116",
+            "exchangeName": "PancakeSwap v3 (Linea)",
+            "exchangeSlug": "pancakeswap-v3-linea"
+        },
         "8123": {
             "exchangeId": "8123",
             "exchangeName": "UBIX Exchange",
@@ -9754,6 +9759,11 @@
             "exchangeId": "12099",
             "exchangeName": "AstralX",
             "exchangeSlug": "astralx"
+        },
+        "12108": {
+            "exchangeId": "12108",
+            "exchangeName": "CriptoSwaps",
+            "exchangeSlug": "criptoswaps"
         }
     }
 }
