@@ -8100,6 +8100,11 @@
             "exchangeName": "Retro",
             "exchangeSlug": "retro"
         },
+        "7526": {
+            "exchangeId": "7526",
+            "exchangeName": "PancakeSwap v2 (zkEVM)",
+            "exchangeSlug": "pancakeswap-v2-zkevm"
+        },
         "7527": {
             "exchangeId": "7527",
             "exchangeName": "Jpex Crypto Platform",
@@ -8469,6 +8474,11 @@
             "exchangeId": "8125",
             "exchangeName": "OrangeX",
             "exchangeSlug": "orangex"
+        },
+        "8126": {
+            "exchangeId": "8126",
+            "exchangeName": "PancakeSwap v2 (Linea)",
+            "exchangeSlug": "pancakeswap-v2-linea"
         },
         "8140": {
             "exchangeId": "8140",
@@ -9764,6 +9774,11 @@
             "exchangeId": "12108",
             "exchangeName": "CriptoSwaps",
             "exchangeSlug": "criptoswaps"
+        },
+        "12114": {
+            "exchangeId": "12114",
+            "exchangeName": "Bluefin",
+            "exchangeSlug": "bluefin-dex"
         }
     }
 }
