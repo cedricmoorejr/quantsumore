@@ -9765,6 +9765,11 @@
             "exchangeName": "BYEX",
             "exchangeSlug": "byex"
         },
+        "12092": {
+            "exchangeId": "12092",
+            "exchangeName": "Four.Meme",
+            "exchangeSlug": "four-meme"
+        },
         "12099": {
             "exchangeId": "12099",
             "exchangeName": "AstralX",
@@ -9779,6 +9784,11 @@
             "exchangeId": "12114",
             "exchangeName": "Bluefin",
             "exchangeSlug": "bluefin-dex"
+        },
+        "12131": {
+            "exchangeId": "12131",
+            "exchangeName": "BitradeX",
+            "exchangeSlug": "bitradex"
         }
     }
 }
