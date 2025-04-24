@@ -8575,16 +8575,6 @@
             "exchangeName": "Coinlocally",
             "exchangeSlug": "coinlocally"
         },
-        "8411": {
-            "exchangeId": "8411",
-            "exchangeName": "Aster Simple (Arb)",
-            "exchangeSlug": "aster-simple-arb"
-        },
-        "8418": {
-            "exchangeId": "8418",
-            "exchangeName": "Aster Simple (BSC)",
-            "exchangeSlug": "aster-simple-bsc"
-        },
         "8441": {
             "exchangeId": "8441",
             "exchangeName": "KTX.Finance",
