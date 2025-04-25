@@ -9779,6 +9779,16 @@
             "exchangeId": "12131",
             "exchangeName": "BitradeX",
             "exchangeSlug": "bitradex"
+        },
+        "12143": {
+            "exchangeId": "12143",
+            "exchangeName": "Vanilla Finance",
+            "exchangeSlug": "vanilla-finance"
+        },
+        "12144": {
+            "exchangeId": "12144",
+            "exchangeName": "COINSPACE",
+            "exchangeSlug": "coinspace"
         }
     }
 }
