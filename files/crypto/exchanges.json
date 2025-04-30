@@ -9784,6 +9784,11 @@
             "exchangeId": "12144",
             "exchangeName": "COINSPACE",
             "exchangeSlug": "coinspace"
+        },
+        "12155": {
+            "exchangeId": "12155",
+            "exchangeName": "Figure Markets",
+            "exchangeSlug": "figure-markets"
         }
     }
 }
