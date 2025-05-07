@@ -9555,6 +9555,11 @@
             "exchangeName": "Splash",
             "exchangeSlug": "splash"
         },
+        "11641": {
+            "exchangeId": "11641",
+            "exchangeName": "Shadow Exchange v2",
+            "exchangeSlug": "shadow-exchange-v2"
+        },
         "11646": {
             "exchangeId": "11646",
             "exchangeName": "DuckSwap",
