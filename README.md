@@ -56,6 +56,7 @@ Users are advised to independently verify the accuracy of the data obtained via 
 [![Downloads](https://static.pepy.tech/badge/quantsumore/month)](https://pepy.tech/project/quantsumore)
 [![Downloads](https://static.pepy.tech/badge/quantsumore/week)](https://pepy.tech/project/quantsumore)
 ![Static Badge](https://img.shields.io/badge/status-beta-yellow)
+[![Powered by DOYDL Technologies](https://img.shields.io/badge/Powered%20by-DOYDL%20Technologies-blue)](https://doydl.com)
 
 The `quantsumore` library is a comprehensive Python package designed for retrieving and analyzing a wide range of financial market data. It provides specialized API clients to fetch data from various financial markets, including cryptocurrencies, equities, Forex, Treasury instruments, and Consumer Price Index (CPI) metrics. Below is an overview of the key API clients and their functionalities.
 
