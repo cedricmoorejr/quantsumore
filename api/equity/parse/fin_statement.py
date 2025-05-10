@@ -1,9 +1,18 @@
 # -*- coding: utf-8 -*-
 #
-# quantsumore - finance api client
-# https://github.com/cedricmoorejr/quantsumore/
+# quantsumore — A finance API client by Doydl Technologies
 #
-# Copyright 2023-2024 Cedric Moore Jr.
+# `quantsumore` is an independent Python library designed to provide access to market data 
+# across various financial instruments. The library is not affiliated with, endorsed by, 
+# or associated with any financial institutions or data providers. All data accessed 
+# through `quantsumore` is sourced from and owned by the respective data providers.
+#
+# Users are strongly encouraged to independently verify the accuracy of all data obtained 
+# through this library and to seek professional advice before making any investment decisions.
+# Doydl Technologies disclaims all responsibility for any inaccuracies, errors, or omissions 
+# in the data provided.
+#
+# Copyright (c) 2023–2024 Doydl Technologies. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
