@@ -9794,6 +9794,11 @@
             "exchangeId": "12155",
             "exchangeName": "Figure Markets",
             "exchangeSlug": "figure-markets"
+        },
+        "12218": {
+            "exchangeId": "12218",
+            "exchangeName": "XXKK",
+            "exchangeSlug": "xxkk"
         }
     }
 }
