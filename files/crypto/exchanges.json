@@ -8880,6 +8880,11 @@
             "exchangeName": "BitDelta",
             "exchangeSlug": "bitdelta"
         },
+        "9390": {
+            "exchangeId": "9390",
+            "exchangeName": "Uniswap v2 (Optimism)",
+            "exchangeSlug": "uniswap-v2-optimism"
+        },
         "9391": {
             "exchangeId": "9391",
             "exchangeName": "Uniswap v2 (Base)",
@@ -8889,6 +8894,11 @@
             "exchangeId": "9392",
             "exchangeName": "Uniswap v2 (Polygon)",
             "exchangeSlug": "uniswap-v2-polygon"
+        },
+        "9393": {
+            "exchangeId": "9393",
+            "exchangeName": "Uniswap v2 (Avalanche)",
+            "exchangeSlug": "uniswap-v2-avalanche"
         },
         "9415": {
             "exchangeId": "9415",
