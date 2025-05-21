@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v2.1.4b1/gui/assets/py_quantsumore_logo.png" alt="quantsumore Logo" width="700"/>
+  <img src="https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v2.1.5b1/gui/assets/py_quantsumore_logo.png" alt="quantsumore Logo" width="700"/>
 </p>
 
 
@@ -47,7 +47,26 @@ Users are advised to independently verify the accuracy of the data obtained via 
 
 
 
+<div align="center">
+<table border=1 cellpadding=10 width="100%" style="border: 2px solid #ffc107;"><tr><td>
 
+<div align="center">
+
+### ⚠️ **Notice: Limited Functionality for Yahoo-Based Equity Endpoints** ⚠️
+
+</div>
+
+- `CompanyBio`, `CompanyExecutives`, `CompanyDetails`, `Stats`, `sLatest`, `Lastn`, `sHistorical`
+
+<div align="center">
+
+These endpoints may return empty responses or raise HTTP 404 errors even when the data exists.  
+We are actively monitoring the situation. All other modules and endpoints remain unaffected.
+
+</div>
+
+</td></tr></table>
+</div>
 
 
 ### Summary of the `quantsumore` Library
@@ -56,7 +75,6 @@ Users are advised to independently verify the accuracy of the data obtained via 
 [![Downloads](https://static.pepy.tech/badge/quantsumore/month)](https://pepy.tech/project/quantsumore)
 [![Downloads](https://static.pepy.tech/badge/quantsumore/week)](https://pepy.tech/project/quantsumore)
 ![Static Badge](https://img.shields.io/badge/status-beta-yellow)
-[![Powered by DOYDL Technologies](https://img.shields.io/badge/Powered%20by-DOYDL%20Technologies-blue)](https://doydl.com)
 
 The `quantsumore` library is a comprehensive Python package designed for retrieving and analyzing a wide range of financial market data. It provides specialized API clients to fetch data from various financial markets, including cryptocurrencies, equities, Forex, Treasury instruments, and Consumer Price Index (CPI) metrics. Below is an overview of the key API clients and their functionalities.
 
