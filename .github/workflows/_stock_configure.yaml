@@ -1,13 +1,13 @@
 name: Download and Process Stock Listed Files
 
+# Disable all triggers
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * 1-5'
-    
-  push:
-    branches:
-      - v2.1.4b1
+  # workflow_dispatch:
+  # schedule:
+  #   - cron: '0 0 * * 1-5'    
+  # push:
+  #   branches:
+  #     - v2.1.4b1
       
 jobs:
   download-and-process:
