@@ -1,44 +1,78 @@
 # -*- coding: utf-8 -*-
 #
-# quantsumore — A finance API client by Doydl Technologies
+## ╭────────────────────────────────────────────────────────────────────────────────────────────╮
+## │  Library         : doydl's Finance API Client — quantsumore                                 │
+## │                                                                                             │
+## │                                                                                             │
+## │  Description     : `quantsumore` is a comprehensive Python library designed to streamline   │
+## │                    the process of accessing and analyzing real-time financial data across   │
+## │                    various markets. It provides specialized API clients to fetch data       │
+## │                    from multiple financial instruments, including:                          │
+## │                      - Cryptocurrencies                                                     │
+## │                      - Equities and Stock Markets                                           │
+## │                      - Foreign Exchange (Forex)                                             │
+## │                      - Treasury Instruments                                                 │
+## │                      - Consumer Price Index (CPI) Metrics                                   │
+## │                                                                                             │
+## │                    The library offers a unified interface for retrieving diverse financial  │
+## │                    data, enabling users to perform in-depth financial and technical         │
+## │                    analysis. Whether you're developing trading algorithms, conducting       │
+## │                    market research, or building financial dashboards, `quantsumore` serves  │
+## │                    as a reliable and efficient tool in your data pipeline.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  Key Features    : - Real-time data retrieval from multiple financial markets               │
+## │                    - Support for various financial instruments and metrics                  │
+## │                    - Simplified API clients for ease of integration                         │
+## │                    - Designed for both personal and non-commercial use                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Legal Disclaimer: `quantsumore` is an independent Python library and is not affiliated     │
+## │                    with any financial institutions or data providers. Likewise, doydl       │
+## │                    technologies is not affiliated with, endorsed by, or sponsored by any    │
+## │                    government, corporate, or financial institutions. Users should verify    │
+## │                    the accuracy of the data obtained and consult professional advice        │
+## │                    before making investment decisions.                                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Copyright       : © 2023–2025 by doydl technologies. All rights reserved.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  License         : Licensed under the Apache License, Version 2.0 (the "License");          │
+## │                    you may not use this file except in compliance with the License.         │
+## │                    You may obtain a copy of the License at:                                 │
+## │                                                                                             │
+## │                        http://www.apache.org/licenses/LICENSE-2.0                           │
+## │                                                                                             │
+## │                    Unless required by applicable law or agreed to in writing, software      │
+## │                    distributed under the License is distributed on an "AS IS" BASIS,        │
+## │                    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or          │
+## │                    implied. See the License for the specific language governing             │
+## │                    permissions and limitations under the License.                           │
+## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
-# `quantsumore` is an independent Python library designed to provide access to market data 
-# across various financial instruments. The library is not affiliated with, endorsed by, 
-# or associated with any financial institutions or data providers. All data accessed 
-# through `quantsumore` is sourced from and owned by the respective data providers.
-#
-# Users are strongly encouraged to independently verify the accuracy of all data obtained 
-# through this library and to seek professional advice before making any investment decisions.
-# Doydl Technologies disclaims all responsibility for any inaccuracies, errors, or omissions 
-# in the data provided.
-#
-# Copyright (c) 2023–2024 Doydl Technologies. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 
 
-from lxml import html
+
 import re
-import datetime
+
+#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
 import pandas as pd
+from lxml import html as Html
 
-# Custom
-from ....date_parser import dtparse
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
+from ...date_parser import dtparse
 
 
 
-current_date = dtparse.nowCT(as_string=True)
+# ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This segment delineates the functional backbone of the module.
+# It comprises the abstractions and behaviors essential for runtime
+# execution—if applicable—encapsulated in class and function constructs.
+# In minimal implementations, this may simply define constants, metadata,
+# or serve as an interface placeholder.
+current_date = dtparse.nowCT(format='%Y-%m-%d')
 
 class CUUR0000AA0:
     class Date:
@@ -57,7 +91,7 @@ class CUUR0000AA0:
 
         def extract(self):
             if self.html_content:
-                tree = html.fromstring(self.html_content)
+                tree = Html.fromstring(self.html_content)
                 xpath = '//*[@id="mobile-meta-col"]'
                 element = tree.xpath(xpath)
                 if element:
@@ -72,7 +106,7 @@ class CUUR0000AA0:
                     year = int(match.group(2))
                     month = self.abbreviated_months.get(month_abbr)
                     if month:
-                        date = datetime.datetime(year, month, 1)
+                        date = dtparse.build(year=year, month=month, day=1)
                         return date.strftime('%Y-%m-%d')
             return self.force_end_date 
 
@@ -84,7 +118,6 @@ class CUUR0000AA0:
            
         def __dir__(self):
             return ['date']
-
 
     class Data:
         def __init__(self, start_date='1913-01-01', current_date=current_date, end_date=None):
@@ -118,29 +151,79 @@ class CUUR0000AA0:
 
             return url_template
 
+        # def construct_data(self):
+        #     if self.url:
+        #         try:
+        #             df = pd.read_csv(self.url)
+        #             df['DATE'] = pd.to_datetime(df['DATE'])
+        #             df['period'] = df['DATE'].dt.month.map(self.period_mapping)
+        #             df['year'] = df['DATE'].dt.year.astype(int)
+        #             df = df.drop(columns=['DATE'])
+        #             df = df.rename(columns={'CPIAUCNS': 'value'})
+        #             df['series_id'] = 'CUUR0000AA0'
+        #             df = df[['series_id', 'year', 'period', 'value']]
+        #             df.loc[:, 'year'] = df['year'].astype(int)
+        #             df.loc[:, 'value'] = df['value'].astype(float)
+        #             # Calculating the average value per year and adding it as a new row
+        #             average_df = df.groupby('year')['value'].mean().round(1).reset_index()
+        #             average_df['series_id'] = 'CUUR0000AA0'
+        #             average_df['period'] = 'Average'
+        #             # Appending the average_df to the original df
+        #             df = pd.concat([df, average_df], ignore_index=True)
+        #             df = df.reset_index(drop=True)
+        #             return df
+        #         except Exception:
+        #             return None 
+        #     return None
+
         def construct_data(self):
             if self.url:
                 try:
                     df = pd.read_csv(self.url)
-                    df['DATE'] = pd.to_datetime(df['DATE'])
-                    df['period'] = df['DATE'].dt.month.map(self.period_mapping)
-                    df['year'] = df['DATE'].dt.year.astype(int)
-                    df = df.drop(columns=['DATE'])
+
+                    # ----------------------------------------------------------------------
+                    # Automatically detect the date column name instead of hardcoding it.
+                    # Rationale: FRED changed the column name from 'DATE' to 'observation_date',
+                    # which broke downstream code. To prevent similar issues in the future,
+                    # this searches for any column that includes 'date' in its name (case-insensitive).
+                    # ----------------------------------------------------------------------
+                    date_column = next(
+                        (col for col in df.columns if 'date' in col.lower()), 
+                        None
+                    )
+
+                    if not date_column:
+                        raise ValueError("No date-related column found in the dataset.")
+
+                    # Convert the detected date column to datetime
+                    df[date_column] = pd.to_datetime(df[date_column])
+                    df['period'] = df[date_column].dt.month.map(self.period_mapping)
+                    df['year'] = df[date_column].dt.year.astype(int)
+
+                    # Drop the original date column since we extracted year/period
+                    df = df.drop(columns=[date_column])
+
+                    # Rename CPI column and standardize structure
                     df = df.rename(columns={'CPIAUCNS': 'value'})
                     df['series_id'] = 'CUUR0000AA0'
                     df = df[['series_id', 'year', 'period', 'value']]
                     df.loc[:, 'year'] = df['year'].astype(int)
                     df.loc[:, 'value'] = df['value'].astype(float)
-                    # Calculating the average value per year and adding it as a new row
+
+                    # Calculate and append annual averages
                     average_df = df.groupby('year')['value'].mean().round(1).reset_index()
                     average_df['series_id'] = 'CUUR0000AA0'
                     average_df['period'] = 'Average'
-                    # Appending the average_df to the original df
                     df = pd.concat([df, average_df], ignore_index=True)
+
+                    # Reset index to ensure clean dataframe
                     df = df.reset_index(drop=True)
+
                     return df
-                except Exception:
-                    return None 
+
+                except Exception as e:
+                    # print(f"Error constructing CPI data: {e}")
+                    return None
             return None
 
         def all_items_index(self):

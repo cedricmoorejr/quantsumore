@@ -1,76 +1,130 @@
 # -*- coding: utf-8 -*-
 #
-# quantsumore — A finance API client by Doydl Technologies
+## ╭────────────────────────────────────────────────────────────────────────────────────────────╮
+## │  Library         : doydl's Finance API Client — quantsumore                                 │
+## │                                                                                             │
+## │                                                                                             │
+## │  Description     : `quantsumore` is a comprehensive Python library designed to streamline   │
+## │                    the process of accessing and analyzing real-time financial data across   │
+## │                    various markets. It provides specialized API clients to fetch data       │
+## │                    from multiple financial instruments, including:                          │
+## │                      - Cryptocurrencies                                                     │
+## │                      - Equities and Stock Markets                                           │
+## │                      - Foreign Exchange (Forex)                                             │
+## │                      - Treasury Instruments                                                 │
+## │                      - Consumer Price Index (CPI) Metrics                                   │
+## │                                                                                             │
+## │                    The library offers a unified interface for retrieving diverse financial  │
+## │                    data, enabling users to perform in-depth financial and technical         │
+## │                    analysis. Whether you're developing trading algorithms, conducting       │
+## │                    market research, or building financial dashboards, `quantsumore` serves  │
+## │                    as a reliable and efficient tool in your data pipeline.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  Key Features    : - Real-time data retrieval from multiple financial markets               │
+## │                    - Support for various financial instruments and metrics                  │
+## │                    - Simplified API clients for ease of integration                         │
+## │                    - Designed for both personal and non-commercial use                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Legal Disclaimer: `quantsumore` is an independent Python library and is not affiliated     │
+## │                    with any financial institutions or data providers. Likewise, doydl       │
+## │                    technologies is not affiliated with, endorsed by, or sponsored by any    │
+## │                    government, corporate, or financial institutions. Users should verify    │
+## │                    the accuracy of the data obtained and consult professional advice        │
+## │                    before making investment decisions.                                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Copyright       : © 2023–2025 by doydl technologies. All rights reserved.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  License         : Licensed under the Apache License, Version 2.0 (the "License");          │
+## │                    you may not use this file except in compliance with the License.         │
+## │                    You may obtain a copy of the License at:                                 │
+## │                                                                                             │
+## │                        http://www.apache.org/licenses/LICENSE-2.0                           │
+## │                                                                                             │
+## │                    Unless required by applicable law or agreed to in writing, software      │
+## │                    distributed under the License is distributed on an "AS IS" BASIS,        │
+## │                    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or          │
+## │                    implied. See the License for the specific language governing             │
+## │                    permissions and limitations under the License.                           │
+## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
-# `quantsumore` is an independent Python library designed to provide access to market data 
-# across various financial instruments. The library is not affiliated with, endorsed by, 
-# or associated with any financial institutions or data providers. All data accessed 
-# through `quantsumore` is sourced from and owned by the respective data providers.
-#
-# Users are strongly encouraged to independently verify the accuracy of all data obtained 
-# through this library and to seek professional advice before making any investment decisions.
-# Doydl Technologies disclaims all responsibility for any inaccuracies, errors, or omissions 
-# in the data provided.
-#
-# Copyright (c) 2023–2024 Doydl Technologies. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
+"""
+HTTPLite: Singleton HTTP Client for Web Automation and Resilient Interaction
+────────────────────────────────────────────────────────────────────────────
 
+Understanding the Module
+────────────────────────────────────────────────────
+HTTPLite is a high-resilience HTTP client designed for advanced web interaction,
+particularly in environments that demand discreet and robust request management.
+Rather than acting as a basic communication layer, it embeds adaptive behaviors
+such as randomized headers and agent cycling to emulate natural traffic patterns.
+
+This client goes beyond traditional HTTP interfaces by introducing intelligent
+controls that improve reliability and reduce the risk of detection or throttling,
+making it well-suited for data-intensive automation, scraping, and API orchestration.
+
+Role in the System Architecture
+────────────────────────────────────────────────────
+HTTPLite functions as a centralized HTTP interaction layer. It abstracts and
+manages low-level request details, providing a single access point for outbound
+web communication across the application.
+
+Through persistent sessions, header randomization, user-agent variability,
+and delay injection, it stabilizes and anonymizes request traffic, especially
+in adversarial or rate-limited environments.
+
+Core Focus
+────────────────────────────────────────────────────
+- Singleton architecture for consistent, centralized session handling
+- Dynamic user-agent rotation to simulate diverse access patterns
+- Request pacing via managed delays to reduce detection risk
+- Header shuffling for obfuscation against bot detection systems
+- Support for persistent sessions to maintain authentication or state
+- Compatibility with the `requests` library for HTTP operations
+
+Usage Context
+────────────────────────────────────────────────────
+HTTPLite is typically used in:
+- Web scraping pipelines that require stealth and reliability
+- Automated API clients where rate limits or anti-bot rules apply
+- Data ingestion layers that depend on consistent HTTP state and session reuse
+
+Implementation Note
+────────────────────────────────────────────────────
+This module does not manage content parsing or extraction logic itself.
+Instead, it underpins higher-level systems that require stable, intelligent
+HTTP communication. It is often used alongside content processors such as
+`response_utils` or `extractors`, providing them with a resilient data stream
+to work from.
+"""
 
 import random
 from collections import OrderedDict
-import requests
 import time
 import re
 import os
 import json
 import threading
+
+#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
 import requests_cache
+import requests
 
-# Custom
-from .utils import UserAgentRandomizer, find_os_in_user_agent, findhost
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
+from .utils import UserAgentRandomizer, findhost
+# from .utils import find_os_in_user_agent
 
 
-
-
-##########################################################################################
-# HTTPLite: A Singleton HTTP Client for Enhanced Web Interaction
-#
-# Overview:
-# HTTPLite is engineered to support advanced web interaction and scraping activities,
-# employing a singleton design to ensure a single coherent point of operation throughout
-# the application lifecycle. This class encapsulates sophisticated features such as
-# automatic user-agent rotation, managed request delays, and header randomization,
-# designed to optimize network interactions for both efficiency and discretion.
-#
-# Key Features:
-# - Persistent HTTP sessions with configurable request headers for consistent interactions.
-# - Dynamic user-agent rotation to simulate requests from various environments.
-# - Delay management between requests to emulate human browsing patterns and avoid detection.
-# - Header shuffling to prevent pattern recognition by server-side security systems.
-#
-# Usage:
-# This class is intended for use in scenarios where typical HTTP clients fall short, such as
-# data scraping, automated interactions with APIs, or when managing a large volume of requests
-# that require careful pacing and obfuscation to maintain access to target resources.
-#
-# Implementation Note:
-# HTTPLite utilizes the `requests` library for underlying HTTP communication, ensuring broad
-# compatibility and reliability. Ensure the singleton instance is properly managed to avoid
-# unwanted re-initialization or resource leaks.
-##########################################################################################
-
+# ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This segment delineates the functional backbone of the module.
+# It comprises the abstractions and behaviors essential for runtime
+# execution—if applicable—encapsulated in class and function constructs.
+# In minimal implementations, this may simply define constants, metadata,
+# or serve as an interface placeholder.
 class HTTPLite:
     """
     HTTPLite is a singleton-pattern HTTP client tailored for sophisticated HTTP interactions, ideal for
@@ -126,8 +180,8 @@ class HTTPLite:
 
         Note:
             This method is only called once during the first creation of the instance due to the singleton pattern implemented in __new__.
-        """    	
-        if not self.initialized:
+        """
+        if not getattr(self, "initialized", False):        
             self.session = requests_cache.CachedSession(
                 cache_name='http_cache',
                 backend='memory',
@@ -135,36 +189,55 @@ class HTTPLite:
                 allowable_codes=(200,),
                 allowable_methods=('GET',),
             )
-            
+
+            # # --- BEGIN Test proxy definition (but NOT enabled yet) ---
+            # proxy = 'host:port pair or a proxy address'
+            # proxy_auth = 'username:password pair'
+            # self.Proxies = {
+            #     'http': f'http://{proxy_auth}@{proxy}',
+            #     'https': f'http://{proxy_auth}@{proxy}'
+            # }            
+            # self._proxy_enabled = False      
+            # # --- END Test proxy definition ---
+                                    
             self.session.headers.update({
-                "User-Agent": UserAgentRandomizer.get_random_user_agent(),
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Connection": "keep-alive",
-                "Accept-Encoding": "gzip, deflate, br, zstd", 
-                # "Cache-Control": "max-age=0", "max-age=0",  # Removed for effective caching    
-                "DNT": "1",                
-                "Upgrade-Insecure-Requests": "1",
-                "Priority": "u=0, i",
-                "Sec-Ch-Ua-Mobile": "?0",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": random.choice(["same-origin", "same-site"]),
-                "Sec-Fetch-User": "?1",                
-                "Referer": "https://www.google.com"                
+                "User-Agent": UserAgentRandomizer.get_random_user_agent(),  																																													 # Rotates to mimic real browser fingerprints
+                # "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7", # Removed for being overly verbose and suspicious in scraping contexts; some parts like 'application/signed-exchange' are rarely used outside full browser navs and can trigger detection
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",  																																				 # Mimics a typical browser Accept header            
+                "Accept-Language": "en-US,en;q=0.9",  																																																								 # Standard browser language fallback
+                "Connection": "keep-alive", 																																																													 # Usually safe, but may need removal when proxies modify connection behavior
+                # "Accept-Encoding": "gzip, deflate, br, zstd",																																																				 # Removed 'zstd' — not all servers (especially Yahoo's edge CDN) support it; may result in 406/5xx errors            
+                "Accept-Encoding": "gzip, deflate, br",																																																								 # Removed 'zstd' — not all servers (especially Yahoo's edge CDN) support it; may result in 406/5xx errors
+                # "Cache-Control": "max-age=0", 																																																											 # Overly aggressive; can interfere with proxy-side or server caching, leading to inconsistent behavior
+                # "DNT": "1", 																																																																				 # "Do Not Track" is uncommon in bot requests and may raise suspicion (few real users enable it)
+                # "Upgrade-Insecure-Requests": "1",   																																																								 # Used by browsers during navigation; unnecessary in script-based GETs
+                # "Priority": "u=0, i",   																																																														 # Chrome-only hint with no clear benefit here; Yahoo may treat it as noise or a nonstandard signal
+                # "Sec-Ch-Ua-Mobile": "?0",   																																																												 # Part of Client Hints, but many headers in this family are tied to Chromium internals; incomplete or mismatched sets can appear fake
+                # "Sec-Fetch-Mode": "navigate",   																																																										 # Fetch metadata headers are often stripped or altered by real browsers; standalone inclusion raises flags
+                # "Sec-Fetch-Site": random.choice(["same-origin", "same-site"]),   																																										 # Same issue — not consistently sent by browsers and hard to spoof accurately
+                # "Sec-Fetch-User": "?1",   																																																													 # Misused unless part of full browser-initiated navigation
+                # "Sec-Fetch-Dest": "document",   																																																										 # Again, belongs to tightly coupled Fetch family; triggers heuristics if out of context
+                "Referer": "https://www.google.com"   																																																								 # Safe and helpful for some endpoints; gives illusion of natural origin
             })
-            # Determine the OS from the User-Agent and update headers accordingly
-            user_agent = self.session.headers['User-Agent']
-            os_name = find_os_in_user_agent(user_agent)
-            self.session.headers.update({"Sec-Ch-Ua-Platform": os_name})
-            
+            # self.session.headers.update({"Sec-Ch-Ua-Platform": find_os_in_user_agent(self.session.headers["User-Agent"])})  																				 # Same as above — too specific to Chromium client hints
             self.last_request_time = None
             self.initialized = True
+            
         self.base_url = base_url if base_url else None
         self.host = findhost(self.base_url) if self.base_url else None   
         self.last_host = None   
         self.code = None       
-        self.content_type = None        
+        self.content_type = None     
+        
+    # def enable_proxy(self):
+    #     """Turn proxy ON for subsequent requests."""
+    #     self.session.proxies.update(self.Proxies)        
+    #     self._proxy_enabled = True
+    # 
+    # def disable_proxy(self):
+    #     """Turn proxy OFF for subsequent requests."""
+    #     self.session.proxies.clear()
+    #     self._proxy_enabled = False        
         
     def update_base_url(self, new_url):
         """
@@ -182,7 +255,6 @@ class HTTPLite:
         The delay is applied only if delay_enabled is True, facilitating easy toggling for testing purposes.
         """
         if not delay_enabled:
-            # Skip delay entirely if delay is not enabled
             return
         
         if concurrent:
@@ -263,7 +335,14 @@ class HTTPLite:
         else:
             return None
 
-    def make_request(self, params, concurrent=False, return_url=True, delay_enabled=True):
+    def make_request(
+        self,
+        params,
+        concurrent=False,
+        return_url=True,
+        delay_enabled=True,
+        # use_proxy=True
+    ):
         """
         Sends a request to the server using the current base URL and provided parameters, handling header shuffling and random delays.
 
@@ -274,6 +353,12 @@ class HTTPLite:
             dict: A dictionary containing the 'response' which can either be text or JSON, depending on the request parameters.
         """
         try:
+            # # Switch proxy according to use_proxy flag
+            # if use_proxy and not self._proxy_enabled:
+            #     self.enable_proxy()
+            # elif not use_proxy and self._proxy_enabled:
+            #     self.disable_proxy()
+
             if 'format' not in params:
                 params['format'] = 'html'
 
@@ -285,7 +370,6 @@ class HTTPLite:
             self.content_type = response.headers.get('Content-Type')
 
             if response.from_cache:
-                # print("Used Cache")
                 pass                
 
             if not response.from_cache:
@@ -318,7 +402,14 @@ class HTTPLite:
             return [{self.base_url: error_message}]
         return error_message
            
-    def make_requests_concurrently(self, urls, params, return_url=True, delay_enabled=True):
+    def make_requests_concurrently(
+        self,
+        urls,        
+        params,
+        return_url=True,
+        delay_enabled=True,
+        # use_proxy=True
+    ):
         """
         Makes multiple HTTP requests concurrently using threading.
 
@@ -332,7 +423,13 @@ class HTTPLite:
         results = []
         def worker(url):
             self.update_base_url(url)
-            result = self.make_request(params, concurrent=True, return_url=return_url, delay_enabled=delay_enabled)
+            result = self.make_request(
+                params,
+                concurrent=True,
+                return_url=return_url,
+                delay_enabled=delay_enabled,
+                # use_proxy=use_proxy
+            )
             with self._lock:
                 if return_url:
                     results.append({url: result})
@@ -344,7 +441,7 @@ class HTTPLite:
             thread = threading.Thread(target=worker, args=(url,))
             threads.append(thread)
             thread.start()
-
+            
         for thread in threads:
             thread.join()
         return results
@@ -367,9 +464,9 @@ class HTTPLite:
         raise RuntimeError("This instance has been destroyed and is no longer usable.")
 
 
-
-
 http_client = HTTPLite()
+
+
 
 def __dir__():
     return ['http_client']

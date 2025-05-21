@@ -1,68 +1,91 @@
 # -*- coding: utf-8 -*-
 #
-# quantsumore — A finance API client by Doydl Technologies
+## ╭────────────────────────────────────────────────────────────────────────────────────────────╮
+## │  Library         : doydl's Finance API Client — quantsumore                                 │
+## │                                                                                             │
+## │                                                                                             │
+## │  Description     : `quantsumore` is a comprehensive Python library designed to streamline   │
+## │                    the process of accessing and analyzing real-time financial data across   │
+## │                    various markets. It provides specialized API clients to fetch data       │
+## │                    from multiple financial instruments, including:                          │
+## │                      - Cryptocurrencies                                                     │
+## │                      - Equities and Stock Markets                                           │
+## │                      - Foreign Exchange (Forex)                                             │
+## │                      - Treasury Instruments                                                 │
+## │                      - Consumer Price Index (CPI) Metrics                                   │
+## │                                                                                             │
+## │                    The library offers a unified interface for retrieving diverse financial  │
+## │                    data, enabling users to perform in-depth financial and technical         │
+## │                    analysis. Whether you're developing trading algorithms, conducting       │
+## │                    market research, or building financial dashboards, `quantsumore` serves  │
+## │                    as a reliable and efficient tool in your data pipeline.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  Key Features    : - Real-time data retrieval from multiple financial markets               │
+## │                    - Support for various financial instruments and metrics                  │
+## │                    - Simplified API clients for ease of integration                         │
+## │                    - Designed for both personal and non-commercial use                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Legal Disclaimer: `quantsumore` is an independent Python library and is not affiliated     │
+## │                    with any financial institutions or data providers. Likewise, doydl       │
+## │                    technologies is not affiliated with, endorsed by, or sponsored by any    │
+## │                    government, corporate, or financial institutions. Users should verify    │
+## │                    the accuracy of the data obtained and consult professional advice        │
+## │                    before making investment decisions.                                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Copyright       : © 2023–2025 by doydl technologies. All rights reserved.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  License         : Licensed under the Apache License, Version 2.0 (the "License");          │
+## │                    you may not use this file except in compliance with the License.         │
+## │                    You may obtain a copy of the License at:                                 │
+## │                                                                                             │
+## │                        http://www.apache.org/licenses/LICENSE-2.0                           │
+## │                                                                                             │
+## │                    Unless required by applicable law or agreed to in writing, software      │
+## │                    distributed under the License is distributed on an "AS IS" BASIS,        │
+## │                    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or          │
+## │                    implied. See the License for the specific language governing             │
+## │                    permissions and limitations under the License.                           │
+## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
-# `quantsumore` is an independent Python library designed to provide access to market data 
-# across various financial instruments. The library is not affiliated with, endorsed by, 
-# or associated with any financial institutions or data providers. All data accessed 
-# through `quantsumore` is sourced from and owned by the respective data providers.
-#
-# Users are strongly encouraged to independently verify the accuracy of all data obtained 
-# through this library and to seek professional advice before making any investment decisions.
-# Doydl Technologies disclaims all responsibility for any inaccuracies, errors, or omissions 
-# in the data provided.
-#
-# Copyright (c) 2023–2024 Doydl Technologies. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
+import warnings
+warnings.warn(
+    "Yahoo Finance has increased bot protections. All equity-related endpoints may fail with 404s or empty responses until resolved.",
+    category=UserWarning
+)
 
 
 from copy import deepcopy
 import re
 
-# Custom
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from ..prep import stocks_asset
-from .parse import stock, fin_statement, dividend
-from ..._http.response_utils import Request, key_from_mapping, validateHTMLResponse
-from ...strata_utils import IterDict
+from .parse import fin_statement, dividend
+from ..._http.response_utils import Request, key_from_mapping
 
 
 
 
+# ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This segment delineates the functional backbone of the module.
+# It comprises the abstractions and behaviors essential for runtime
+# execution—if applicable—encapsulated in class and function constructs.
+# In minimal implementations, this may simply define constants, metadata,
+# or serve as an interface placeholder.
 class APIClient:
     def __init__(self, asset):
-        self.asset = asset  
-        
-    def _ensure_company_description_period(self, profile):
-        if 'Company Description' in profile:
-            description = profile['Company Description']
-            if description and description.strip():
-                if not description.endswith('.'):
-                    profile['Company Description'] = description.strip() + '.'
-        return profile
-       
-    def __profile_data(self, ticker):
-        """ Fetches company profile data for a given ticker symbol."""     	
-        make_method = getattr(self.asset, 'make')
-        url = make_method(query='profile', ticker=ticker)
-        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        if html_content:
-            obj = stock.profile(html_content)
-            data = obj.DATA()
-            data = self._ensure_company_description_period(data)
-            return data       
-       
+        self.asset = asset
+
+    # def _ensure_company_description_period(self, profile):
+    #     ...
+    # 
+    # def __profile_data(self, ticker):
+    #     ...
+
     def CompanyBio(self, ticker):
         """
         Provides an overview or summary of a company's information based on its ticker symbol.
@@ -79,20 +102,19 @@ class APIClient:
         -------
         str or None
             Returns the company description as a string.
-        """
-        data = self.__profile_data(ticker)
-        if data:
-            companyName = data['Company Name']
-            companyDescription = data['Company Description']
-            return companyDescription  
+        """        
+        warnings.warn(
+            "CompanyBio is temporarily disabled due to Yahoo Finance blocking scraping requests. This will be re-enabled in a future release.",
+            category=UserWarning
+        )
         return None
-    
+
     def CompanyExecutives(self, ticker):
         """
         Provides information about a company's executives based on its ticker symbol.
 
         This method retrieves and displays information about the executives of a company identified
-        by its ticker symbol. 
+        by its ticker symbol.
 
         Parameters:
         ----------
@@ -103,13 +125,13 @@ class APIClient:
         -------
         list or dict or None
             Returns the list or dictionary of company executives.
-        """    	
-        data = self.__profile_data(ticker)
-        if data:
-            companyExecs = data['Company Executives']
-            return companyExecs
-        return None        
-       
+        """        
+        warnings.warn(
+            "CompanyExecutives is temporarily disabled due to Yahoo Finance blocking scraping requests. This will be re-enabled in a future release.",
+            category=UserWarning
+        )
+        return None
+
     def CompanyDetails(self, ticker):
         """
         Provides detailed information about a company based on its ticker symbol.
@@ -128,11 +150,11 @@ class APIClient:
         -------
         dict or None
             Returns a dictionary containing the company details.
-        """    	
-        data = self.__profile_data(ticker)
-        if data:
-            companyDetails = data['Company Details']
-            return companyDetails
+        """        
+        warnings.warn(
+            "CompanyDetails is temporarily disabled due to Yahoo Finance blocking scraping requests. This will be re-enabled in a future release.",
+            category=UserWarning
+        )
         return None
 
     def Stats(self, ticker):
@@ -153,17 +175,13 @@ class APIClient:
         -------
         dict or None
             Returns a dictionary containing statistical data.
-        """    	
-        make_method = getattr(self.asset, 'make')
-        url = make_method(query='stats', ticker=ticker)
-        html_content = Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        html_check = validateHTMLResponse(html_content).equity(ticker=ticker)
-        if html_check:
-            obj = stock.quote_statistics(html_content)
-            stats = obj.DATA()
-            return stats
-        return None          
-          
+        """        
+        warnings.warn(
+            "Stats is temporarily disabled due to Yahoo Finance blocking scraping requests. This will be re-enabled in a future release.",
+            category=UserWarning
+        )
+        return None
+
     def sHistorical(self, ticker, start, end):
         """
         Retrieves historical stock price data for one or more companies based on their ticker symbols and a specified date range.
@@ -188,66 +206,25 @@ class APIClient:
         pandas.DataFrame or None
             Returns a DataFrame containing historical price data for each trading day in the specified date range.
             If a single ticker is provided, the DataFrame contains data for that ticker.
-            If a list of tickers is provided, the DataFrame will have a multi-index (or a concatenated DataFrame) with 
-            data for each ticker. Each row represents a trading day, with columns for the date, open, high, low, close, 
+            If a list of tickers is provided, the DataFrame will have a multi-index (or a concatenated DataFrame) with
+            data for each ticker. Each row represents a trading day, with columns for the date, open, high, low, close,
             adjusted close, and volume. Returns None if no data is found for the given ticker(s) or if the data request fails.
 
         Raises:
         ------
         ValueError
             If the start and end date is not provided, a ValueError is raised.
-        """   	
-        try:
-            if all(x is None for x in [start, end]): 
-                raise ValueError("Start and end dates must be provided for historical data requests.")
-            make_method = getattr(self.asset, 'make')
-            url = make_method(query='price', ticker=ticker, start=start, end=end)
-            content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-            if content:
-                obj = stock.historical(content)
-                return obj.DATA()
-        except:
-            raise RetrievalError(message="Failed to retrieve historical data")
-           
-    def Dividends(self, ticker):
-        """
-        Retrieves dividend data for the specified ticker symbol.
+        """        
+        warnings.warn(
+            "sHistorical is temporarily disabled due to Yahoo Finance blocking scraping requests. This will be re-enabled in a future release.",
+            category=UserWarning
+        )
+        return None
 
-        This method fetches dividend-related information such as ex-dividend dates, dividend yields, and payment dates 
-        for a given company based on the `ticker`. It is designed to provide an overview of a company's dividend history 
-        and current dividend policies.
-
-        Parameters:
-        ----------
-        ticker : str|list
-            The ticker symbol or a list of symbols for which to retrieve stock data. Example: 'AAPL' for Apple Inc.
-
-        Returns:
-        -------
-        object
-            A dividend data object that contains historical and current dividend information for the specified `ticker`. 
-            The object includes the dividend data parsed from the response in JSON format.
-
-        Notes:
-        -----
-        - The method constructs a request URL using the asset's `make` method, tailored to query dividend information, 
-          and sends the request to retrieve the data in JSON format.
-        - The `dividend.dividend_history` function is used to process the JSON response and create a structured dividend 
-          data object from the returned content.
-        - This method assumes availability of an API or a method within `self.asset` that can generate appropriate endpoint 
-          URLs for accessing dividend data.
-        """
-        make_method = getattr(self.asset, 'make')
-        url = make_method(query='dividend_history', ticker=ticker)
-        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        if content:            
-            obj = dividend.dividend_history(content)
-            return (obj.DividendReport, obj.DividendData)       
-        
     def Lastn(self, ticker, interval="1m"):
         """
         Retrieves the latest stock price data for the specified ticker symbol over a given time interval.
-        
+
         The method constructs a request URL, fetches the data, and parses it to return the most recent stock price along with associated metadata.
 
         Parameters:
@@ -275,23 +252,19 @@ class APIClient:
         Example of fetched data:
         -----------------------
         Includes fields like 'currency', 'exchangeName', 'instrumentType', 'regularMarketPrice', 'fiftyTwoWeekHigh', 'chartPreviousClose', and timestamps of price data in regular trading sessions.
-        """  	
-        valid_intervals = ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]
-        if interval.lower() not in valid_intervals: 
-            raise ValueError(f"Invalid interval. Valid intervals are: {', '.join(valid_intervals)}")
-        make_method = getattr(self.asset, 'make')
-        url = make_method(query='last', ticker=ticker, interval=interval)
-        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        if content:
-            obj = stock.last(content)
-            return obj.DATA()
+        """        
+        warnings.warn(
+            "Lastn is temporarily disabled due to Yahoo Finance blocking scraping requests. This will be re-enabled in a future release.",
+            category=UserWarning
+        )
+        return None
 
     def sLatest(self, ticker):
         """
         Retrieves the latest stock price for a company based on its ticker symbol.
 
-        This method fetches the most recent price of a stock identified by its ticker symbol. 
-        During trading hours, it provides the current price. If trading is closed, it returns 
+        This method fetches the most recent price of a stock identified by its ticker symbol.
+        During trading hours, it provides the current price. If trading is closed, it returns
         the last available price from the most recent trading session.
 
         Parameters:
@@ -302,7 +275,7 @@ class APIClient:
         Returns:
         -------
         float or None
-            Returns a float representing the latest stock price. Returns None if no data 
+            Returns a float representing the latest stock price. Returns None if no data
             is found for the given ticker symbol or if the data request fails.
 
         Notes:
@@ -310,21 +283,55 @@ class APIClient:
         This method is useful for obtaining real-time or near-real-time price information for a stock.
         It handles the distinction between active trading hours and after-hours or closed market scenarios,
         ensuring that the most relevant price is returned.
-        """    	
+        """        
+        warnings.warn(
+            "sLatest is temporarily disabled due to Yahoo Finance blocking scraping requests. This will be re-enabled in a future release.",
+            category=UserWarning
+        )
+        return None
+       
+    def Dividends(self, ticker):
+        """
+        Retrieves dividend data for the specified ticker symbol.
+
+        This method fetches dividend-related information such as ex-dividend dates, dividend yields, and payment dates
+        for a given company based on the `ticker`. It is designed to provide an overview of a company's dividend history
+        and current dividend policies.
+
+        Parameters:
+        ----------
+        ticker : str|list
+            The ticker symbol or a list of symbols for which to retrieve stock data. Example: 'AAPL' for Apple Inc.
+
+        Returns:
+        -------
+        object
+            A dividend data object that contains historical and current dividend information for the specified `ticker`.
+            The object includes the dividend data parsed from the response in JSON format.
+
+        Notes:
+        -----
+        - The method constructs a request URL using the asset's `make` method, tailored to query dividend information,
+          and sends the request to retrieve the data in JSON format.
+        - The `dividend.dividend_history` function is used to process the JSON response and create a structured dividend
+          data object from the returned content.
+        - This method assumes availability of an API or a method within `self.asset` that can generate appropriate endpoint
+          URLs for accessing dividend data.
+        """
         make_method = getattr(self.asset, 'make')
-        url = make_method(query='price', ticker=ticker, start=dtparse.now(as_string=True), end=dtparse.now(as_string=True))
+        url = make_method(query='dividend_history', ticker=ticker)
         content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
         if content:
-            obj = stock.latest(content)
-            return obj.DATA()
+            obj = dividend.dividend_history(content)
+            return (obj.DividendReport, obj.DividendData)
 
     def Financials(self, ticker, period="Quarterly"):
         """
         Retrieves financial statement data for the specified ticker symbol.
 
-        This method fetches financial statement information such as the income statement, balance sheet, or cash flow 
-        for a given company based on the `ticker`. The user can specify the type of statement (e.g., Income Statement, 
-        Balance Sheet, Cash Flow Statement) and the reporting period (e.g., Quarterly or Annually). If no valid 
+        This method fetches financial statement information such as the income statement, balance sheet, or cash flow
+        for a given company based on the `ticker`. The user can specify the type of statement (e.g., Income Statement,
+        Balance Sheet, Cash Flow Statement) and the reporting period (e.g., Quarterly or Annually). If no valid
         statement type or period is provided, it raises an error.
 
         Parameters:
@@ -341,32 +348,32 @@ class APIClient:
         Returns:
         -------
         object
-            A financial statement object that contains the requested data for the specified `ticker`, `statementType`, 
+            A financial statement object that contains the requested data for the specified `ticker`, `statementType`,
             and `period`. The object includes the financial data parsed from the response in JSON format.
 
         Raises:
         ------
         ValueError
-            If an invalid `statementType` or `period` is provided, the function raises a ValueError to inform the user 
+            If an invalid `statementType` or `period` is provided, the function raises a ValueError to inform the user
             that the input is not recognized.
 
         Notes:
         -----
-        - The method uses an internal function `key_from_mapping` to map user-friendly terms to actual statement types 
+        - The method uses an internal function `key_from_mapping` to map user-friendly terms to actual statement types
           and periods. This allows for case-insensitive input and use of common synonyms (e.g., 'IS' for 'Income Statement').
-        - The method constructs a request URL using the asset's `make` method and sends the request to retrieve the 
+        - The method constructs a request URL using the asset's `make` method and sends the request to retrieve the
           financial data in JSON format.
-        - This method requires that the `fin_statement.financials` object is available to parse the returned content 
+        - This method requires that the `fin_statement.financials` object is available to parse the returned content
           into a structured financial statement object.
-        """ 	
-        valid_periods = {'Quarterly': ['Q', 'Quarter', 'Qtr'], 'Annually': ['A', 'Annual']} 
+        """
+        valid_periods = {'Quarterly': ['Q', 'Quarter', 'Qtr'], 'Annually': ['A', 'Annual']}
         period = key_from_mapping(period, valid_periods, invert=False)
         if not period:
             raise ValueError("Invalid period.")
         make_method = getattr(self.asset, 'make')
         url = make_method(query='financials', ticker=ticker, period=period)
         content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
-        if content:            
+        if content:
             obj = fin_statement.financials(json_content=content)
             return (obj.IncomeStatement, obj.BalanceSheet, obj.CashFlowStatement)
 
@@ -374,8 +381,8 @@ class APIClient:
         """
         Retrieves IPO data for the specified date or date range.
 
-        This method fetches information related to initial public offerings (IPOs) such as the ticker symbols, company names, 
-        proposed exchanges, share prices, and the number of shares offered. It is designed to provide details about companies going public 
+        This method fetches information related to initial public offerings (IPOs) such as the ticker symbols, company names,
+        proposed exchanges, share prices, and the number of shares offered. It is designed to provide details about companies going public
         within a specified period.
 
         Parameters:
@@ -387,15 +394,15 @@ class APIClient:
         Returns:
         -------
         object
-            An object that contains IPO data parsed from the response in JSON format. This object includes structured information 
+            An object that contains IPO data parsed from the response in JSON format. This object includes structured information
             about each IPO listing retrieved for the given period.
 
         Notes:
         -----
-        - The method constructs a request URL using the asset's `make` method, tailored to query IPO information for a specific period, 
+        - The method constructs a request URL using the asset's `make` method, tailored to query IPO information for a specific period,
           and sends the request to retrieve the data.
         - The `stock.ipo` function is used to process the JSON response and create a structured IPO data object from the returned content.
-        - This method assumes the availability of an API or a method within `self.asset` that can generate appropriate endpoint URLs for 
+        - This method assumes the availability of an API or a method within `self.asset` that can generate appropriate endpoint URLs for
           accessing IPO data based on the given period.
         """
         make_method = getattr(self.asset, 'make')
@@ -403,10 +410,21 @@ class APIClient:
         content = Request(url, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)
         if content:
             obj = stock.ipo(content)
-            return obj.DATA         
-           
+            return obj.DATA
+
     def __dir__(self):
-        return ['CompanyBio','CompanyExecutives', 'CompanyDetails', 'Stats', 'sHistorical', 'sLatest', 'Lastn', 'Financials', 'Dividends', 'IPO']            
+        return [
+            # 'CompanyBio',
+            # 'CompanyExecutives',
+            # 'CompanyDetails',
+            # 'Stats',
+            # 'sHistorical',
+            # 'sLatest',
+            # 'Lastn',
+            'Financials',
+            'Dividends',
+            'IPO'
+            ]
 
 
 engine = APIClient(stocks_asset)

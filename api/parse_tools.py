@@ -1,42 +1,75 @@
 # -*- coding: utf-8 -*-
 #
-# quantsumore — A finance API client by Doydl Technologies
+## ╭────────────────────────────────────────────────────────────────────────────────────────────╮
+## │  Library         : doydl's Finance API Client — quantsumore                                 │
+## │                                                                                             │
+## │                                                                                             │
+## │  Description     : `quantsumore` is a comprehensive Python library designed to streamline   │
+## │                    the process of accessing and analyzing real-time financial data across   │
+## │                    various markets. It provides specialized API clients to fetch data       │
+## │                    from multiple financial instruments, including:                          │
+## │                      - Cryptocurrencies                                                     │
+## │                      - Equities and Stock Markets                                           │
+## │                      - Foreign Exchange (Forex)                                             │
+## │                      - Treasury Instruments                                                 │
+## │                      - Consumer Price Index (CPI) Metrics                                   │
+## │                                                                                             │
+## │                    The library offers a unified interface for retrieving diverse financial  │
+## │                    data, enabling users to perform in-depth financial and technical         │
+## │                    analysis. Whether you're developing trading algorithms, conducting       │
+## │                    market research, or building financial dashboards, `quantsumore` serves  │
+## │                    as a reliable and efficient tool in your data pipeline.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  Key Features    : - Real-time data retrieval from multiple financial markets               │
+## │                    - Support for various financial instruments and metrics                  │
+## │                    - Simplified API clients for ease of integration                         │
+## │                    - Designed for both personal and non-commercial use                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Legal Disclaimer: `quantsumore` is an independent Python library and is not affiliated     │
+## │                    with any financial institutions or data providers. Likewise, doydl       │
+## │                    technologies is not affiliated with, endorsed by, or sponsored by any    │
+## │                    government, corporate, or financial institutions. Users should verify    │
+## │                    the accuracy of the data obtained and consult professional advice        │
+## │                    before making investment decisions.                                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Copyright       : © 2023–2025 by doydl technologies. All rights reserved.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  License         : Licensed under the Apache License, Version 2.0 (the "License");          │
+## │                    you may not use this file except in compliance with the License.         │
+## │                    You may obtain a copy of the License at:                                 │
+## │                                                                                             │
+## │                        http://www.apache.org/licenses/LICENSE-2.0                           │
+## │                                                                                             │
+## │                    Unless required by applicable law or agreed to in writing, software      │
+## │                    distributed under the License is distributed on an "AS IS" BASIS,        │
+## │                    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or          │
+## │                    implied. See the License for the specific language governing             │
+## │                    permissions and limitations under the License.                           │
+## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
-# `quantsumore` is an independent Python library designed to provide access to market data 
-# across various financial instruments. The library is not affiliated with, endorsed by, 
-# or associated with any financial institutions or data providers. All data accessed 
-# through `quantsumore` is sourced from and owned by the respective data providers.
-#
-# Users are strongly encouraged to independently verify the accuracy of all data obtained 
-# through this library and to seek professional advice before making any investment decisions.
-# Doydl Technologies disclaims all responsibility for any inaccuracies, errors, or omissions 
-# in the data provided.
-#
-# Copyright (c) 2023–2024 Doydl Technologies. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 
 import re
 from urllib.parse import urlparse
+
+#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
 import pandas as pd
 
-# Custom
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from ..date_parser import dtparse
-# from ..web_utils import url_encode_decode
 
 
 
+# ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This segment delineates the functional backbone of the module.
+# It comprises the abstractions and behaviors essential for runtime
+# execution—if applicable—encapsulated in class and function constructs.
+# In minimal implementations, this may simply define constants, metadata,
+# or serve as an interface placeholder.
 # Precompile regex patterns for efficiency
 _SCRIPT_STYLE_RE = re.compile(
     r'<(?:script|style)[^>]*>.*?</(?:script|style)>',
@@ -408,6 +441,31 @@ class isDelisted:
 
 
 
+# def convert_to_float(value, roundn=0):
+#     """
+#     Converts a given string value to a float after removing any dollar signs and commas,
+#     except when the string contains a percentage sign or a slash, in which case the original
+#     string is returned unchanged.
+# 
+#     Args:
+#     value (str): The string value to convert.
+#     roundn (int): The number of decimal places to round the float to; if 0, rounding is skipped.
+# 
+#     Returns:
+#     float or str: Returns the float conversion if applicable, rounded as specified, 
+#                   or the original value if it contains '%' or '/'.
+#     """
+#     try:
+#         cleaned_value = re.sub(r'[\$,]', '', value)
+#         
+#         if '%' in cleaned_value or '/' in cleaned_value:
+#             return value
+#         
+#         float_value = float(cleaned_value)
+#         return round(float_value, roundn) if roundn else float_value
+#     except ValueError:
+#         return value
+
 def convert_to_float(value, roundn=0):
     """
     Converts a given string value to a float after removing any dollar signs and commas,
@@ -423,15 +481,17 @@ def convert_to_float(value, roundn=0):
                   or the original value if it contains '%' or '/'.
     """
     try:
-        cleaned_value = re.sub(r'[\$,]', '', value)
+        str_value = str(value)
+        cleaned_value = re.sub(r'[\$,]', '', str_value)
         
         if '%' in cleaned_value or '/' in cleaned_value:
             return value
         
         float_value = float(cleaned_value)
         return round(float_value, roundn) if roundn else float_value
-    except ValueError:
+    except (ValueError, TypeError):
         return value
+
 
 def convert_date(date, from_format=None, to_format='%Y-%m-%d %H:%M:%S', to_unix_timestamp=False):
     try:

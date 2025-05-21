@@ -1,42 +1,77 @@
 # -*- coding: utf-8 -*-
 #
-# quantsumore — A finance API client by Doydl Technologies
+## ╭────────────────────────────────────────────────────────────────────────────────────────────╮
+## │  Library         : doydl's Finance API Client — quantsumore                                 │
+## │                                                                                             │
+## │                                                                                             │
+## │  Description     : `quantsumore` is a comprehensive Python library designed to streamline   │
+## │                    the process of accessing and analyzing real-time financial data across   │
+## │                    various markets. It provides specialized API clients to fetch data       │
+## │                    from multiple financial instruments, including:                          │
+## │                      - Cryptocurrencies                                                     │
+## │                      - Equities and Stock Markets                                           │
+## │                      - Foreign Exchange (Forex)                                             │
+## │                      - Treasury Instruments                                                 │
+## │                      - Consumer Price Index (CPI) Metrics                                   │
+## │                                                                                             │
+## │                    The library offers a unified interface for retrieving diverse financial  │
+## │                    data, enabling users to perform in-depth financial and technical         │
+## │                    analysis. Whether you're developing trading algorithms, conducting       │
+## │                    market research, or building financial dashboards, `quantsumore` serves  │
+## │                    as a reliable and efficient tool in your data pipeline.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  Key Features    : - Real-time data retrieval from multiple financial markets               │
+## │                    - Support for various financial instruments and metrics                  │
+## │                    - Simplified API clients for ease of integration                         │
+## │                    - Designed for both personal and non-commercial use                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Legal Disclaimer: `quantsumore` is an independent Python library and is not affiliated     │
+## │                    with any financial institutions or data providers. Likewise, doydl       │
+## │                    technologies is not affiliated with, endorsed by, or sponsored by any    │
+## │                    government, corporate, or financial institutions. Users should verify    │
+## │                    the accuracy of the data obtained and consult professional advice        │
+## │                    before making investment decisions.                                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Copyright       : © 2023–2025 by doydl technologies. All rights reserved.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  License         : Licensed under the Apache License, Version 2.0 (the "License");          │
+## │                    you may not use this file except in compliance with the License.         │
+## │                    You may obtain a copy of the License at:                                 │
+## │                                                                                             │
+## │                        http://www.apache.org/licenses/LICENSE-2.0                           │
+## │                                                                                             │
+## │                    Unless required by applicable law or agreed to in writing, software      │
+## │                    distributed under the License is distributed on an "AS IS" BASIS,        │
+## │                    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or          │
+## │                    implied. See the License for the specific language governing             │
+## │                    permissions and limitations under the License.                           │
+## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
-# `quantsumore` is an independent Python library designed to provide access to market data 
-# across various financial instruments. The library is not affiliated with, endorsed by, 
-# or associated with any financial institutions or data providers. All data accessed 
-# through `quantsumore` is sourced from and owned by the respective data providers.
-#
-# Users are strongly encouraged to independently verify the accuracy of all data obtained 
-# through this library and to seek professional advice before making any investment decisions.
-# Doydl Technologies disclaims all responsibility for any inaccuracies, errors, or omissions 
-# in the data provided.
-#
-# Copyright (c) 2023–2024 Doydl Technologies. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 
 
 import json
 import re
 
-# Custom
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from .connection import http_client
+
+# Imports for validateHTMLResponse
 from ..web_utils import url_encode_decode, HTMLclean
-from ..api.parse_tools import extract_html_element_by_keyword, remove_html_tags, extract_by_keyword, extract_ticker
+from ..api.parse_tools import remove_html_tags, extract_by_keyword, extract_ticker
 
 
+
+# ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This segment delineates the functional backbone of the module.
+# It comprises the abstractions and behaviors essential for runtime
+# execution—if applicable—encapsulated in class and function constructs.
+# In minimal implementations, this may simply define constants, metadata,
+# or serve as an interface placeholder.
 def normalize_response(response, target_key="response", onlyNormalize=False, keep_structure=False):
     """
     Normalizes a nested data structure (dictionary, list, or JSON string) by extracting values associated with a specified key.
@@ -108,92 +143,80 @@ def normalize_response(response, target_key="response", onlyNormalize=False, kee
     return process_result(result, multiple=multi)
 
 
-class validateHTMLResponse:
+def Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False):
     """
-    Validates sections of HTML content based on provided criteria related to financial data.
+    Handles HTTP requests automatically, managing concurrent requests if a list of URLs is provided. The function manages header settings,
+    processes responses according to the specified format, and normalizes the response data based on provided parameters.
 
-    This function performs validations to determine if specific sections relevant to financial data queries
-    exist within a given HTML content string. It supports different types of financial instruments such as equities
-    and currencies, depending on the parameters supplied.   
-    """	    
-    def __init__(self, html):
-        if not self.__is_valid_html_str(html):
-            # return False
-            raise ValueError("Provided HTML content is not valid.")            
-        self.html = HTMLclean.decode(html)
-        
-    def __is_valid_html_str(self, html):
-        if html is None or not isinstance(html, str):
-            return False
-        if html.strip() == "":
-            return False
-        errors = []
-        if not re.match(r'(?i)<!doctype\s+html>', html):
-            errors.append("Missing or incorrect DOCTYPE declaration.")
-        if not re.search(r'<html[^>]*>', html, re.IGNORECASE) or not re.search(r'</html>', html, re.IGNORECASE):
-            errors.append("Missing <html> or </html> tag.")
-        if not re.search(r'<head[^>]*>', html, re.IGNORECASE) or not re.search(r'</head>', html, re.IGNORECASE):
-            errors.append("Missing <head> or </head> tag.")
-        if re.search(r'<head[^>]*>', html, re.IGNORECASE):
-            head_content = re.search(r'<head[^>]*>(.*?)</head>', html, re.IGNORECASE | re.DOTALL)
-            if head_content:
-                if not re.search(r'<title[^>]*>.*?</title>', head_content.group(1), re.IGNORECASE | re.DOTALL):
-                    errors.append("Missing <title> or </title> tag inside <head>.")
-            else:
-                errors.append("Head tag content not found.")
-        if not re.search(r'<body[^>]*>', html, re.IGNORECASE) or not re.search(r'</body>', html, re.IGNORECASE):
-            errors.append("Missing <body> or </body> tag.")
-        if not errors:
-            return True
-        else:
-            return False
-        
-    def __ticker_search(self, ticker):
-        html_content = self.html        
-        symbol = re.sub(r'\s+', '', symbol).upper()
-        ticker_match = extract_ticker(html_content).ticker
-       
-        if ticker_match:
-            found_ticker = remove_html_tags(ticker_match)
-            if found_ticker == symbol:
-                return True            
-        return False
+    Args:
+        url (str | list): The URL or a list of URLs for making the requests. If a list is provided and contains more than one URL,
+                          the requests are made concurrently.
+        headers_to_update (dict, optional): A dictionary of headers that should be updated for this particular request. These headers
+                                            are temporarily set for the request and restored to their original values afterward.
+        response_format (str, optional): The expected format of the response. This affects the 'Accept' header to expect either 'html' or 'json'.
+                                         Defaults to 'html'.
+        target_response_key (str, optional): The key in the response payload from which the data should be extracted. Defaults to 'response'.
+        return_url (bool, optional): If True, returns the response along with the URL it was fetched from. This is applicable for non-concurrent
+                                     requests. Defaults to True.
+        onlyParse (bool, optional): If set to True, the function skips the extraction of the target key and performs a deep JSON parsing on the entire response.
+                                    Defaults to False.
+        no_content (bool, optional): If set to True, retains the entire structure surrounding the target_response_key in the processed response,
+                                     otherwise, it returns only the value associated with target_response_key. Defaults to False.
 
-    def __currencypair_search(self, currency_pair):
-        def remove_non_alphabetic(text):
-            return re.sub(r'[^a-zA-Z]', '', text)
-           
-        html_content = self.html
-        currency_pair = remove_non_alphabetic(currency_pair)
-        escaped_currency_pair = re.escape(currency_pair)
-        pattern = rf"\b{escaped_currency_pair}\b.*Barchart\.com"
-        match = re.search(pattern, html_content)
-        if match:
-            return currency_pair
-        return None
-         
-    def currency(self, currency_pair):
-        html_content = self.html
-        if self.__currencypair_search(currency_pair=currency_pair):
-            if not currency_pair.__contains__("^"):
-                currency_pair = "^" + currency_pair
-            pattern_pair = rf'<span>\({re.escape(currency_pair)}\)</span>'
-            if re.search(pattern_pair, html_content, re.IGNORECASE | re.DOTALL):
-                return True
-        return False
-        
-    def equity(self, ticker):
-        html_content = self.html
-        if self.__ticker_search(ticker=ticker):
-            # profile_check = re.search(r'<section data-testid="description".*?<h3.*?>\s*Description\s*</h3>.*?</section>', html_content, re.IGNORECASE | re.DOTALL)
-            # stats_check = re.search(r'<div\s+data-testid="quote-statistics"[^>]*>.*?<ul[^>]*>.*?</ul>.*?</div>', html_content, re.IGNORECASE | re.DOTALL)        	
-            profile_check = extract_by_keyword(html_content, keyword=["Key Executives", "Corporate Governance", "Description"], tag_name="h3")
-            stats_check = extract_by_keyword(html_content, keyword=["Financial Highlights", "Valuation Measures", "Trading Information"], tag_name="h3")
-            if profile_check or stats_check:
-                return True
-        return False
-       
-       
+    Returns:
+        Any | None: Depending on the existence and content of the target_response_key in the response, this function may return the processed
+                    response data or the full response itself if an error occurs during processing.
+
+    Raises:
+        HTTPError: If an HTTP error occurs during the request.
+        ValueError: If the response content type is unsupported.
+        JSONDecodeError: If a JSON parsing error occurs.
+
+    Note:
+        This function supports handling multiple URLs concurrently and can handle complex data structures in responses, including nested and JSON strings.
+        It also manages headers dynamically and ensures that they are restored after the request, minimizing side effects on the http_client's state.
+    """
+    # needs_proxy = "yahoo.com" in url
+    concurrent = isinstance(url, list) and len(url) > 1 # Determine if the request should be handled concurrently
+
+    if headers_to_update is None:
+        headers_to_update = {}
+    if response_format == 'json':
+        headers_to_update['Accept'] = 'application/json'
+    original_headers = {}
+    if headers_to_update:
+        for header, value in headers_to_update.items():
+            original_headers[header] = http_client.get_headers(header)
+            http_client.update_header(header, value)
+
+    params = {'format': response_format}
+    if concurrent:
+        response = http_client.make_requests_concurrently(
+            url,
+            params,
+            return_url=return_url,
+            delay_enabled=False,
+            # use_proxy=needs_proxy
+        )        
+    else:
+        if isinstance(url, str):
+            http_client.update_base_url(url)
+        response = http_client.make_request(
+            params,
+            concurrent=False,
+            return_url=return_url,
+            delay_enabled=True,
+            # use_proxy=needs_proxy
+        )
+    for header, original_value in original_headers.items():
+        http_client.update_header(header, original_value)
+
+    try:
+        return normalize_response(response, target_key=target_response_key, onlyNormalize=onlyParse, keep_structure=no_content)        
+    except:
+        return response
+
+##==
 def clean_initial_content(content):
     """
     Clean the input content by removing entries with URL keys and extracting the contents within their 'response' sub-key.
@@ -262,66 +285,134 @@ def key_from_mapping(input_str, mappings, invert=False):
 
 
 ##==
-def Request(url, headers_to_update=None, response_format='html', target_response_key='response', return_url=True, onlyParse=False, no_content=False):
+class validateHTMLResponse:
     """
-    Handles HTTP requests automatically, managing concurrent requests if a list of URLs is provided. The function manages header settings,
-    processes responses according to the specified format, and normalizes the response data based on provided parameters.
+    Validates sections of HTML content based on provided criteria related to financial data.
 
-    Args:
-        url (str | list): The URL or a list of URLs for making the requests. If a list is provided and contains more than one URL,
-                          the requests are made concurrently.
-        headers_to_update (dict, optional): A dictionary of headers that should be updated for this particular request. These headers
-                                            are temporarily set for the request and restored to their original values afterward.
-        response_format (str, optional): The expected format of the response. This affects the 'Accept' header to expect either 'html' or 'json'.
-                                         Defaults to 'html'.
-        target_response_key (str, optional): The key in the response payload from which the data should be extracted. Defaults to 'response'.
-        return_url (bool, optional): If True, returns the response along with the URL it was fetched from. This is applicable for non-concurrent
-                                     requests. Defaults to True.
-        onlyParse (bool, optional): If set to True, the function skips the extraction of the target key and performs a deep JSON parsing on the entire response.
-                                    Defaults to False.
-        no_content (bool, optional): If set to True, retains the entire structure surrounding the target_response_key in the processed response,
-                                     otherwise, it returns only the value associated with target_response_key. Defaults to False.
+    This function performs validations to determine if specific sections relevant to financial data queries
+    exist within a given HTML content string. It supports different types of financial instruments such as equities
+    and currencies, depending on the parameters supplied.   
+    """	    
+    def __init__(self, html):
+        if not self.__is_valid_html_str(html):
+            # return False
+            raise ValueError("Provided HTML content is not valid.")            
+        self.html = HTMLclean.decode(html)
+        
+    def __is_valid_html_str(self, html):
+        if html is None or not isinstance(html, str):
+            return False
+        if html.strip() == "":
+            return False
+        errors = []
+        if not re.match(r'(?i)<!doctype\s+html>', html):
+            errors.append("Missing or incorrect DOCTYPE declaration.")
+        if not re.search(r'<html[^>]*>', html, re.IGNORECASE) or not re.search(r'</html>', html, re.IGNORECASE):
+            errors.append("Missing <html> or </html> tag.")
+        if not re.search(r'<head[^>]*>', html, re.IGNORECASE) or not re.search(r'</head>', html, re.IGNORECASE):
+            errors.append("Missing <head> or </head> tag.")
+        if re.search(r'<head[^>]*>', html, re.IGNORECASE):
+            head_content = re.search(r'<head[^>]*>(.*?)</head>', html, re.IGNORECASE | re.DOTALL)
+            if head_content:
+                if not re.search(r'<title[^>]*>.*?</title>', head_content.group(1), re.IGNORECASE | re.DOTALL):
+                    errors.append("Missing <title> or </title> tag inside <head>.")
+            else:
+                errors.append("Head tag content not found.")
+        if not re.search(r'<body[^>]*>', html, re.IGNORECASE) or not re.search(r'</body>', html, re.IGNORECASE):
+            errors.append("Missing <body> or </body> tag.")
+        if not errors:
+            return True
+        else:
+            return False
+        
+    def __ticker_search(self, ticker):
+        html_content = self.html        
+        symbol = re.sub(r'\s+', '', ticker).upper()
+        ticker_match = extract_ticker(html_content).ticker
+       
+        if ticker_match:
+            found_ticker = remove_html_tags(ticker_match)
+            if found_ticker == symbol:
+                return True            
+        return False
 
-    Returns:
-        Any | None: Depending on the existence and content of the target_response_key in the response, this function may return the processed
-                    response data or the full response itself if an error occurs during processing.
+    def __currencypair_search(self, currency_pair):
+        def remove_non_alphabetic(text):
+            return re.sub(r'[^a-zA-Z]', '', text)
+           
+        html_content = self.html
+        currency_pair = remove_non_alphabetic(currency_pair)
+        escaped_currency_pair = re.escape(currency_pair)
+        pattern = rf"\b{escaped_currency_pair}\b.*Barchart\.com"
+        match = re.search(pattern, html_content)
+        if match:
+            return currency_pair
+        return None
+         
+    def currency(self, currency_pair):
+        html_content = self.html
+        if self.__currencypair_search(currency_pair=currency_pair):
+            if not currency_pair.__contains__("^"):
+                currency_pair = "^" + currency_pair
+            pattern_pair = rf'<span>\({re.escape(currency_pair)}\)</span>'
+            if re.search(pattern_pair, html_content, re.IGNORECASE | re.DOTALL):
+                return True
+        return False
+        
+    def equity(self, ticker):
+        html_content = self.html
+        if self.__ticker_search(ticker=ticker):
+            # profile_check = re.search(r'<section data-testid="description".*?<h3.*?>\s*Description\s*</h3>.*?</section>', html_content, re.IGNORECASE | re.DOTALL)
+            # stats_check = re.search(r'<div\s+data-testid="quote-statistics"[^>]*>.*?<ul[^>]*>.*?</ul>.*?</div>', html_content, re.IGNORECASE | re.DOTALL)        	
+            profile_check = extract_by_keyword(html_content, keyword=["Key Executives", "Corporate Governance", "Description"], tag_name="h3")
+            stats_check = extract_by_keyword(html_content, keyword=["Financial Highlights", "Valuation Measures", "Trading Information"], tag_name="h3")
+            if profile_check or stats_check:
+                return True
+        return False
 
-    Raises:
-        HTTPError: If an HTTP error occurs during the request.
-        ValueError: If the response content type is unsupported.
-        JSONDecodeError: If a JSON parsing error occurs.
 
-    Note:
-        This function supports handling multiple URLs concurrently and can handle complex data structures in responses, including nested and JSON strings.
-        It also manages headers dynamically and ensures that they are restored after the request, minimizing side effects on the http_client's state.
-    """
-    concurrent = isinstance(url, list) and len(url) > 1 # Determine if the request should be handled concurrently
 
-    if headers_to_update is None:
-        headers_to_update = {}
-    if response_format == 'json':
-        headers_to_update['Accept'] = 'application/json'
-    original_headers = {}
-    if headers_to_update:
-        for header, value in headers_to_update.items():
-            original_headers[header] = http_client.get_headers(header)
-            http_client.update_header(header, value)
+# from requests.exceptions import HTTPError
+# 
+# def assert_http_response_integrity(html_content, return_error=False):
+#     """
+#     Validates the HTML response structure and checks for embedded HTTP errors.
+# 
+#     Parameters:
+#     ----------
+#     html_content : Any
+#         The object to validate, typically the result of a request function.
+#     return_error : bool
+#         If True and an error is found, raise a HTTPError.
+#         If False and an error is found, return None.
+# 
+#     Returns:
+#     -------
+#     - Valid html_content if no error
+#     - None if return_error is False and an error is found
+# 
+#     Raises:
+#     -------
+#     HTTPError: if return_error is True and an error is found
+#     """
+#     if not html_content:
+#         if return_error:
+#             raise HTTPError("No content returned")
+#         return None
+# 
+#     if isinstance(html_content, list) and isinstance(html_content[0], dict):
+#         first_dict = html_content[0]
+#         for url, result in first_dict.items():
+#             if isinstance(result, dict) and "error" in result:
+#                 if return_error:
+#                     raise HTTPError(result["error"])
+#                 return None
+# 
+#     return html_content
 
-    params = {'format': response_format}
-    if concurrent:
-        response = http_client.make_requests_concurrently(url, params, return_url=return_url, delay_enabled=False)
-    else:
-        if isinstance(url, str):
-            http_client.update_base_url(url)
-        response = http_client.make_request(params, concurrent=False, return_url=return_url, delay_enabled=True)
 
-    for header, original_value in original_headers.items():
-        http_client.update_header(header, original_value)
 
-    try:
-        return normalize_response(response, target_key=target_response_key, onlyNormalize=onlyParse, keep_structure=no_content)        
-    except:
-        return response
+
 
 
 def __dir__():

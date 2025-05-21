@@ -1,41 +1,74 @@
 # -*- coding: utf-8 -*-
 #
-# quantsumore — A finance API client by Doydl Technologies
+## ╭────────────────────────────────────────────────────────────────────────────────────────────╮
+## │  Library         : doydl's Finance API Client — quantsumore                                 │
+## │                                                                                             │
+## │                                                                                             │
+## │  Description     : `quantsumore` is a comprehensive Python library designed to streamline   │
+## │                    the process of accessing and analyzing real-time financial data across   │
+## │                    various markets. It provides specialized API clients to fetch data       │
+## │                    from multiple financial instruments, including:                          │
+## │                      - Cryptocurrencies                                                     │
+## │                      - Equities and Stock Markets                                           │
+## │                      - Foreign Exchange (Forex)                                             │
+## │                      - Treasury Instruments                                                 │
+## │                      - Consumer Price Index (CPI) Metrics                                   │
+## │                                                                                             │
+## │                    The library offers a unified interface for retrieving diverse financial  │
+## │                    data, enabling users to perform in-depth financial and technical         │
+## │                    analysis. Whether you're developing trading algorithms, conducting       │
+## │                    market research, or building financial dashboards, `quantsumore` serves  │
+## │                    as a reliable and efficient tool in your data pipeline.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  Key Features    : - Real-time data retrieval from multiple financial markets               │
+## │                    - Support for various financial instruments and metrics                  │
+## │                    - Simplified API clients for ease of integration                         │
+## │                    - Designed for both personal and non-commercial use                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Legal Disclaimer: `quantsumore` is an independent Python library and is not affiliated     │
+## │                    with any financial institutions or data providers. Likewise, doydl       │
+## │                    technologies is not affiliated with, endorsed by, or sponsored by any    │
+## │                    government, corporate, or financial institutions. Users should verify    │
+## │                    the accuracy of the data obtained and consult professional advice        │
+## │                    before making investment decisions.                                      │
+## │                                                                                             │
+## │                                                                                             │
+## │  Copyright       : © 2023–2025 by doydl technologies. All rights reserved.                  │
+## │                                                                                             │
+## │                                                                                             │
+## │  License         : Licensed under the Apache License, Version 2.0 (the "License");          │
+## │                    you may not use this file except in compliance with the License.         │
+## │                    You may obtain a copy of the License at:                                 │
+## │                                                                                             │
+## │                        http://www.apache.org/licenses/LICENSE-2.0                           │
+## │                                                                                             │
+## │                    Unless required by applicable law or agreed to in writing, software      │
+## │                    distributed under the License is distributed on an "AS IS" BASIS,        │
+## │                    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or          │
+## │                    implied. See the License for the specific language governing             │
+## │                    permissions and limitations under the License.                           │
+## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
-# `quantsumore` is an independent Python library designed to provide access to market data 
-# across various financial instruments. The library is not affiliated with, endorsed by, 
-# or associated with any financial institutions or data providers. All data accessed 
-# through `quantsumore` is sourced from and owned by the respective data providers.
-#
-# Users are strongly encouraged to independently verify the accuracy of all data obtained 
-# through this library and to seek professional advice before making any investment decisions.
-# Doydl Technologies disclaims all responsibility for any inaccuracies, errors, or omissions 
-# in the data provided.
-#
-# Copyright (c) 2023–2024 Doydl Technologies. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 
 
 import re
 
-# Custom
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from .market_utils import forexquery, equityquery, CurrencyQuery, SlugValidateQuery
 from ..date_parser import dtparse
 from ..web_utils import url_encode_decode, Mask
 
 
+
+# ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This segment delineates the functional backbone of the module.
+# It comprises the abstractions and behaviors essential for runtime
+# execution—if applicable—encapsulated in class and function constructs.
+# In minimal implementations, this may simply define constants, metadata,
+# or serve as an interface placeholder.
 class identifier_validation:
     def __init__(self):
         self.validated_identifier = None
@@ -95,10 +128,10 @@ def _normalize_dates(start_date, end_date=None, future_date_check=False, date_fo
         end_date = dtparse.now(utc=True)
     else:
         if isinstance(end_date, str):
-            end_date = dtparse.parse(end_date)
+            end_date = dtparse.parse(date_input=end_date)
         
     if isinstance(start_date, str):
-        start_date = dtparse.parse(start_date)  
+        start_date = dtparse.parse(date_input=start_date)  
         
     if start_date > end_date:
         raise ValueError("The start date must be before or equal to the end date.")
@@ -108,12 +141,12 @@ def _normalize_dates(start_date, end_date=None, future_date_check=False, date_fo
             raise ValueError("Data not available on requested date. Please try another date.")
 
     if date_format == "unix":
-        start_date = dtparse.unix_timestamp(start_date)
-        end_date = dtparse.unix_timestamp(end_date)
+        start_date = dtparse.unix_timestamp(date_value=start_date)
+        end_date = dtparse.unix_timestamp(date_value=end_date)
         
     elif date_format == "utc_unix":
-        start_date = dtparse.unix_timestamp(start_date, utc=True)
-        end_date = dtparse.unix_timestamp(end_date, utc=True)
+        start_date = dtparse.unix_timestamp(date_value=start_date, utc=True)
+        end_date = dtparse.unix_timestamp(date_value=end_date, utc=True)
         
     else:
         start_date = start_date.strftime(date_format)
@@ -181,7 +214,7 @@ class Equity:
             if period:
                 period = _normalize_dates(period, future_date_check=True, date_format="%Y-%m", clip="end")
             else:
-                period = dtparse.now(as_string=True, format="%Y-%m")
+                period = dtparse.now(format="%Y-%m")
             return self._construct_url(identifier=None, period1=period, period2=None, financial_period=period, financial_interval=None, Type="ipo")  
            
         ticker = args[0] if len(args) > 0 else kwargs.get('ticker')
