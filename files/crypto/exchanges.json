@@ -9097,13 +9097,13 @@
         },
         "9882": {
             "exchangeId": "9882",
-            "exchangeName": "Meteora",
-            "exchangeSlug": "meteora-vd"
+            "exchangeName": "Meteora DLMM",
+            "exchangeSlug": "meteora-dlmm"
         },
         "9883": {
             "exchangeId": "9883",
-            "exchangeName": "Meteora VP",
-            "exchangeSlug": "meteora-vp"
+            "exchangeName": "Meteora DBC",
+            "exchangeSlug": "meteora-dbc"
         },
         "9920": {
             "exchangeId": "9920",
@@ -9534,6 +9534,11 @@
             "exchangeId": "11514",
             "exchangeName": "Solidly",
             "exchangeSlug": "solidly-sonic"
+        },
+        "11515": {
+            "exchangeId": "11515",
+            "exchangeName": "Equalizer (Sonic)",
+            "exchangeSlug": "equalizer-sonic"
         },
         "11545": {
             "exchangeId": "11545",
