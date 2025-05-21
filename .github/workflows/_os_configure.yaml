@@ -1,13 +1,14 @@
 name: Update OS Versions
 
+# Disable all triggers
 on:
-  workflow_dispatch: 
-  schedule:
-    - cron: '0 0 * * *' 
-    
-  push:
-    branches:
-      - v2.1.4b1
+  # workflow_dispatch: 
+  # schedule:
+  #   - cron: '0 0 * * *'     
+  # push:
+  #   branches:
+  #     - v2.1.4b1
+      
 jobs:
   download-and-save:
     runs-on: ubuntu-latest
