@@ -522,8 +522,8 @@
         },
         "302": {
             "exchangeId": "302",
-            "exchangeName": "Gate.io",
-            "exchangeSlug": "gate-io"
+            "exchangeName": "Gate",
+            "exchangeSlug": "gate"
         },
         "303": {
             "exchangeId": "303",
