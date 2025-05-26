@@ -3847,7 +3847,7 @@
         },
         "1043": {
             "exchangeId": "1043",
-            "exchangeName": "NDAX",
+            "exchangeName": "Ndax",
             "exchangeSlug": "ndax"
         },
         "1044": {
@@ -9814,6 +9814,11 @@
             "exchangeId": "12218",
             "exchangeName": "XXKK",
             "exchangeSlug": "xxkk"
+        },
+        "12266": {
+            "exchangeId": "12266",
+            "exchangeName": "BlockFin",
+            "exchangeSlug": "blockfin"
         }
     }
 }
