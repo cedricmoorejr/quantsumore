@@ -9102,8 +9102,8 @@
         },
         "9883": {
             "exchangeId": "9883",
-            "exchangeName": "Meteora DBC",
-            "exchangeSlug": "meteora-dbc"
+            "exchangeName": "Meteora DAMM",
+            "exchangeSlug": "meteora-damm"
         },
         "9920": {
             "exchangeId": "9920",
@@ -9819,6 +9819,11 @@
             "exchangeId": "12266",
             "exchangeName": "BlockFin",
             "exchangeSlug": "blockfin"
+        },
+        "12313": {
+            "exchangeId": "12313",
+            "exchangeName": "Meteora DAMM v2",
+            "exchangeSlug": "meteora-damm-v2"
         }
     }
 }
