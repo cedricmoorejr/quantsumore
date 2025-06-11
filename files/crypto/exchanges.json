@@ -9824,6 +9824,11 @@
             "exchangeId": "12313",
             "exchangeName": "Meteora DAMM v2",
             "exchangeSlug": "meteora-damm-v2"
+        },
+        "12317": {
+            "exchangeId": "12317",
+            "exchangeName": "VSCDEX",
+            "exchangeSlug": "vscdex"
         }
     }
 }
