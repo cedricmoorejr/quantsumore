@@ -9829,6 +9829,11 @@
             "exchangeId": "12317",
             "exchangeName": "VSCDEX",
             "exchangeSlug": "vscdex"
+        },
+        "12322": {
+            "exchangeId": "12322",
+            "exchangeName": "Meteora DBC",
+            "exchangeSlug": "meteora-dbcs"
         }
     }
 }
