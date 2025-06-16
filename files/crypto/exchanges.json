@@ -9834,6 +9834,16 @@
             "exchangeId": "12322",
             "exchangeName": "Meteora DBC",
             "exchangeSlug": "meteora-dbcs"
+        },
+        "12328": {
+            "exchangeId": "12328",
+            "exchangeName": "Subnet Tokens",
+            "exchangeSlug": "subnet-tokens"
+        },
+        "12330": {
+            "exchangeId": "12330",
+            "exchangeName": "EllipX",
+            "exchangeSlug": "ellipx"
         }
     }
 }
