@@ -9835,6 +9835,11 @@
             "exchangeName": "Meteora DBC",
             "exchangeSlug": "meteora-dbcs"
         },
+        "12325": {
+            "exchangeId": "12325",
+            "exchangeName": "SyncSwap v2",
+            "exchangeSlug": "syncswap-v2-sophon"
+        },
         "12328": {
             "exchangeId": "12328",
             "exchangeName": "Subnet Tokens",
@@ -9844,6 +9849,11 @@
             "exchangeId": "12330",
             "exchangeName": "EllipX",
             "exchangeSlug": "ellipx"
+        },
+        "12336": {
+            "exchangeId": "12336",
+            "exchangeName": "SyncSwap v3",
+            "exchangeSlug": "syncswap-v3-sophon"
         }
     }
 }
