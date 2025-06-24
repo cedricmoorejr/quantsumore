@@ -9854,6 +9854,11 @@
             "exchangeId": "12336",
             "exchangeName": "SyncSwap v3",
             "exchangeSlug": "syncswap-v3-sophon"
+        },
+        "12366": {
+            "exchangeId": "12366",
+            "exchangeName": "Mars Exchange",
+            "exchangeSlug": "mars-exchange"
         }
     }
 }
