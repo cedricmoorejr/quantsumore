@@ -9859,6 +9859,11 @@
             "exchangeId": "12366",
             "exchangeName": "Mars Exchange",
             "exchangeSlug": "mars-exchange"
+        },
+        "12370": {
+            "exchangeId": "12370",
+            "exchangeName": "MachineX",
+            "exchangeSlug": "machinex"
         }
     }
 }
