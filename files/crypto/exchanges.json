@@ -9864,6 +9864,11 @@
             "exchangeId": "12370",
             "exchangeName": "MachineX",
             "exchangeSlug": "machinex"
+        },
+        "12386": {
+            "exchangeId": "12386",
+            "exchangeName": "BitTap",
+            "exchangeSlug": "bittap"
         }
     }
 }
