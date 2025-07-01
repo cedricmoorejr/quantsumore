@@ -9869,6 +9869,11 @@
             "exchangeId": "12386",
             "exchangeName": "BitTap",
             "exchangeSlug": "bittap"
+        },
+        "12393": {
+            "exchangeId": "12393",
+            "exchangeName": "Apertum DEX",
+            "exchangeSlug": "apertum-dex"
         }
     }
 }
