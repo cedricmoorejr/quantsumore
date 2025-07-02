@@ -9874,6 +9874,11 @@
             "exchangeId": "12393",
             "exchangeName": "Apertum DEX",
             "exchangeSlug": "apertum-dex"
+        },
+        "12404": {
+            "exchangeId": "12404",
+            "exchangeName": "Aivora Exchange",
+            "exchangeSlug": "aivora-exchange"
         }
     }
 }
