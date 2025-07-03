@@ -8240,11 +8240,6 @@
             "exchangeName": "Elves DEX",
             "exchangeSlug": "elves-dex"
         },
-        "7748": {
-            "exchangeId": "7748",
-            "exchangeName": "Topcredit Int",
-            "exchangeSlug": "topcredit-int"
-        },
         "7754": {
             "exchangeId": "7754",
             "exchangeName": "WethioX Exchange",
