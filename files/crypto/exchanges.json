@@ -9874,6 +9874,11 @@
             "exchangeId": "12404",
             "exchangeName": "Aivora Exchange",
             "exchangeSlug": "aivora-exchange"
+        },
+        "12426": {
+            "exchangeId": "12426",
+            "exchangeName": "Nivex",
+            "exchangeSlug": "nivex"
         }
     }
 }
