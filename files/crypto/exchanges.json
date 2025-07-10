@@ -1350,11 +1350,6 @@
             "exchangeName": "Bitget",
             "exchangeSlug": "bitget"
         },
-        "514": {
-            "exchangeId": "514",
-            "exchangeName": "Finexbox",
-            "exchangeSlug": "finexbox"
-        },
         "515": {
             "exchangeId": "515",
             "exchangeName": "Bitzon",
@@ -9879,6 +9874,11 @@
             "exchangeId": "12426",
             "exchangeName": "Nivex",
             "exchangeSlug": "nivex"
+        },
+        "12456": {
+            "exchangeId": "12456",
+            "exchangeName": "BitbabyExchange",
+            "exchangeSlug": "bitbabyexchange"
         }
     }
 }
