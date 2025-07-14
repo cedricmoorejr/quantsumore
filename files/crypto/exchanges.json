@@ -9879,6 +9879,11 @@
             "exchangeId": "12456",
             "exchangeName": "BitbabyExchange",
             "exchangeSlug": "bitbabyexchange"
+        },
+        "12467": {
+            "exchangeId": "12467",
+            "exchangeName": "Gems Trade",
+            "exchangeSlug": "gems-trade"
         }
     }
 }
