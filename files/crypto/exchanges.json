@@ -9884,6 +9884,11 @@
             "exchangeId": "12467",
             "exchangeName": "Gems Trade",
             "exchangeSlug": "gems-trade"
+        },
+        "12508": {
+            "exchangeId": "12508",
+            "exchangeName": "Blackhole",
+            "exchangeSlug": "blackhole"
         }
     }
 }
