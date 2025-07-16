@@ -9889,6 +9889,11 @@
             "exchangeId": "12508",
             "exchangeName": "Blackhole",
             "exchangeSlug": "blackhole"
+        },
+        "12524": {
+            "exchangeId": "12524",
+            "exchangeName": "Binance Alpha",
+            "exchangeSlug": "binance-alpha"
         }
     }
 }
