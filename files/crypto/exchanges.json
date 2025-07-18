@@ -9889,6 +9889,21 @@
             "exchangeId": "12508",
             "exchangeName": "Blackhole",
             "exchangeSlug": "blackhole"
+        },
+        "12524": {
+            "exchangeId": "12524",
+            "exchangeName": "Binance Alpha",
+            "exchangeSlug": "binance-alpha"
+        },
+        "12541": {
+            "exchangeId": "12541",
+            "exchangeName": "Steamm",
+            "exchangeSlug": "steamm"
+        },
+        "12544": {
+            "exchangeId": "12544",
+            "exchangeName": "Yex.io",
+            "exchangeSlug": "yex-io"
         }
     }
 }
