@@ -9880,6 +9880,11 @@
             "exchangeName": "BitbabyExchange",
             "exchangeSlug": "bitbabyexchange"
         },
+        "12461": {
+            "exchangeId": "12461",
+            "exchangeName": "Blackhole (CLMM)",
+            "exchangeSlug": "blackhole-clmm"
+        },
         "12467": {
             "exchangeId": "12467",
             "exchangeName": "Gems Trade",
@@ -9902,8 +9907,8 @@
         },
         "12544": {
             "exchangeId": "12544",
-            "exchangeName": "Yex.io",
-            "exchangeSlug": "yex-io"
+            "exchangeName": "Yex",
+            "exchangeSlug": "yex"
         }
     }
 }
