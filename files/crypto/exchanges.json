@@ -9914,6 +9914,11 @@
             "exchangeId": "12578",
             "exchangeName": "EasiCoin",
             "exchangeSlug": "easicoin"
+        },
+        "12590": {
+            "exchangeId": "12590",
+            "exchangeName": "LetsBonk",
+            "exchangeSlug": "letsbonk"
         }
     }
 }
