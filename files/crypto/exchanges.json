@@ -9919,6 +9919,11 @@
             "exchangeId": "12590",
             "exchangeName": "LetsBonk",
             "exchangeSlug": "letsbonk"
+        },
+        "12596": {
+            "exchangeId": "12596",
+            "exchangeName": "NovaEx",
+            "exchangeSlug": "novaex"
         }
     }
 }
