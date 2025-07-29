@@ -9924,6 +9924,11 @@
             "exchangeId": "12596",
             "exchangeName": "NovaEx",
             "exchangeSlug": "novaex"
+        },
+        "12682": {
+            "exchangeId": "12682",
+            "exchangeName": "ADEN",
+            "exchangeSlug": "aden-decentralized-derivatives-exchange"
         }
     }
 }
