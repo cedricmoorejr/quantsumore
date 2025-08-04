@@ -9929,6 +9929,16 @@
             "exchangeId": "12682",
             "exchangeName": "ADEN",
             "exchangeSlug": "aden-decentralized-derivatives-exchange"
+        },
+        "12714": {
+            "exchangeId": "12714",
+            "exchangeName": "PancakeSwap v4 CLAMM(BSC)",
+            "exchangeSlug": "pancakeswap-v4-clamm-bsc"
+        },
+        "12715": {
+            "exchangeId": "12715",
+            "exchangeName": "PancakeSwap v4 LBAMM(BSC)",
+            "exchangeSlug": "pancakeswap-v4-lbamm-bsc"
         }
     }
 }
