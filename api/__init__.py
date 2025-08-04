@@ -60,3 +60,7 @@ from .equity.EquityAPI import engine as equity
 from .forex.ForexAPI import engine as forex
 from .treasury.TreasuryAPI import engine as treasury
 from .cpi.ConsumerPriceIndexAPI import engine as cpi
+from quantsumore._http.connection import APIKey
+
+
+__all__ = ['crypto', 'equity', 'forex', 'treasury', 'cpi', 'APIKey']

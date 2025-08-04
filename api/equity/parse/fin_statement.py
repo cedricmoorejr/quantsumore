@@ -52,21 +52,27 @@
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
 
-
-
-import re
-from copy import deepcopy
-
-#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
-import pandas as pd
-import numpy as np
+# import re
+# from copy import deepcopy
 
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from ...date_parser import dtparse
-from ..._http.response_utils import clean_initial_content
 from ...shape_tools import is_valid_dataframe
 from ...strata_utils import IterDict
-from ...parse_tools import extract_symbol_from_url
+from ...exceptions import (
+    # FinancialsError,
+    FinancialStatementUnavailableError,
+)
+from ...statement_types.types import (
+    # FinancialStatement,
+    IncomeStatement,
+    BalanceSheet,
+    CashFlowStatement,
+)
+from ...markup import idextract
+
+
+__all__ = ['financials']
 
 
 
@@ -76,236 +82,227 @@ from ...parse_tools import extract_symbol_from_url
 # execution—if applicable—encapsulated in class and function constructs.
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
-class FinancialStatement(pd.DataFrame):
-    @property
-    def _constructor(self):
-        return FinancialStatement
-
-    @property
-    def _constructor_sliced(self):
-        return pd.Series
-
-# Subclasses for each type of financial statement
-class IncomeStatement(FinancialStatement):
-    pass
-
-class BalanceSheet(FinancialStatement):
-    pass	
-
-class CashFlowStatement(FinancialStatement):
-    pass
-
 
 class financials:
-    def __init__(self, json_content=None):
-        self.financialStatements = ['incomeStatementTable', 'balanceSheetTable', 'cashFlowTable']    
-        self.income_statement = None           
-        self.balance_sheet = None            
-        self.cash_flow_statement = None             
-        self.ticker = None
+    """
+    Expected Input: Financial Statement API Response
+
+    The `financials` class expects as input the parsed JSON response from a financial statement endpoint,
+    returning the full suite of annual or quarterly financial data for a given security.
+
+    Example Input Structure:
+    [
+      {
+        "<string-key>": {  # Usually a URL-encoded path or endpoint signature, e.g. "...+NVDA/financials?frequency=1"
+          "response": {
+            "data": {
+              "symbol": str,    # Security symbol, e.g. "NVDA"
+              "tabs": {
+                "incomeStatementTable": str,
+                "balanceSheetTable": str,
+                "cashFlowTable": str,
+                "financialRatiosTable": str
+              },
+              "incomeStatementTable": {
+                "asOf": str or null,
+                "headers": dict,       # Period labels, e.g. {value1: "Period Ending:", value2: "1/26/2025", ...}
+                "rows": list           # Each row is a dict of value1: row label, value2-valueN: period values (strings)
+              },
+              "balanceSheetTable": {
+                "asOf": str or null,
+                "headers": dict,       # Same structure as above
+                "rows": list           # Each row is a dict of value1: row label, value2-valueN: period values (strings)
+              },
+              "cashFlowTable": {
+                "asOf": str or null,
+                "headers": dict,       # Same structure as above
+                "rows": list           # Each row is a dict of value1: row label, value2-valueN: period values (strings)
+              },
+              "financialRatiosTable": {
+                "asOf": str or null,
+                "headers": dict,       # Same structure as above
+                "rows": list           # Each row is a dict of value1: row label, value2-valueN: period values (strings)
+              }
+            },
+            "message": str or null,    # May provide context or note missing data
+            "status": {
+              "rCode": int,            # e.g. 200 (success)
+              "bCodeMessage": str or null,
+              "developerMessage": str or null
+            }
+          }
+        }
+      }
+    ]
+
+    Period/Frequency Handling:
+    - The API can return both **annual** and **quarterly** financials.
+        - Annual Example: headers key "Period Ending:" with dates like "1/26/2025", "1/28/2024", etc.
+        - Quarterly Example: headers key "Quarterly Ending:" with appropriate dates.
+    - The "frequency" query parameter controls this: `frequency=1` for annual, `frequency=2` for quarterly.
+    - Structure remains consistent between frequencies: only the header labels and dates change.
+
+    Table Structure & Notes:
+    - All four major financial tables are present:
+        - **Income Statement**
+        - **Balance Sheet**
+        - **Cash Flow**
+        - **Financial Ratios**
+    - Each table contains:
+        - A headers dict for periods (always value1: row label, value2+: period dates)
+        - A list of rows, where each row is a dict: value1 (metric label), value2-valueN (period values)
+        - Data values are strings, sometimes with currency symbols, percent signs, "--" for missing values, or empty.
+        - Some rows are purely categorical (e.g., "Operating Expenses") and will have empty values.
+
+    Batch/Multiple Instruments:
+    - Top-level list supports batch results for multiple securities.
+    - Each "<string-key>" is usually a unique request signature or URL, not just a ticker.
+
+    Defensive Parsing Recommendations:
+    - Always check for missing or empty fields (e.g., "--", "", null).
+    - Table structure is consistent, but some metrics or periods may be missing for certain securities or timeframes.
+    - All numbers are returned as **strings**—parse/cast as needed for numerical operations.
+    - Additional context or error info may be provided in the `message` or `status` fields.
+
+    Summary:
+    - This structure provides the **complete set of financial statements and ratios** for a security, either annual or quarterly.
+    - Always reference the headers dict to determine period dates and labels before processing rows.
+    - Designed for robust tabular rendering, comparison, and analysis.
+    """
+    # map JSON keys → (DataFrame subclass, attribute name)
+    _TABLE_MAP = {
+        "incomeStatementTable": (IncomeStatement, "income_statement"),
+        "balanceSheetTable":  (BalanceSheet,  "balance_sheet"),
+        "cashFlowTable":      (CashFlowStatement, "cash_flow_statement"),
+    }
+
+    def __init__(self, json_content):
+        self.ticker = ""
         self.error_messages = []
-        self.error = True        
+        self.error = True
+        self._raw = IterDict.isNested(json_content)
 
-        if json_content:
-            self.json_content = IterDict.isNested(json_content)
+        # placeholders for the three statements
+        for _, attr in self._TABLE_MAP.values():
+            setattr(self, attr, None)
 
-        if self.json_content:
-            self.check_data()  # Processes the data and checks for errors
-            self.display_error_messages()  # Display error messages regardless of error status
-            if not self.error:
-                for statementType in self.financialStatements:
-                    self.parse(statementType) # Proceed with parsing if no critical errors
+        self._validate_and_filter()
+        self._report_errors()
+        if not self.error:
+            self._parse_all()
 
-    def display_error_messages(self):
-        if self.error_messages:
-            for x, t in self.error_messages:
-                print(f'{x}: {t}')                
+    def _validate_and_filter(self):
+        """
+        Check rCode, presence of tables, collect any error messages,
+        and filter out failing entries from self._raw.
+        """
+        valid_entries = []
+        for entry in self._raw:
+            url, info = next(iter(entry.items()))
+            status = info["response"]["status"]["rCode"]
+            data   = info["response"].get("data", {})
+            ok = (
+                status == 200
+                and any(data.get(tbl) for tbl in self._TABLE_MAP)
+            )
 
-    def check_data(self):
-        json_content = self.json_content
-        def verify_financial_data(financial_datasets):
-            acceptable_data = []
-            for entry in financial_datasets:
-                url, response_info = list(entry.items())[0]
-
-                if response_info['response']['status']['rCode'] == 200:
-                    data = response_info['response']['data']
-                    if data and 'tabs' in data:
-                        if any(data.get(table) for table in ['incomeStatementTable', 'balanceSheetTable', 'cashFlowTable']):
-                            message = response_info['response'].get('message')
-                            error_message = response_info['response']['status'].get('bCodeMessage')
-                            
-                            if message or (error_message and any(em.get('errorMessage') for em in error_message)):
-                                acceptable_data.append((url, False))
-                            else:
-                                acceptable_data.append((url, True))
-                        else:
-                            acceptable_data.append((url, False))
-                    else:
-                        acceptable_data.append((url, False))
-                else:
-                    acceptable_data.append((url, False))
-
-            return acceptable_data
-
-        validate_financial_data = verify_financial_data(json_content)
-
-        # Initialize the list to store messages
-        error_messages_list = []
-
-        for url, check in validate_financial_data:
-            if not check: 
-                ticker = extract_symbol_from_url(url)
-                data = IterDict.find(json_content, target_key=url)
-                found_message = IterDict.filter(data, 'message', "^(?!None$)(?i).*", True)
-                if found_message:
-                    n_message = IterDict.find(found_message, 'message')
-                    message = (n_message.rstrip() + ('' if re.search(r'\.$', n_message.rstrip()) else '.') if n_message is not None else None)  
-                    error_messages_list.append((ticker, message))
-                else:
-                    found_error_message = IterDict.filter(data, 'errorMessage', "^(?!None$)(?i).*", True)
-                    if found_error_message:
-                        n_message = IterDict.find(found_error_message, 'errorMessage')
-                        message = (n_message.rstrip() + ('' if re.search(r'\.$', n_message.rstrip()) else '.') if n_message is not None else None)  
-                        error_messages_list.append((ticker, message))
-                    else:
-                        default_message = "Financial statement data data could not be found."
-                        error_messages_list.append((ticker, default_message))		
-
-            # Filter to get only URLs that passed validation (those with True status)
-            self.error_messages = error_messages_list
-            valid_urls = [url for url, is_valid in validate_financial_data if is_valid]
-            self.json_content = [entry for entry in json_content if any(url in entry for url in valid_urls)]
-
-            if valid_urls:            
-                self.error = False
-                
-    def _clean_content(self, content):
-        return clean_initial_content(content)
-       
-    def _getTickerSymbol(self, content):
-        if isinstance(content, dict):
-            if 'symbol' in content:
-                return content['symbol']
-            for value in content.values():
-                found = self._getTickerSymbol(value)
-                if found:
-                    return found
-        elif isinstance(content, list):
-            for item in content:
-                found = self._getTickerSymbol(item)
-                if found:
-                    return found
-                   
-    def __clean_content(self, df, cols):
-        def _clean_currency(df, columns):
-            def currency_to_float(value):
-                if isinstance(value, str):
-                    if value == '--':
-                        return value
-                    value = value.replace('$', '').replace(',', '')
-                try:
-                    return float(value)
-                except (ValueError, TypeError):
-                    return value
-            dataframe = deepcopy(df)
-            for column in columns:
-                dataframe[column] = dataframe[column].apply(currency_to_float)
-            return dataframe
-        return _clean_currency(df, cols)
-           
-    def _clean_headers_rows(self, headers, rows):
-        empty_indices = []
-        cleaned_headers = {}
-        for key, value in headers.items():
-            if value: 
-                cleaned_headers[key] = value
+            if not ok:
+                ticker = idextract.extract(url, idextract.SYMBOL)
+                # try to find a user-friendly message
+                msg = (
+                    IterDict.find(info["response"], "message")
+                    or IterDict.find(info["response"], "errorMessage")
+                    or "Financial statement data could not be found."
+                ).rstrip(".") + "."
+                self.error_messages.append((ticker, msg))
             else:
-                empty_indices.append(key)
-        cleaned_rows = []
-        for row in rows:
-            cleaned_row = {k: v for k, v in row.items() if k not in empty_indices}
-            cleaned_rows.append(cleaned_row)
-        return cleaned_headers, cleaned_rows
-           
-    def _create_dataframe(self, headers, rows, statement):
-        headers, rows = self._clean_headers_rows(headers, rows)    	
-        column_names = [headers[key] for key in sorted(headers.keys())]
-        data_for_df = []
-        for row in rows:
-            data_for_df.append([row[key] for key in sorted(row.keys())])
-        df = FinancialStatement(data=data_for_df, columns=column_names)        
+                valid_entries.append(entry)
 
-        # Rename Date Columns
-        date_columns = df.columns[1:] 
-        parsed_dates = [dtparse.parse(date_input=date) for date in date_columns]
-        column_date_strings = [dtparse.parse(date_input=date, to_format='%Y-%m-%d') for date in parsed_dates]
-        df.columns = [df.columns[0]] + column_date_strings
+        self.error = len(valid_entries) == 0
+        self._raw = valid_entries
 
-        # Reorder Columns
-        sorted_dates = sorted(parsed_dates, reverse=True) 
-        sorted_date_strings = [dtparse.parse(date_input=date, to_format='%Y-%m-%d') for date in sorted_dates]
-        new_column_order = [df.columns[0]] + sorted_date_strings
-        df = df[new_column_order]
-        
-        # Clean Data Frame
-        df = self.__clean_content(df, df.columns[1:])
-        df.iloc[:, 1:] = df.iloc[:, 1:].fillna('')
-        
-        # Set Index
-        df.set_index(df.columns[0], inplace=True) 
+    def _report_errors(self):
+        for ticker, msg in self.error_messages:
+            print(f"{ticker}: {msg}")
 
-        if statement == 'incomeStatementTable':
-            df.__class__ = IncomeStatement
-            self.income_statement = df
-        elif statement == 'balanceSheetTable':
-            df.__class__ = BalanceSheet
-            self.balance_sheet = df
-        elif statement == 'cashFlowTable':
-            df.__class__ = CashFlowStatement
-            self.cash_flow_statement = df
+    def _parse_all(self):
+        entry = self._raw[0]
+        data  = next(iter(entry.values()))["response"]["data"]
+        self.ticker = data.get("symbol", "") or self.ticker
 
-    def parse(self, statementType):
-        if not self.ticker:
-            self.ticker = self._getTickerSymbol(self.json_content)
-        content = self._clean_content(self.json_content)
-        finstatement = content[0]['data'][statementType]       
-        if finstatement:
-            headers = finstatement['headers']
-            rows = finstatement['rows']
-        self._create_dataframe(headers, rows, statement=statementType)
-        
+        for key, (cls, attr) in self._TABLE_MAP.items():
+            table = data.get(key)
+            if table:
+                df = self._parse_table(table["headers"], table["rows"], cls)
+                setattr(self, attr, df)
+
+    def _parse_table(self, headers, rows, df_class):
+        """
+        Build a FinancialStatement subclass from raw headers+rows.
+        """
+        # 1) Drop empty header columns
+        valid_keys = {k: v for k, v in headers.items() if v}
+        drop_keys  = set(headers) - set(valid_keys)
+        for r in rows:
+            for k in drop_keys:
+                r.pop(k, None)
+
+        # 2) Build DataFrame
+        df = pd.DataFrame.from_records(
+            data=rows,
+            columns=sorted(valid_keys),
+        ).rename(columns=valid_keys)
+
+        # 3) Parse dates in columns 1:
+        date_cols = list(df.columns[1:])
+        parsed_strs = [
+            dtparse.parse(date, to_format="%Y-%m-%d") for date in date_cols
+        ]
+        df.columns = [df.columns[0]] + parsed_strs
+        sorted_dates = sorted(parsed_strs, reverse=True)
+        df = df[[df.columns[0]] + sorted_dates]
+
+        # 4) Clean numeric data (currency-to-float) vectorized
+        def _to_float(x):
+            if isinstance(x, str) and x not in ("", "--"):
+                return float(x.replace("$","").replace(",",""))
+            return x
+
+        for col in sorted_dates:
+            df[col] = df[col].map(_to_float).fillna("")
+
+        # 5) set index on metric name
+        df = df.set_index(df.columns[0])
+        df.__class__ = df_class
+        return df
+
+    # user-facing properties
     @property
     def IncomeStatement(self):
         if not is_valid_dataframe(self.income_statement):
-            if not self.error_messages:            
-                return "Financial Statement data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+            raise FinancialStatementUnavailableError("Income Statement unavailable.")
         return self.income_statement
-       
+
     @property
     def BalanceSheet(self):
         if not is_valid_dataframe(self.balance_sheet):
-            if not self.error_messages:            
-                return "Financial Statement data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+            raise FinancialStatementUnavailableError("Balance Sheet unavailable.")
         return self.balance_sheet
-       
-    @property       
+
+    @property
     def CashFlowStatement(self):
         if not is_valid_dataframe(self.cash_flow_statement):
-            if not self.error_messages:            
-                return "Financial Statement data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
+            raise FinancialStatementUnavailableError("Cash Flow Statement unavailable.")
         return self.cash_flow_statement
-       
+
     def __dir__(self):
-        return ['IncomeStatement', 'BalanceSheet', 'CashFlowStatement']
-
-
-
+        return ["IncomeStatement", "BalanceSheet", "CashFlowStatement"]
 
 def __dir__():
-    return ['financials', 'FinancialStatement']
+    return __all__
 
-__all__ = ['financials', 'FinancialStatement']
+
+
 
 
 

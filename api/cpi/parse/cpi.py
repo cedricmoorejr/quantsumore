@@ -53,17 +53,18 @@
 #
 
 
-
-
 import re
-
-#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
-import pandas as pd
-from lxml import html as Html
+from io import StringIO
 
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from ...date_parser import dtparse
+from ...exceptions import (
+    # CPIError, 
+    CPIDateParseError, 
+    CPIDataUnavailableError
+)
 
+__all__ = ['CUUR0000AA0']
 
 
 # ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -72,6 +73,7 @@ from ...date_parser import dtparse
 # execution—if applicable—encapsulated in class and function constructs.
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
+
 current_date = dtparse.nowCT(format='%Y-%m-%d')
 
 class CUUR0000AA0:
@@ -91,6 +93,7 @@ class CUUR0000AA0:
 
         def extract(self):
             if self.html_content:
+                from lxml import html as Html # Third-party library imports (from PyPI or other package sources)
                 tree = Html.fromstring(self.html_content)
                 xpath = '//*[@id="mobile-meta-col"]'
                 element = tree.xpath(xpath)
@@ -109,12 +112,12 @@ class CUUR0000AA0:
                         date = dtparse.build(year=year, month=month, day=1)
                         return date.strftime('%Y-%m-%d')
             return self.force_end_date 
-
+        
         def date(self):
-            """ Returns date string."""
+            """Returns date string or raises if unavailable."""
             if self.end_date is None:
-                return "CPI data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
-            return self.end_date
+                raise CPIDateParseError()
+            return self.end_date        
            
         def __dir__(self):
             return ['date']
@@ -151,42 +154,24 @@ class CUUR0000AA0:
 
             return url_template
 
-        # def construct_data(self):
-        #     if self.url:
-        #         try:
-        #             df = pd.read_csv(self.url)
-        #             df['DATE'] = pd.to_datetime(df['DATE'])
-        #             df['period'] = df['DATE'].dt.month.map(self.period_mapping)
-        #             df['year'] = df['DATE'].dt.year.astype(int)
-        #             df = df.drop(columns=['DATE'])
-        #             df = df.rename(columns={'CPIAUCNS': 'value'})
-        #             df['series_id'] = 'CUUR0000AA0'
-        #             df = df[['series_id', 'year', 'period', 'value']]
-        #             df.loc[:, 'year'] = df['year'].astype(int)
-        #             df.loc[:, 'value'] = df['value'].astype(float)
-        #             # Calculating the average value per year and adding it as a new row
-        #             average_df = df.groupby('year')['value'].mean().round(1).reset_index()
-        #             average_df['series_id'] = 'CUUR0000AA0'
-        #             average_df['period'] = 'Average'
-        #             # Appending the average_df to the original df
-        #             df = pd.concat([df, average_df], ignore_index=True)
-        #             df = df.reset_index(drop=True)
-        #             return df
-        #         except Exception:
-        #             return None 
-        #     return None
-
         def construct_data(self):
             if self.url:
                 try:
-                    df = pd.read_csv(self.url)
 
-                    # ----------------------------------------------------------------------
+                    # Fetch
+                    headers = {"User-Agent": "Mozilla/5.0"}
+                    
+                    import requests # Third-party library imports (from PyPI or other package sources)        
+                    resp = requests.get(self.url, headers=headers)
+                    resp.raise_for_status()  # Optional: will raise an error for 4xx/5xx responses
+                    
+                    import pandas as pd # Third-party library imports (from PyPI or other package sources)        
+                    df = pd.read_csv(StringIO(resp.text))  
+                    
                     # Automatically detect the date column name instead of hardcoding it.
                     # Rationale: FRED changed the column name from 'DATE' to 'observation_date',
                     # which broke downstream code. To prevent similar issues in the future,
                     # this searches for any column that includes 'date' in its name (case-insensitive).
-                    # ----------------------------------------------------------------------
                     date_column = next(
                         (col for col in df.columns if 'date' in col.lower()), 
                         None
@@ -222,25 +207,22 @@ class CUUR0000AA0:
                     return df
 
                 except Exception as e:
-                    # print(f"Error constructing CPI data: {e}")
                     return None
             return None
 
         def all_items_index(self):
-            """ Returns pandas DataFrame."""
+            """Returns pandas DataFrame with CPI data or raises if unavailable."""
             if self.all_items is None:
-                return "CPI data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
-            return self.all_items
+                raise CPIDataUnavailableError()
+            return self.all_items        
            
         def __dir__(self):
             return ['all_items_index']
 
-
-
 def __dir__():
-    return ['CUUR0000AA0']
+    return __all__
 
 
-__all__ = ['CUUR0000AA0']
+
 
 

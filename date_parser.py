@@ -52,14 +52,14 @@
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
 
-
 from datetime import datetime as dt, timedelta as td, date as d, timezone as tmz
 import re
-import time
 
-#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
-import pandas as pd
-import numpy as np
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
+from .proxy import Proxy
+
+__all__ = ['dtparse']
+
 
 
 # ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -68,6 +68,26 @@ import numpy as np
 # execution—if applicable—encapsulated in class and function constructs.
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
+
+# Lazily load the entire modules; actual imports occurs on first use.
+pd = Proxy("pandas", None)  # Third-party library imports (from PyPI or other package sources)  
+np = Proxy("numpy")  # Third-party library imports (from PyPI or other package sources)  
+
+
+# Notes:
+# -----
+# Provides a flexible and extensible set of utilities for parsing, normalizing,
+# and manipulating date and time information across a wide variety of string formats, Python
+# date/datetime objects, and tabular collections (lists, numpy arrays, pandas Series).
+# 
+# This parser is designed to bridge the gap between messy real-world date inputs and strict
+# internal timekeeping needs. It standardizes ambiguous date formats, infers missing information,
+# and handles conversion across timezones and Unix timestamps, with an emphasis on reliability
+# and extensibility for downstream analytics or ETL workflows.
+# 
+# All critical date logic—parsing, conversion, normalization, timezone offsetting, and
+# date math—is managed locally. Backend delegation is not required: all string cleaning,
+# structure validation, and format expansion are performed on the client side.
 class dt_parse:
     # Canonical copy of the “factory-fresh” formats.
     DEFAULT_DATE_FORMATS = [
@@ -75,81 +95,41 @@ class dt_parse:
         '%d.%m.%Y', '%d %b %Y', '%d %B %Y', '%b %d %Y',
         '%Y%m%d',  '%d%m%Y',  '%A, %B %d %Y', '%Y-%m-%dT%H:%M:%SZ',
         '%a, %d %b %Y %H: %M:%S', '%Y-%m', '%Y-%m-%d %H:%M',
-        '%Y-%m-%d %I:%M %p', '%Y-%m-%d %H:%M:%S', '%a, %d %b %Y',
+        '%Y-%m-%d %I:%M %p', '%Y-%m-%d %H:%M:%S', '%a, %d %b %Y', 
+        '%Y-%m-%d %H:%M:%S.%f', '%a, %d %b %Y %H:%M:%S',
     ]
 
     def __init__(self):
-        # make a *copy* so DEFAULT_DATE_FORMATS itself is never mutated
+        """
+        Initialize a new dt_parse instance with preconfigured date formats.
+
+        Initializes internal format lists, compiles ISO format regex, and sets up
+        helper classes for timezone and substitution logic.
+
+        Notes:
+        -----------
+            The class maintains both dot-inclusive and dot-exclusive format variants for
+            format-specific parsing. It also stores the last successful format encountered.
+        """
         self.date_formats = list(self.DEFAULT_DATE_FORMATS)
         self._refresh_format_lists()
         self.iso_format = re.compile(
-            r'^\d{4}-\d{2}-\d{2}'             # Date: YYYY-MM-DD
-            r'T'                              # Separator: T
-            r'\d{2}:\d{2}:\d{2}'              # Time: hh:mm:ss
-            r'(?:\.\d+)?'                     # Optional fractional seconds: .digits
-            # r'(?:Z|[+-]\d{2}:\d{2})?$'      # Time zone: Z or ±hh:mm
-            r'Z$'                             # Time zone: Z only
-        )  
-        
+            r'^'
+              r'\d{4}-\d{2}-\d{2}'            # date
+              r'T'
+              r'\d{2}:\d{2}:\d{2}'            # time
+              r'(?:\.\d+)?'                   # optional fractional
+              r'(?:Z|[+-]\d{2}:\d{2})?'       # Z or +HH:MM or -HH:MM
+            r'$'
+        )
         self.formats_with_dots = [fmt for fmt in self.date_formats if '.' in fmt]
         self.formats_without_dots = [fmt for fmt in self.date_formats if '.' not in fmt]
         self.last_successful_format = None
     
-        # ──────────────────────────────────────── INNER CLASSES ────────────────────────────────────────
+        # -------- INNER CLASSES -----------
         self.ET = self.EasternTime(self)         
         self.sub = self.SubstituteClass(self)           
-        
-    # _DIR_LETTERS = set(
-    #     "aAbBpPzZxXwWdDmMyYHIfSjUWCcGguV"  # all single-letter directives
-    # )
-    #
-    # @staticmethod    
-    # def _normalize_format(fmt: str) -> str:
-    #     """
-    #     Add a leading '%' in front of every lone strftime directive letter
-    #     that *isn't* already prefixed.
-    # 
-    #     Examples
-    #     --------
-    #     >>> dt_parse._normalize_format('d-b-Y')
-    #     '%d-%b-%Y'
-    #     >>> dt_parse._normalize_format('%Y/%m/%d')   # already good
-    #     '%Y/%m/%d'
-    #     """
-    #     if '%' in fmt:          # assume caller already wrote a valid pattern
-    #         return fmt
-    # 
-    #     out = []
-    #     for ch in fmt:
-    #         if ch.isalpha() and ch in dt_parse._DIR_LETTERS:
-    #             out.append('%' + ch)
-    #         else:
-    #             out.append(ch)
-    #     return ''.join(out)
-    #           
-    #
-    #
-    # _MISSING_PERCENT = re.compile(
-    #     rf'(?<!%)'                 # not already prefixed by %
-    #     rf'([{_FLAG_CHARS}]?)'     # optional flag   (-  _  0)
-    #     rf'([{_DIRECTIVE_CHARS}])' # the directive letter itself
-    # )
-    #
-    # @staticmethod    
-    # def _normalize_format(fmt: str) -> str:
-    #     """
-    #     Insert a leading '%' in front of any directive (optionally carrying a
-    #     flag) that is missing it.
-    # 
-    #     Examples
-    #     --------
-    #     'd-b-Y'   → '%d-%b-%Y'
-    #     '-d-b-Y'  → '%-d-%b-%Y'
-    #     '_H:M:S'  → '%_H:%M:%S'
-    #     'Y/%m/%d' → '%Y/%m/%d'
-    #     A string that is *already* fully prefixed is left untouched.
-    #     """
-    #     return dt_parse._MISSING_PERCENT.sub(lambda m: '%' + m.group(1) + m.group(2), fmt)
+
     _DIRECTIVE_CHARS = 'aAbBpPzZxXwWdDmMyYHIfSjUWCcGguV'   # ← single-letter directives
     _FLAG_CHARS      = '-_0'                               # ← padding flags we’ll honour
     _MISSING_PERCENT = re.compile(
@@ -160,12 +140,52 @@ class dt_parse:
         ''',
         re.VERBOSE
     )    
+    _MULTI_SPACE  = re.compile(r'\s+')
+    _AROUND_COLON = re.compile(r'\s*:\s*')    
+    
+    @staticmethod        
+    def _clean_whitespace(date_string):
+        """
+        Normalize whitespace in an input:
+          - If it's a list/tuple, join its items with single spaces.
+          - Collapse any run of whitespace (tabs, newlines, multiple spaces) into one space.
+          - Remove *all* spaces immediately before *and* after colons (e.g. "00:  00:00" → "00:00:00").
+          - Trim leading/trailing whitespace.
+        """
+        # 1) Turn lists/tuples into a single string; otherwise str()-ify
+        if isinstance(date_string, (list, tuple)):
+            s = ' '.join(str(x) for x in date_string)
+        else:
+            s = str(date_string)
+
+        # 2) Collapse multiple whitespace into one space
+        s = dt_parse._MULTI_SPACE.sub(' ', s)
+
+        # 3) Remove spaces around colons
+        s = dt_parse._AROUND_COLON.sub(':', s)
+
+        # 4) Final trim
+        return s.strip()
     
     @staticmethod    
     def _normalize_format(fmt: str) -> str:
         """
-        Add a leading '%' in front of every directive letter (with an optional
-        padding flag) that doesn’t already have one.
+        Normalize a datetime format string by injecting missing '%' symbols.
+
+        Parameters:
+        -----------
+            fmt : str
+                A shorthand datetime format string, possibly missing percent signs
+                (e.g., "Y-m-d" instead of "%Y-%m-%d").
+
+        Returns:
+        -----------
+            str : A fully normalized format string compatible with `strptime`.
+
+        Notes:
+        -----------
+            If the input already contains a percent sign ('%'), it is returned unchanged.
+            Otherwise, this method adds a leading '%' to any valid directive and its optional flag.
         """
         # If the user has already typed any ‘%’, treat the pattern as complete.
         if '%' in fmt:
@@ -178,24 +198,39 @@ class dt_parse:
         )
 
     def _refresh_format_lists(self):
-        """Re-derive the convenience sub-lists every time date_formats changes."""
+        """
+        Re-derive the dot-sensitive format sub-lists based on current date formats.
+
+        This method regenerates internal helper lists used to distinguish between formats
+        that include dot separators and those that do not.
+
+        Notes:
+        -----------
+            Called automatically during initialization and whenever `date_formats` is updated.
+            These lists support conditional parsing strategies based on visual format style.
+        """
         self.formats_with_dots    = [f for f in self.date_formats if '.' in f]
         self.formats_without_dots = [f for f in self.date_formats if '.' not in f]
         
     def _is_date_str(self, text):
         """
-        Determine if the given text contains any date/time formatting directives.
-
-        This method checks whether the input string includes any of the date/time format
-        directives (e.g., %a, %b, %d, %H, etc.) typically used with Python's strftime or strptime.
-        If the input is not a string, it immediately returns False.
+        Determine if the given string contains any date/time formatting directives.
 
         Parameters:
-            text (str): The string to check for date/time format directives.
+        -----------
+            text : str
+                The string to inspect for datetime format directives (e.g., %Y, %m, %d, etc.).
 
         Returns:
-            bool: True if the string contains at least one date/time directive, otherwise False.
-        """   	
+        -----------
+            bool : True if the string contains at least one valid date/time directive;
+                   otherwise False.
+
+        Notes:
+        -----------
+            This method is useful for detecting whether a format string is intended for use
+            with `strftime` or `strptime`. Non-string inputs will always return False.
+        """
         date_format_string_pattern = re.compile(r"%[aAbBcdHImMpSUwWxXyYZ]")
         if not isinstance(text, str):
             return False
@@ -203,21 +238,30 @@ class dt_parse:
 
     def _is_datetimeType(self, obj, format='%Y-%m-%d', strf=False):
         """
-        Dynamically check if the object is date-like or datetime-like based on its attributes.
-
-        This method determines whether the given object contains the attributes of a date or datetime.
-        If the optional parameter `strf` is True, the object is formatted as a string using the provided
-        format.
+        Determine if an object is date-like or datetime-like.
 
         Parameters:
-            obj: The object to check.
-            format (str): The format string to use if `strf` is True.
-            strf (bool): If True, return the formatted date string; otherwise, return a boolean indicating
-                         if the object is date-like or datetime-like.
+        -----------
+            obj : Any
+                The object to evaluate for date or datetime-like attributes.
+            
+            format : str, optional
+                Format string to use if `strf` is True. Defaults to '%Y-%m-%d'.
+
+            strf : bool, optional
+                If True, return the object formatted as a string using `format`.
+                If False, return a boolean indicating date-likeness.
 
         Returns:
-            bool or str: If `strf` is True and the object is date-like or datetime-like, returns the formatted string.
-                         Otherwise, returns True if the object is date-like or datetime-like; else False.
+        -----------
+            bool or str : 
+                - If `strf` is True and the object is date-like or datetime-like, returns a formatted string.
+                - If `strf` is False, returns True if the object has date/datetime attributes, else False.
+
+        Notes:
+        -----------
+            A datetime-like object must have all of: year, month, day, hour, minute, second, microsecond.
+            A date-like object must have year, month, and day only.
         """
         date_attrs = {'year', 'month', 'day'}
         datetime_attrs = date_attrs.union({'hour', 'minute', 'second', 'microsecond'})
@@ -236,18 +280,23 @@ class dt_parse:
 
     def _from_pywintypes_datetime(self, obj):
         """
-        Convert a pywintypes.datetime object to a standard Python datetime.datetime object.
-
-        This method checks whether the input object is from the 'pywintypes' module with class name 'datetime'
-        or if it has datetime-like attributes. If so, it converts the object into a standard datetime.datetime object.
-        If conversion is not applicable, the original object is returned.
+        Convert a `pywintypes.datetime` object to a standard `datetime.datetime`.
 
         Parameters:
-            obj: The object to convert.
+        -----------
+            obj : Any
+                The object to attempt to convert.
 
         Returns:
-            datetime.datetime or original object: A standard datetime.datetime object if conversion succeeds;
-            otherwise, the original object.
+        -----------
+            datetime.datetime or original object :
+                A converted `datetime.datetime` object if `obj` is a `pywintypes.datetime` or has datetime-like attributes;
+                otherwise, returns the original object unchanged.
+
+        Notes:
+        -----------
+            This method is useful when interoperating with Windows COM objects that expose
+            `pywintypes.datetime`. It will preserve `tzinfo` if available.
         """
         # Check if it's from the 'pywintypes' module and class name is 'datetime' or has required attributes
         if ((type(obj).__module__ == "pywintypes" and type(obj).__name__ == "datetime") or
@@ -268,49 +317,51 @@ class dt_parse:
 
     def _is_iso(self, text):
         """
-        Check if the given text is in ISO 8601 format (UTC only).
+        Check whether a string matches ISO 8601 UTC datetime format.
 
         Parameters:
-            text (str): The string to check.
+        -----------
+            text : str
+                The input string to evaluate.
 
         Returns:
-            bool: True if the text matches the ISO 8601 format with a 'Z' timezone indicator; otherwise, False.
+        -----------
+            bool : True if the string matches ISO 8601 format with optional fractional
+                   seconds and a trailing 'Z' or offset (e.g., +00:00); otherwise False.
+
+        Notes:
+        -----------
+            This check is strict — it only returns True if the input matches the expected
+            ISO pattern exactly (e.g., "2024-01-01T12:00:00Z").
         """
         if not isinstance(text, str):
             return False
-
-        return bool(re.compile(
-            r'^'                  # Start of string
-            r'\d{4}-\d{2}-\d{2}'  # Date: YYYY-MM-DD
-            r'T'                  # Separator: T
-            r'\d{2}:\d{2}:\d{2}'  # Time: hh:mm:ss
-            r'(?:\.\d+)?'         # Optional fractional seconds: .digits
-            r'Z$'                 # Time zone: Z only
-        ).search(text))
+        return bool(self.iso_format.match(text))        
 
     def _add_missing_seconds(self, date_str):
         """
-        Given a string that may include a date and a time portion, ensure that the time portion
-        is in the format HH:MM:SS (adding ":00" if seconds are missing), but only if any text preceding
-        the time is actually a date. If the prefix (the text before the time) cannot be parsed as a date,
-        the function leaves the string unchanged.
-
-        Steps:
-          1. Collapse extra whitespace.
-          2. Use a regex to capture two groups:
-             - 'prefix': Everything before the time portion.
-             - 'time': The time portion in one of the supported formats (HH:MM, HH:MM:SS, or HH:MM:SS.microseconds).
-          3. If a prefix is present, try to parse it with dateplumb.pro_parse. If parsing fails,
-             assume it isn’t a date and return the original string.
-          4. If parsing succeeds (i.e. the prefix is a date), check the time groups.
-          5. If seconds are missing, default them to "00".
-          6. Reconstruct the string with the (possibly normalized) date prefix and new time.
+        Normalize datetime strings by ensuring seconds are present in the time portion.
 
         Parameters:
-            date_str (str): A string that may contain a date and time (e.g., "2024-01-01 12:34" or "2024/01/01 12:34:56.789").
+        -----------
+            date_str : str
+                A string that may contain a date and time (e.g., "2024-01-01 12:34").
 
         Returns:
-            str: The modified datetime string with seconds ensured, or the original string if the date portion is invalid.
+        -----------
+            str : A modified string with seconds included in the time portion if:
+                  - The time portion is present, and
+                  - The prefix is a parseable date.
+                  Otherwise, returns the original string unchanged.
+
+        Notes:
+        -----------
+            The function performs the following:
+              1. Strips excessive whitespace.
+              2. Uses regex to extract date and time parts.
+              3. Verifies if the prefix is a valid date using `self.parse()`.
+              4. Adds ":00" if seconds are missing from the time.
+              5. Preserves microseconds if present.
         """
         # 1. Normalize whitespace.
         cleaned = " ".join(date_str.split())
@@ -363,66 +414,69 @@ class dt_parse:
 
         return new_str
         
-    # ──────────────────────────────────────── PUBLIC HELPERS ────────────────────────────────────────
-    def add(self, *formats):
-        # """
-        # Add one or more strftime/strptime format strings at runtime.
-        # """
-        # new_items = [f for f in formats if f not in self.date_formats]
-        # if new_items:
-        #     self.date_formats.extend(new_items)
-        #     self._refresh_format_lists()   # keep the derivative lists in sync
-        """
-        Accept one or more new format strings.  If any directive letters are
-        missing their leading '%', they will be fixed automatically.
-
-        >>> dtparse.add_date_formats('d-b-Y', 'Y/m/d')  # ⇒ '%d-%b-%Y', '%Y/%m/%d'
-        """
-        for raw in formats:
-            fmt = self._normalize_format(raw)
-            if fmt not in self.date_formats:
-                self.date_formats.append(fmt)
-        self._refresh_format_lists()        
-
-    def flush(self, successful_reset=False):
-        """
-        Restore the parser to its original list of formats, discarding any extras
-        added with `add()`.
-        """
-        self.date_formats = list(self.DEFAULT_DATE_FORMATS)
-        self._refresh_format_lists()
-        if successful_reset:
-            self.last_successful_format = None     
-        
-    # ──────────────────────────────────────── MAIN PARSER ────────────────────────────────────────
+    # -------- PARSER ----------- 
     def parse(self, date_input, *, from_format=None, to_format=None,
               to_unix_timestamp=False, include_timezone=False,
               timezone_offset='+00:00', keep_time=True,
               _skip_missing=False):          # <- internal flag
         """
-        Parse and convert dates from various formats.
+        Parse and convert date inputs into datetime objects, strings, or Unix timestamps.
 
-        This method handles date parsing for multiple input types (e.g., string, list, numpy.ndarray, pandas.Series)
-        and supports conversion to Unix timestamps, formatting, and ISO 8601 parsing.
+        This method supports flexible parsing of individual or batch date inputs, allowing
+        optional formatting, Unix timestamp conversion, and ISO-8601 support.
 
         Parameters:
-            date_input: A date input (string, datetime, list, numpy.ndarray, or pandas.Series).
-            from_format (str, optional): Format string for parsing the input date.
-            to_format (str, optional): Format string for output formatting.
-            to_unix_timestamp (bool, optional): If True, returns an integer Unix timestamp.
-            include_timezone (bool, optional): If True, includes a timezone offset for ISO dates.
-            timezone_offset (str, optional): Timezone offset to use for ISO dates (default is '+00:00').
-            keep_time (bool, optional): If False, returns only the date portion; otherwise, returns the full datetime.
+        -----------
+            date_input : str, datetime, list, np.ndarray, or pd.Series
+                The input date(s) to parse or convert.
+
+            from_format : str, optional
+                A format string used to explicitly parse the input. If not provided, the
+                parser will attempt to infer the format.
+
+            to_format : str, optional
+                A format string used to convert the parsed result into a formatted string.
+
+            to_unix_timestamp : bool, optional
+                If True, return the result as a Unix timestamp (seconds since epoch).
+
+            include_timezone : bool, optional
+                If True, preserve timezone info (only applies to ISO strings). Defaults to False.
+
+            timezone_offset : str, optional
+                Timezone offset to use when constructing ISO 8601 strings. Defaults to '+00:00'.
+
+            keep_time : bool, optional
+                If False, strip time info and return only the date. Defaults to True.
+
+            _skip_missing : bool, optional
+                Internal use only. If True, skips automatic time normalization.
 
         Returns:
-            datetime.datetime, int, str, or collection: The parsed date in the specified format or as a Unix timestamp.
+        -----------
+            datetime.datetime, str, int, list, or pd.Series :
+                The parsed result, which may be:
+                - a datetime object
+                - a formatted string
+                - a Unix timestamp
+                - a list or Series of any of the above, depending on input type
 
         Raises:
-            ValueError: If the date format is not recognized.
+        -----------
+            ValueError : If the input format cannot be recognized or conversion fails.
+
+        Notes:
+        -----------
+            - This parser can automatically patch incomplete time strings (e.g., missing seconds).
+            - If `from_format` is not provided, all known formats are tried in order.
+            - The method is optimized to reuse the last successful format to speed up repeated parsing.
+            - ISO 8601 strings ending in 'Z' are interpreted as UTC.
         """
         def _parser(date_string):
-            date_str = " ".join(date_string.split())
-
+            # date_str = " ".join(date_string.split())
+            # date_str = re.sub(r'(?<=\d{2}):(\d{1,6})$', r'.\1', date_string) # Fix nonstandard microseconds
+            date_str = re.sub(r'(?<=\d{2}):(\d{3,6})$', r'.\1', date_string) # Fix nonstandard microseconds
+            
             # 1. Try last successful format first (if it exists)            
             if self.last_successful_format:
                 try:
@@ -486,6 +540,10 @@ class dt_parse:
                     raise ValueError("Date format not recognized.")
             raise ValueError("Date format not recognized.")
         
+        # 0) normalize whitespace first
+        if isinstance(date_input, str):
+            date_input = self._clean_whitespace(date_input)
+        
         # 1. Handle Win32 objects (e.g., pywintypes.datetime)
         date_input = self._from_pywintypes_datetime(date_input)     
         
@@ -504,15 +562,18 @@ class dt_parse:
             return date_input        
 
         # 4. If ISO-8601 (UTC-Z), parse with optional timezone inclusion        
-        if self._is_iso(date_input):
-            if include_timezone:
-                date_input = date_input.replace('Z', timezone_offset)
-            else:
-                date_input = date_input.replace('Z', '')
-            formatted_date = dt.fromisoformat(date_input)
+        if isinstance(date_input, str) and self._is_iso(date_input):
+            iso_str = date_input
+            if iso_str.endswith('Z'):
+                iso_str = iso_str[:-1] + '+00:00'
+            parsed = dt.fromisoformat(iso_str)
+            if not include_timezone and parsed.tzinfo is not None:
+                parsed = parsed.replace(tzinfo=None)
+            if to_unix_timestamp:
+                return int(parsed.timestamp())
             if to_format:
-                return formatted_date.strftime(to_format)
-            return formatted_date if keep_time else formatted_date.date()        
+                return parsed.strftime(to_format)
+            return parsed if keep_time else parsed.date()       
 
         # 5. General parsing for str, list, np.ndarray, or pd.Series                
         try:
@@ -523,29 +584,34 @@ class dt_parse:
             elif isinstance(date_input, pd.Series):
                 date_input = date_input.astype(str)
                 return date_input.apply(_parser)
-        # except ValueError as e:
-        #     logging.error(f"Cannot parse due to error: {e}")
-        #     return
         except ValueError as e:
             if not _skip_missing:          # Only a real failure
                 raise ValueError(f"Cannot parse due to error: {e}")
             return        
 
-    ##────────── Eastern Timezone Inner Class ───────────────────────────────────────────────────────────────────────────────────────────────────────────   
+    # -------- EASTERN TIMEZONE INNER CLASS -----------  
     class EasternTime:
         def __init__(self, parent):
             self.parent = parent
             
         def isDST(self, date_value=None):
             """
-            Determine if a given date is in Daylight Saving Time (DST) for Eastern Time.
+            Determine whether a given date falls within Daylight Saving Time (DST) in Eastern Time.
 
             Parameters:
-                date_value (dt, optional): The date to check. If None, the current UTC time is used.
+            -----------
+                date_value : datetime.datetime, optional
+                    The date to evaluate. If None, the current UTC time is used.
 
             Returns:
-                bool: True if the date is within the DST period for Eastern Time; otherwise, False.
-            """        	
+            -----------
+                bool : True if the date falls within the DST period (EDT); otherwise False.
+
+            Notes:
+            -----------
+                DST is defined as the period from the second Sunday in March
+                to the first Sunday in November, starting at 2:00 AM.
+            """       	
             date_value = date_value if date_value else dt.utcnow()
             dst_start = dt(date_value.year, 3, 8)
             dst_end = dt(date_value.year, 11, 1) 
@@ -559,11 +625,17 @@ class dt_parse:
 
         def now(self):
             """
-            Get the current Eastern Time, accounting for Daylight Saving Time.
+            Get the current Eastern Time, adjusted for Daylight Saving Time.
 
             Returns:
-                dt: The current time in Eastern Time (EDT or EST, as appropriate).
-            """        	
+            -----------
+                datetime.datetime : The current time in Eastern Time (EDT or EST), computed from UTC.
+
+            Notes:
+            -----------
+                This method does not return a timezone-aware datetime object.
+                It simply offsets from UTC using the current DST rule.
+            """      	
             now_utc = dt.utcnow()
             year = now_utc.year
             dst_start = dt(year, 3, 8, 2) + td(days=(6 - dt(year, 3, 8, 2).weekday()))
@@ -577,15 +649,23 @@ class dt_parse:
 
         def nowOffset(self, datetime_datetime_obj=None):
             """
-            Get the UTC offset in hours for Eastern Time.
+            Get the UTC offset for Eastern Time in hours.
 
             Parameters:
-                datetime_datetime_obj (dt, optional): A datetime object with timezone info.
-                    If provided, its UTC offset is used; otherwise, the current time is evaluated.
+            -----------
+                datetime_datetime_obj : datetime.datetime, optional
+                    A datetime object with timezone info. If provided and timezone-aware,
+                    its UTC offset is used. Otherwise, the offset is computed from the current time.
 
             Returns:
-                float: The UTC offset in hours (-4 for EDT or -5 for EST).
-            """        	
+            -----------
+                float : UTC offset in hours (-4.0 for EDT or -5.0 for EST).
+
+            Notes:
+            -----------
+                If no datetime is provided or the object lacks timezone info,
+                this method infers the offset using the current UTC time and DST rules.
+            """      	
             def has_timezone(dte):
                 if isinstance(dte, dt):
                     return isinstance(dt.tzinfo, tmz)
@@ -609,18 +689,17 @@ class dt_parse:
         def __dir__(self):
             return ['isDST', 'now', 'nowOffset'] 
     
-    
-    ##────────── Substitute Inner Class ───────────────────────────────────────────────────────────────────────────────────────────────────────────       
+    # -------- SUBSTITUTE INNER CLASS -----------     
     class SubstituteClass:
         def __init__(self, parent):        
             """
-            A helper class providing functionalities to substitute date and time components
-            in datetime strings.
+            Initialize a substitute helper for applying time or date replacements to strings.
 
             Attributes:
-                time: An instance of TimeClass for modifying time components.
-                date: An instance of DateClass for modifying date components.
-            """        	
+            -----------
+                time : Callable
+                    A method for injecting or modifying time components in datetime-like strings.
+            """       	
             self.parent = parent                    
             self.time = self.TimeClass(self.parent).time                                  
         
@@ -630,26 +709,42 @@ class dt_parse:
         	
             def time(self, date_str, hours=None, minutes=None, seconds=None, microseconds=None):
                 """
-                1) Splits 'date_str' into (potential) 'prefix' (date-like substring) + 'time' (HH:MM, HH:MM:SS, or HH:MM:SS.microseconds).
-                2) Uses 'dateplumb.pro_parse' to validate if the prefix or entire string is a parsable date.
-                   - If no time portion is found, tries parsing the entire string as a date.
-                3) If valid, reconstructs time components (hours, minutes, optional seconds, optional microseconds).
-                   - If no original time was present, default missing components to "00", or build from user overrides.
-                4) Returns the string with updated (or newly added) time if match+parse is successful; otherwise, returns 'date_str'.
+                Inject or modify time components in a datetime string.
 
-                :param date_str: The original string containing a date-like prefix and optionally a time substring.
-                :param hours: (str or int) Override hours, or None to use the matched hours (or "00" if no match).
-                :param minutes: (str or int) Override minutes, or None to use the matched minutes (or "00" if no match).
-                :param seconds: (str or int) Override seconds, or None to use the matched seconds (or none if no match).
-                :param microseconds: (str or int) Override microseconds, or None to use the matched microseconds.
-                :return: A modified string with updated or newly added time components if possible,
-                         otherwise 'date_str' unchanged.
+                This method:
+                  1. Extracts a time substring from the input string if present.
+                  2. Verifies that the date portion is valid and parseable.
+                  3. Replaces or appends time components (hours, minutes, seconds, microseconds).
+                  4. Returns the updated string if valid, otherwise returns the original input.
+
+                Parameters:
+                -----------
+                    date_str : str
+                        A string containing a date and optionally a time portion.
+                    
+                    hours : str or int, optional
+                        Override value for hours (default is parsed or "00").
+                    
+                    minutes : str or int, optional
+                        Override value for minutes (default is parsed or "00").
+                    
+                    seconds : str or int, optional
+                        Override value for seconds (default is parsed or None).
+                    
+                    microseconds : str or int, optional
+                        Override value for microseconds (default is parsed or None).
+
+                Returns:
+                -----------
+                    str : A modified datetime string with updated time components,
+                          or the original string if parsing fails.
+
+                Notes:
+                -----------
+                    - If no time is found but the string is date-parseable, time will be appended.
+                    - Microseconds are padded to 6 digits when provided.
+                    - Useful for programmatically filling in or correcting time data.
                 """
-
-                # Regex to capture:
-                #  - group "prefix" (the part before the time),
-                #  - group "time" (the entire time portion),
-                #     - sub-group "hours", "minutes", optional "seconds", optional "microseconds".
                 pattern = (
                     r'^(?P<prefix>.*?)\s*'                # capture anything (non-greedy) until whitespace
                     r'(?P<time>'                          # capture the time portion
@@ -661,153 +756,217 @@ class dt_parse:
                     r')\s*$'
                 )
                 time_regex = re.compile(pattern)
-
-                # 1) Collapse extra whitespace in the input string.
-                cleaned_date_str = " ".join(date_str.split())
-
-                # 2) Search for the first occurrence of the time pattern.
-                match = time_regex.search(cleaned_date_str)
+                cleaned_date_str = " ".join(date_str.split()) # Collapse extra whitespace in the input string.
+                match = time_regex.search(cleaned_date_str) # Search for the first occurrence of the time pattern.
                 
                 if match:
-                    # ------------------------------------------
                     # CASE A: Found a time substring
-                    # ------------------------------------------
                     prefix = match.group("prefix")
-                    # Attempt to parse the prefix as a date using dateplumb
                     try:
                         parsed_date = self.parent.parse(prefix)
                     except Exception:
-                        # If parsing fails, the prefix isn't a valid date, return original
                         return date_str
-
-                    # If parsed_date isn't recognized as a datetime, return original
                     if not isinstance(parsed_date, dt):
                         return date_str
 
-                    # If we're here, the prefix was parsed successfully as a date
                     parts = match.groupdict()
                     found_hours = parts.get("hours")
                     found_minutes = parts.get("minutes")
                     found_seconds = parts.get("seconds")
                     found_microseconds = parts.get("microseconds")
-
-                    # Construct the final time components (preserve existing if None passed in)
                     final_hours = str(hours) if hours is not None else found_hours
                     final_minutes = str(minutes) if minutes is not None else found_minutes
                     final_seconds = str(seconds) if seconds is not None else found_seconds
-                    # Optionally enforce a default value for seconds if missing:
-                    # if final_seconds is None:
-                    #     final_seconds = "00"
-
                     final_microseconds = str(microseconds) if microseconds is not None else found_microseconds
-
-                    # Ensure microseconds are always six digits if present
                     if final_microseconds is not None:
                         final_microseconds = final_microseconds.ljust(6, '0')  # pad zeros
-
-                    # Build the new time string
+                        
                     new_time_str = f"{final_hours}:{final_minutes}"
                     if final_seconds is not None:
                         new_time_str += f":{final_seconds}"
                         if final_microseconds is not None:
                             new_time_str += f".{final_microseconds}"
 
-                    # Replace the old time portion with the new one
                     time_start, time_end = match.span("time")
                     new_str = cleaned_date_str[:time_start] + new_time_str + cleaned_date_str[time_end:]
                     return new_str
 
                 else:
-                    # ------------------------------------------
                     # CASE B: No time substring found
-                    # ------------------------------------------
-                    # Try parsing the entire cleaned string as a date
                     try:
                         parsed_date = self.parent.parse(cleaned_date_str)                    	
-                        # parsed_date = dateplumb.pro_parse(cleaned_date_str)
                     except Exception:
-                        # If parsing fails, it's not a valid date => return original
                         return date_str
-
-                    # If parsed_date isn't recognized as a datetime, return original
                     if not isinstance(parsed_date, dt):
                         return date_str
 
-                    # At this point, we have a valid date but no time in the string
-                    # so we add time from overrides or default it to "00:00:00" (with optional microseconds)
-                    # Use "00" if user didn't specify hours or minutes
                     final_hours = str(hours) if hours is not None else "00"
                     final_minutes = str(minutes) if minutes is not None else "00"
                     final_seconds = str(seconds) if seconds is not None else "00"
                     final_microseconds = None
                     if microseconds is not None:
                         final_microseconds = str(microseconds).ljust(6, '0')
-
                     new_time_str = f"{final_hours}:{final_minutes}:{final_seconds}"
                     if final_microseconds:
                         new_time_str += f".{final_microseconds}"
-
-                    # Return "original_date + time"
-                    # Since the user input had just a date (no trailing time), we can just append
-                    # the time with a space or 'T'—depending on your desired format.
-                    # Here we'll just use a space:
+                        
                     return f"{cleaned_date_str} {new_time_str}"
 
         def __dir__(self):
             return ['time'] 
            
-           
-    ##────────── Main Methods ───────────────────────────────────────────────────────────────────────────────────────────────────────────    
-    def now(self, utc=False, as_unix=False, format=None):
+    # -------- PUBLIC -----------     
+    def add(self, *formats):
         """
-        Get the current date and time.
+        Add one or more new date format strings to the parser.
 
         Parameters:
-            utc (bool, optional): If True, returns the current UTC time instead of local time. Defaults to False.
-            as_unix (bool, optional): If True, returns the Unix timestamp instead of a datetime object. Defaults to False.
-            format (str, optional): If provided, returns the formatted date string according to this format.
+        -----------
+            *formats : str
+                One or more datetime format strings. If any directive characters are
+                missing a leading '%', they will be automatically corrected.
+
+        Notes:
+        -----------
+            Duplicate formats are ignored. After new formats are added, the
+            internal dot-sensitive format lists are refreshed.
+        """
+        for raw in formats:
+            fmt = self._normalize_format(raw)
+            if fmt not in self.date_formats:
+                self.date_formats.append(fmt)
+        self._refresh_format_lists()        
+
+    def flush(self, successful_reset=False):
+        """
+        Reset the parser to its default list of date formats.
+
+        Parameters:
+        -----------
+            successful_reset : bool, optional
+                If True, also clears the `last_successful_format` attribute.
+                Defaults to False.
+
+        Notes:
+        -----------
+            This method discards any formats previously added via `add()`.
+            It restores the parser to its initial factory state.
+        """
+        self.date_formats = list(self.DEFAULT_DATE_FORMATS)
+        self._refresh_format_lists()
+        if successful_reset:
+            self.last_successful_format = None  
+            
+    def now(self, utc=False, as_unix=False, format=None, date_only=False):
+        """
+        Get the current date and time in local or UTC format.
+
+        Parameters:
+        -----------
+            utc : bool, optional
+                If True, returns the current UTC time. Defaults to False.
+
+            as_unix : bool, optional
+                If True, returns the time as a Unix timestamp (int). Defaults to False.
+
+            format : str, optional
+                If provided, returns the date/time formatted as a string.
+
+            date_only : bool, optional
+                If True, returns only the date (no time component). Defaults to False.
 
         Returns:
-            dt | int | str: 
-                - If `as_unix` is True, returns an integer Unix timestamp.
-                - If `format` is provided, returns a formatted string representation of the date.
-                - Otherwise, returns a `dt` object.
+        -----------
+            datetime.datetime, datetime.date, int, or str :
+                - A `datetime` object (default),
+                - A `date` object (if `date_only=True` and no format),
+                - A Unix timestamp (if `as_unix=True`),
+                - A formatted string (if `format` is provided).
+
+        Notes:
+        -----------
+            This method supports flexible output modes for time retrieval, useful for logging,
+            serialization, or presentation logic.
         """
         current = dt.utcnow() if utc else dt.now()
+        if date_only:
+            if as_unix:
+                # Strip time, then return unix timestamp at midnight
+                current = current.replace(hour=0, minute=0, second=0, microsecond=0)
+                return self.unix_timestamp(current)
+            if format:
+                return current.strftime(format)
+            return current.date()
         if as_unix:
             return self.unix_timestamp(current)
         return current.strftime(format) if format else current
 
-    def nowCT(self, as_unix=False, format=None):
+    def nowCT(self, as_unix=False, format=None, date_only=False):
         """
-        Retrieve the current date and time in Central Time (CT).
+        Get the current time in U.S. Central Time (CT), adjusting for DST.
 
         Parameters:
-            as_unix (bool, optional): If True, return the Unix timestamp. Defaults to False.
-            format (str, optional): Format string for output. Defaults to None.
+        -----------
+            as_unix : bool, optional
+                If True, returns the time as a Unix timestamp. Defaults to False.
+
+            format : str, optional
+                If provided, returns the CT time as a formatted string.
+
+            date_only : bool, optional
+                If True, returns only the date (no time component). Defaults to False.
 
         Returns:
-            dt, int, or str: The current CT time as a datetime object, Unix timestamp, or formatted string.
+        -----------
+            datetime.datetime, datetime.date, int, or str :
+                - A `datetime` object (default),
+                - A `date` object (if `date_only=True` and no format),
+                - A Unix timestamp (if `as_unix=True`),
+                - A formatted string (if `format` is provided).
+
+        Notes:
+        -----------
+            - Automatically applies DST adjustment (UTC-5 or UTC-6 depending on date).
+            - Relies on `EasternTime.isDST()` for determining DST applicability.
         """
         now_utc = dt.utcnow()
-        if self.EasternTime.isDST(now_utc):           
+        if self.EasternTime.isDST(now_utc):
             current = now_utc - td(hours=5)  # UTC-5 for DST
         else:
             current = now_utc - td(hours=6)  # UTC-6 for Standard Time
+
+        if date_only:
+            if as_unix:
+                # Midnight timestamp for the current date in CT
+                current = current.replace(hour=0, minute=0, second=0, microsecond=0)
+                return self.unix_timestamp(current)
+            if format:
+                return current.strftime(format)
+            return current.date()
+
         if as_unix:
-            return self.unix_timestamp(current) # Convert to Unix timestamp
-        return current.strftime(format) if format else current  # Return formatted time if format is provided, otherwise return datetime object    
+            return self.unix_timestamp(current)
+        return current.strftime(format) if format else current
 
     def make_timezone_aware(self, date_value, offset_hours):
         """
-        Make a naive datetime object timezone-aware.
+        Convert a naive datetime object into a timezone-aware one.
 
         Parameters:
-            date_value (dt): A naive datetime object.
-            offset_hours (int or float): UTC offset in hours to apply.
+        -----------
+            date_value : datetime.datetime
+                A naive (timezone-unaware) datetime object.
+
+            offset_hours : int or float
+                The UTC offset to apply, in hours (e.g., -5 for EST).
 
         Returns:
-            dt: The timezone-aware datetime object.
+        -----------
+            datetime.datetime : A timezone-aware datetime object with the specified UTC offset.
+
+        Notes:
+        -----------
+            If the input datetime already has `tzinfo`, it is returned unchanged.
         """
         if date_value.tzinfo is not None:
             return date_value
@@ -816,24 +975,46 @@ class dt_parse:
 
     def unix_timestamp(self, date_value, format=None, utc=False, reset_time=False, to_unix=True, assume_utc_if_naive=False):
         """
-        Convert between Unix timestamps and datetime objects.
+        Convert between Unix timestamps and datetime objects or strings.
 
         Parameters:
-            date_value (dt or int or str): 
-                - If to_unix=True: datetime or parseable string.
-                - If to_unix=False: an integer Unix timestamp.
-            format (str, optional): If converting from Unix to string, apply this output format.
-            utc (bool): If True, interpret or return the time in UTC.
-            reset_time (bool): If True, reset time to 00:00:00.
-            to_unix (bool): Direction of conversion. True = datetime → Unix. False = Unix → datetime.
-            assume_utc_if_naive (bool): 
-                - When utc=True and datetime is naive, treat it as UTC (rather than local time).
+        -----------
+            date_value : datetime.datetime, int, or str
+                - If `to_unix=True`: A datetime object or parseable date string.
+                - If `to_unix=False`: An integer Unix timestamp to convert.
+
+            format : str, optional
+                If converting from Unix to a string, apply this output format.
+
+            utc : bool, optional
+                If True, treat the input/output as UTC-based. Defaults to False.
+
+            reset_time : bool, optional
+                If True, zero out the time component (00:00:00). Defaults to False.
+
+            to_unix : bool, optional
+                If True, convert datetime to Unix timestamp. If False, convert Unix to datetime.
+                Defaults to True.
+
+            assume_utc_if_naive : bool, optional
+                If True and `utc=True`, assume naive datetime values are UTC. 
+                Otherwise, they are treated as local. Defaults to False.
 
         Returns:
-            int | datetime | str: Converted Unix timestamp, datetime object, or formatted string.
+        -----------
+            int | datetime.datetime | str :
+                - Integer Unix timestamp,
+                - Datetime object,
+                - Or formatted string depending on parameters.
 
         Raises:
-            ValueError: On invalid types or missing information.
+        -----------
+            ValueError : If input types are invalid or conversion fails.
+
+        Notes:
+        -----------
+            This utility offers flexible bidirectional conversion for interoperability
+            with systems using Unix timestamps and formatted strings.
         """
         if not isinstance(date_value, (int, dt)):
             try:
@@ -852,7 +1033,6 @@ class dt_parse:
                     if assume_utc_if_naive:
                         datetime_obj = datetime_obj.replace(tzinfo=tmz.utc)
                     else:
-                        # By default, naive is interpreted as local time → convert to UTC manually
                         datetime_obj = datetime_obj.astimezone(tmz.utc)
                 else:
                     datetime_obj = datetime_obj.astimezone(tmz.utc)
@@ -874,15 +1054,26 @@ class dt_parse:
 
     def subtract_months(self, date_str, months):
         """
-        Subtract a specified number of months from a given date.
+        Subtract a given number of months from a date string.
 
         Parameters:
-            date_str (str): The input date as a string in the format '%Y-%m-%d'.
-            months (int): The number of months to subtract.
+        -----------
+            date_str : str
+                The input date in '%Y-%m-%d' format.
+
+            months : int
+                Number of months to subtract from the date.
 
         Returns:
-            str: The resulting date string formatted as '%Y-%m-01'.
-        """  	
+        -----------
+            str : A new date string in '%Y-%m-01' format, representing the first
+                  day of the resulting month.
+
+        Notes:
+        -----------
+            Automatically adjusts for year rollover and ensures the returned date is valid,
+            even if the target month has fewer days than the original.
+        """
         date = dt.strptime(date_str, '%Y-%m-%d')
         new_month = date.month - months
         new_year = date.year
@@ -895,13 +1086,23 @@ class dt_parse:
 
     def days_in_year(self, year):
         """
-        Calculate the number of days in a given year.
+        Return the number of days in a given year.
 
         Parameters:
-            year (int): The year to evaluate.
+        -----------
+            year : int
+                The year to evaluate.
 
         Returns:
-            int: 366 if the year is a leap year; otherwise, 365.
+        -----------
+            int : 366 if the year is a leap year; otherwise 365.
+
+        Notes:
+        -----------
+            Leap years follow the Gregorian calendar rule:
+            - Every 4 years is a leap year,
+            - Except every 100 years is not,
+            - Except every 400 years is.
         """
         if (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0):
             return 366  # Leap year has 366 days
@@ -913,14 +1114,28 @@ class dt_parse:
         Calculate the number of weeks passed or remaining in the year from a given date.
 
         Parameters:
-            date (str or datetime.date, optional): The reference date (in '%Y-%m-%d' format or as a date object). Defaults to today.
-            mode (str, optional): Calculation mode - 'passed' for weeks passed, 'left' for weeks remaining. Defaults to 'passed'.
+        -----------
+            date : str or datetime.date, optional
+                The reference date (as '%Y-%m-%d' string or a `date` object).
+                Defaults to today's date.
+
+            mode : str, optional
+                Determines the direction of calculation:
+                - 'passed' returns weeks elapsed since the start of the year,
+                - 'left' returns weeks remaining until year end.
+                Defaults to 'passed'.
 
         Returns:
-            int: The number of weeks based on the specified mode.
+        -----------
+            int : The number of weeks based on the selected mode.
 
         Raises:
-            ValueError: If an invalid mode is provided.
+        -----------
+            ValueError : If an invalid mode is specified (must be 'passed' or 'left').
+
+        Notes:
+        -----------
+            Partial weeks are not counted. This method performs integer division of days by 7.
         """
         if date is None:
             date = d.today()
@@ -941,17 +1156,26 @@ class dt_parse:
 
     def contains_time(self, obj):
         """
-        Determines whether the provided object has non-zero time information.
+        Determine whether a date/time object contains non-zero time information.
 
-        Accepts datetime, time, or date objects.
-        
-        - For datetime and time objects, returns True if at least one of the time components
-          (hour, minute, second, microsecond) is non-zero.
-        - For date objects (which lack time data), returns False.
-        
-        :param obj: A datetime, date, or time object.
-        :return: True if the object has non-zero time information; otherwise, False.
-        :raises TypeError: If 'obj' is not a recognized date/time type.
+        Parameters:
+        -----------
+            obj : datetime.datetime, datetime.time, or datetime.date
+                The object to evaluate.
+
+        Returns:
+        -----------
+            bool : True if the object has any non-zero time component (hour, minute, second, or microsecond);
+                   False otherwise.
+
+        Raises:
+        -----------
+            TypeError : If the object is not a recognized datetime-like type.
+
+        Notes:
+        -----------
+            - For `datetime` and `time`, checks if any time fields are non-zero.
+            - For `date`, always returns False (since it has no time component).
         """
         if self._is_datetimeType(obj):
             if isinstance(obj, dt) or isinstance(obj, t):
@@ -960,262 +1184,133 @@ class dt_parse:
                 return False # date objects have no time information, so return False
         return False
        
-    def build(
-        self,
-        year,
-        month,
-        day,
-        hour=0,
-        minute=0,
-        second=0,
-        microsecond=0,
-        tz_offset_hours=None,
-        as_date=False
-    ):
+    def within_delta(self, t1, t2, n, unit = 'hours'):
         """
-        Build a datetime (or date) object from individual components.
+        Return True if the two date-time inputs are within a given number of hours or minutes.
 
         Parameters:
-            year (int): The year.
-            month (int): The month (1–12).
-            day (int): The day of the month.
-            hour (int): Hour (0–23). Default is 0.
-            minute (int): Minute (0–59). Default is 0.
-            second (int): Second (0–59). Default is 0.
-            microsecond (int): Microsecond (0–999999). Default is 0.
-            tz_offset_hours (int | float, optional): If given, apply this timezone offset.
-            as_date (bool): If True, return a `date` object instead of `datetime`.
+        -----------
+            t1, t2 : datetime.datetime or str
+                The datetime values to compare. May be `datetime` objects or strings in ISO format,
+                "%Y-%m-%d %H:%M", or any format supported by `dtparse.parse`.
+            
+            n : int
+                The threshold value for comparison, in the specified time unit.
+            
+            unit : str, optional
+                The unit of time to compare: either 'hours' or 'minutes'. Defaults to 'hours'.
 
         Returns:
-            datetime | date: The constructed datetime or date object.
+        -----------
+            bool : True if the absolute difference between `t1` and `t2` is less than or equal to `n`
+            units of time (after sub-unit normalization); otherwise False.
+
+        Raises:
+        -----------
+            TypeError : If `t1` or `t2` is not a supported type.
+            ValueError : If `unit` is not 'hours' or 'minutes'.
+
+        Notes:
+        -----------
+            Sub-unit fields (e.g., seconds, microseconds) are zeroed out prior to comparison to ensure
+            consistent granularity. Useful for threshold-based date grouping and event correlation.
+        """
+        # 1) coerce into datetime
+        def _to_dt(val):
+            if isinstance(val, dt):
+                return val
+            if isinstance(val, str):
+                return self.parse(val)
+            raise TypeError(f"Unsupported type: {type(val)}")
+
+        dt1 = _to_dt(t1)
+        dt2 = _to_dt(t2)
+
+        # 2) drop sub-unit fields
+        if unit == 'hours':
+            dt1 = dt1.replace(minute=0, second=0, microsecond=0)
+            dt2 = dt2.replace(minute=0, second=0, microsecond=0)
+            threshold = td(hours=n)
+        elif unit == 'minutes':
+            dt1 = dt1.replace(second=0, microsecond=0)
+            dt2 = dt2.replace(second=0, microsecond=0)
+            threshold = td(minutes=n)
+        else:
+            raise ValueError("unit must be 'hours' or 'minutes'")
+
+        # 3) compare
+        return abs(dt1 - dt2) <= threshold
+       
+    def build(self, year, month, day, hour=0, minute=0, second=0, microsecond=0, tz_offset_hours=None, as_date=False):
+        """
+        Construct a datetime or date object from individual components.
+
+        Parameters:
+        -----------
+            year : int
+                The year component (e.g., 2025).
+
+            month : int
+                The month component (1–12).
+
+            day : int
+                The day of the month.
+
+            hour : int, optional
+                Hour of the day (0–23). Defaults to 0.
+
+            minute : int, optional
+                Minute (0–59). Defaults to 0.
+
+            second : int, optional
+                Second (0–59). Defaults to 0.
+
+            microsecond : int, optional
+                Microsecond (0–999999). Defaults to 0.
+
+            tz_offset_hours : int or float, optional
+                If provided, apply this UTC offset as timezone info.
+
+            as_date : bool, optional
+                If True, return a `date` object instead of a `datetime`.
+
+        Returns:
+        -----------
+            datetime.datetime or datetime.date :
+                A constructed datetime or date object based on inputs.
+
+        Notes:
+        -----------
+            If `tz_offset_hours` is given, a timezone-aware datetime is returned (unless `as_date=True`).
         """
         tzinfo = tmz(td(hours=tz_offset_hours)) if tz_offset_hours is not None else None
         dt_obj = dt(year, month, day, hour, minute, second, microsecond, tzinfo=tzinfo)
         return dt_obj.date() if as_date else dt_obj
        
-
     def __dir__(self):
-        return ['parse', 'now', 'unix_timestamp', 'nowCT', 'subtract_months', 'days_in_year', 'weeks_in_year', 'ET', 'make_timezone_aware', 'sub', 'contains_time', 'add', 'flush', 'build']
+        """
+        Returns a list of all public method names available for this instance,
+        to enhance interactive discovery and tab-completion.
+        """
+        return [
+            'parse',
+            'now',
+            'unix_timestamp',
+            'nowCT',
+            'subtract_months',
+            'days_in_year',
+            'weeks_in_year',
+            'ET',
+            'make_timezone_aware',
+            'sub',
+            'contains_time',
+            'add',
+            'flush',
+            'within_delta',
+            'build',
+        ]
 
 dtparse = dt_parse()
 
-
-
 def __dir__():
-    return ['dtparse']
-
-__all__ = ['dtparse']
-
-
-
-
-
-
-
-# class dt_parse:
-#     def __init__(self):
-#         self.date_formats = [
-#             '%Y.%m.%d', 
-#             '%m.%d.%Y', 
-#             '%B %d, %Y', 
-#             '%b %d, %Y', 
-#             '%d.%m.%Y', 
-#             '%d %b %Y', 
-#             '%d %B %Y',
-#             '%b %d %Y',
-#             '%Y%m%d',
-#             '%d%m%Y',
-#             '%A, %B %d %Y',
-#             '%Y-%m-%dT%H:%M:%SZ',
-#             '%a, %d %b %Y %H: %M:%S',
-#             '%Y-%m',
-#         ]
-#         self.formats_with_dots = [fmt for fmt in self.date_formats if '.' in fmt]
-#         self.formats_without_dots = [fmt for fmt in self.date_formats if '.' not in fmt]
-#         self.last_successful_format = None
-#         self.date_format_string_pattern = re.compile(r"%[aAbBcdHImMpSUwWxXyYZ]")
-# 
-#     def is_date_format_string(self, text):
-#         if not isinstance(text, str):
-#             return False
-#         return bool(self.date_format_string_pattern.search(text))
-# 
-#     def is_datetimeType(self, obj, format='%Y-%m-%d', strf=False):
-#         """ Check the type of the given object related to date and time, without assuming the import name of the datetime module."""
-#         datetime_class_name = 'datetime'
-#         date_class_name = 'date'
-# 
-#         if obj.__class__.__name__ == datetime_class_name and hasattr(obj, 'hour'):
-#             if strf:
-#                 return obj.strftime(format)
-#             else:
-#                 return True
-#                 
-#         elif obj.__class__.__name__ == date_class_name and not hasattr(obj, 'hour'):
-#             if strf:
-#                 return obj.strftime(format)            
-#             else:
-#                 return True
-#         else:
-#             return False
-# 
-#     def parse(self, date_input, from_format=None, to_format=None, to_unix_timestamp=False):
-#         """ Parses and converts dates from various formats.
-#             Handles single string inputs, lists, numpy arrays, and pandas Series.
-#             The to_unix_timestamp argument converts the parsed date to an integer timestamp.
-#         """
-#         if self.is_datetimeType(date_input):
-#             if to_unix_timestamp:
-#                 return int(date_input.timestamp())
-#             if to_format and self.is_date_format_string(to_format):
-#                 return date_input.strftime(to_format)
-#             return date_input        
-#         
-#         def process(date_string):
-#             date_str = re.sub(r'\s+', ' ', date_string).strip()
-#             
-#             if self.last_successful_format:
-#                 try:
-#                     parsed_date = datetime.datetime.strptime(date_str, self.last_successful_format)
-#                     if to_unix_timestamp:
-#                         return int(parsed_date.timestamp())
-#                     if not from_format and self.is_date_format_string(to_format):
-#                         return parsed_date.strftime(to_format)
-#                     return parsed_date
-#                 except ValueError:
-#                     pass
-# 
-#             for format_list in [self.formats_with_dots, self.formats_without_dots]:
-#                 for date_format in format_list:
-#                     try:
-#                         parsed_date = datetime.datetime.strptime(date_str, date_format)
-#                         self.last_successful_format = date_format
-#                         if to_unix_timestamp:
-#                             return int(parsed_date.timestamp())
-#                         if not from_format and self.is_date_format_string(to_format):
-#                             return parsed_date.strftime(to_format)
-#                         return parsed_date
-#                     except ValueError:
-#                         continue
-# 
-#             new_separators = ['/', '-']
-#             for sep in new_separators:
-#                 for date_format in self.formats_with_dots:
-#                     new_format = date_format.replace('.', sep)
-#                     try:
-#                         parsed_date = datetime.datetime.strptime(date_str, new_format)
-#                         self.last_successful_format = new_format
-#                         if to_unix_timestamp:
-#                             return int(parsed_date.timestamp())
-#                         if not from_format and self.is_date_format_string(to_format):
-#                             return parsed_date.strftime(to_format)
-#                         return parsed_date
-#                     except ValueError:
-#                         continue
-# 
-#             if from_format and to_format:
-#                 try:
-#                     parsed_date = datetime.datetime.strptime(date_str, from_format)
-#                     if to_unix_timestamp:
-#                         return int(parsed_date.timestamp())
-#                     formatted_date = parsed_date.strftime(to_format)
-#                     return formatted_date
-#                 except ValueError:
-#                     raise ValueError("Date format not recognized and fallback failed. Please check your formats.")
-#             elif from_format:
-#                 try:
-#                     parsed_date = datetime.datetime.strptime(date_str, from_format)
-#                     if to_unix_timestamp:
-#                         return int(parsed_date.timestamp())
-#                     return parsed_date
-#                 except ValueError:
-#                     raise ValueError("Date format not recognized. Please check your from_format.")
-#             raise ValueError("Date format not recognized. Please use a supported date format.")
-# 
-#         if isinstance(date_input, str):
-#             return process(date_input)
-#         elif isinstance(date_input, list) or isinstance(date_input, np.ndarray):
-#             return [process(date_str) for date_str in date_input]
-#         elif isinstance(date_input, pd.Series):
-#             date_input = date_input.astype(str)
-#             return date_input.apply(process)
-#         else:
-#             raise ValueError("Unsupported data type. The input must be a str, list, numpy.ndarray, or pandas.Series.")
-# 
-#     def _is_dst(self, dt=None, timezone="US/Central"):
-#         if dt is None:
-#             dt = datetime.datetime.utcnow()
-#         dst_start = datetime.datetime(dt.year, 3, 8)
-#         dst_end = datetime.datetime(dt.year, 11, 1) 
-#         while dst_start.weekday() != 6: 
-#             dst_start += datetime.timedelta(days=1)
-#         while dst_end.weekday() != 6:
-#             dst_end += datetime.timedelta(days=1)
-#         dst_start = dst_start.replace(hour=2)
-#         dst_end = dst_end.replace(hour=2)
-#         return dst_start <= dt < dst_end
-#     
-#     def subtract_months(self, date_str, months):
-#         date = datetime.datetime.strptime(date_str, '%Y-%m-%d')
-#         new_month = date.month - months
-#         new_year = date.year
-#         while new_month <= 0:
-#             new_month += 12
-#             new_year -= 1        
-#         new_day = min(date.day, (datetime.datetime(new_year, new_month + 1, 1) - datetime.datetime(new_year, new_month, 1)).days)
-#         new_date = datetime.datetime(new_year, new_month, new_day)        
-#         return new_date.strftime('%Y-%m-01')
-#     
-#     def now(self, utc=False, as_unix=False, as_string=False, format=None):
-#         current_time = datetime.datetime.utcnow() if utc else datetime.datetime.now()
-#         if as_unix:
-#             return self.unix_timestamp(current_time)        
-#         if as_string:
-#             if format:
-#                 return current_time.strftime(format)
-#             return current_time.strftime("%Y-%m-%d")
-#         return current_time
-#     
-#     def nowCT(self, as_unix=False, as_string=False):
-#         now_utc = datetime.datetime.utcnow()
-#         current_utc_time = now_utc + datetime.timedelta(hours=5)
-#         if self._is_dst(current_utc_time):
-#             central_time = current_utc_time - datetime.timedelta(hours=1)
-#         else:
-#             central_time = current_utc_time - datetime.timedelta(hours=2)
-#         if as_string:
-#             return central_time.date().strftime('%Y-%m-%d')        
-#         return central_time
-# 
-#     def unix_timestamp(self, datetime_obj, utc=True, reset_time=False):
-#         if utc:
-#             utc_datetime = datetime_obj.replace(tzinfo=datetime.timezone.utc)
-#             if reset_time:
-#                 utc_datetime = utc_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
-#             return int(utc_datetime.timestamp())
-#         else:
-#             if reset_time:
-#                 datetime_obj = datetime_obj.replace(hour=0, minute=0, second=0, microsecond=0)
-#             return int(datetime_obj.timestamp())
-#            
-#     def from_unix_timestamp(self, unix_timestamp, format=None):
-#         """ Converts a Unix timestamp to a human-readable date."""
-#         if not isinstance(unix_timestamp, int):
-#             return None        
-#         time_struct = time.localtime(unix_timestamp)
-#         if format:
-#             return time.strftime(format, time_struct)      
-#         return time.strftime('%Y-%m-%d %H:%M:%S', time_struct)
-# 
-#     def __dir__(self):
-#         return ['parse', 'now', 'unix_timestamp', 'nowCT', 'subtract_months', 'is_datetimeType']
-
-
-
-
-
-
-
-
-
-
+    return __all__

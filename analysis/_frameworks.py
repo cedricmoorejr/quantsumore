@@ -52,17 +52,92 @@
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
 
+"""
+_frameworks: Statement Layout Registry and Excel Export Engine for Financials
+══════════════════════════════════════════════════════════════════════════════
 
+Module Purpose
+────────────────────────────────────────────────────
+`_frameworks` acts as the **central schema registry** for the formatting,
+hierarchy, and display logic of all core financial statements in the
+Quantsumore ecosystem. It also provides a robust `WriteExcel` engine
+to **export financial dataframes into styled, human-readable Excel sheets**,
+with auto-indentation, subtotal formatting, column width control, and
+professional typographic conventions.
 
+This module is used internally by all higher-level analysis and reporting
+functions that require exporting company fundamentals, summary tables, or
+report packages in `.xlsx` format.
+
+Core Components
+────────────────────────────────────────────────────
+
+1. **`_STATEMENT_LAYOUTS` Registry**
+   - A single-source dictionary specifying the hierarchical structure and display
+     logic for the three fundamental statements: **Income Statement**, **Balance Sheet**,
+     and **Cash Flow Statement**.
+   - Each statement includes:
+     - `indentation_levels`: Dict of account labels to indentation depth (for visual tree structure)
+     - `parent_accounts`: Account labels serving as top-level categories (rendered bold)
+     - `subtotal_total_accounts`: Account labels for subtotals/totals (rendered bold with special borders)
+
+2. **`WriteExcel` Class**
+   - The main interface for writing styled financial statements to Excel.
+   - Handles sheet creation/replacement, data writing, cell styling, alignment, and column width fitting.
+   - Applies a consistent style guide (font, size, bolding, fills, and border logic) so exports always look professional.
+
+Key Use Cases
+────────────────────────────────────────────────────
+- Batch or on-demand export of cleaned DataFrames (Income, Balance, Cash Flow) to `.xlsx` files.
+- Rendering of hierarchical statements with account-level indentation and subtotal logic for readability.
+- Automated workflows that require visually consistent financial exports for compliance, reporting, or sharing.
+- Direct use as a backend by dashboards or UI apps that let users download raw or formatted financials.
+
+System Architecture & Styling Logic
+────────────────────────────────────────────────────
+- Uses OpenPyXL for all Excel I/O and cell styling.
+- Column widths are **auto-fit** to data and headers for optimal reading, never requiring manual adjustment.
+- Account names are indented according to their logical depth in the hierarchy (`indentation_levels`).
+- Parent accounts and all subtotal/total rows are **bolded** for rapid identification.
+- Subtotal rows receive a thin bottom border; total rows receive a double border for clear demarcation.
+- Numeric cells are right-aligned and formatted with two decimal places.
+- Sheet-level styles (named styles) are dynamically registered if missing, so workbook is always standards-compliant.
+
+Design Features
+────────────────────────────────────────────────────
+- **Centralized schema**: All statement formatting, grouping, and subtotal logic is defined in one place for maintainability.
+- **Idempotent export**: Existing sheets are replaced by default (or auto-suffixed if overwrite is off), so repeated exports never break.
+- **Separation of layout from logic**: Data structure (`_STATEMENT_LAYOUTS`) and export logic (`WriteExcel`) are fully decoupled.
+- **Type- and error-safety**: Non-DataFrame inputs or bad filenames are handled with descriptive exceptions.
+
+Statement Layouts
+────────────────────────────────────────────────────
+• "Income Statement" — supports nested expenses, non-recurring items, and correct net income positioning
+• "Balance Sheet" — handles multi-level assets/liabilities, equity, and all common subtotals/totals
+• "Cash Flow Statement" — supports all major groupings (operating, investing, financing) and subtotal/total logic
+
+Available Classes & Exports
+────────────────────────────────────────────────────
+• WriteExcel — context-managed Excel workbook writer
+• _STATEMENT_LAYOUTS — dict for layout, indentation, and subtotal logic
+
+Implementation Notes
+────────────────────────────────────────────────────
+• Sheet detection is automated by scanning index labels for key accounts
+• All styles (font, bold, alignment, fill, borders) are registered as named styles at workbook level
+• Can be safely used in Jupyter, scripts, or backend pipelines with large data
+
+"""
 import os
-import pandas as pd
-import datetime
+from datetime import datetime
 import random
 
-#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
-import openpyxl
-from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFill
-from openpyxl.utils import get_column_letter
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
+from ..exceptions import WorkbookSaveError
+
+
+__all__ = ['WriteExcel']
+
 
 
 # ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -71,7 +146,8 @@ from openpyxl.utils import get_column_letter
 # execution—if applicable—encapsulated in class and function constructs.
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
-statement_layouts = {
+
+_STATEMENT_LAYOUTS = {
    "Income Statement":{
       "indentation_levels":{
          "Total Revenue":0,
@@ -201,20 +277,21 @@ statement_layouts = {
    }
 } 
 
-
-
-
 class WriteExcel:
     """
     This class provides a set of functionalities for writing financial statments to an Excel file, adjusting column widths
     automatically based on the data content, and applying various styles to the data to enhance readability and presentation.
     """
     def __init__(self, path=None):
-        """Initialize the workbook, loading from path if provided."""    	
+        """
+        Initialize the workbook, loading from path if provided.
+        """    	
         self.path = path
-        if path and os.path.exists(path):
+        if path and os.path.exists(path):            
+            from openpyxl import load_workbook # Third-party library imports (from PyPI or other package sources)              
             self.wb = openpyxl.load_workbook(path)
         else:
+            from openpyxl import Workbook # Third-party library imports (from PyPI or other package sources)              
             self.wb = openpyxl.Workbook()
             if 'Sheet' in self.wb.sheetnames: # Remove the default 'Sheet' if it exists
                 del self.wb['Sheet']
@@ -239,7 +316,9 @@ class WriteExcel:
             return None
 
     def __coerce_numeric_min(self, n):
-        """ Converts the input to an integer or float and ensures a minimum value of 1."""                
+        """
+        Converts the input to an integer or float and ensures a minimum value of 1.
+        """                
         if not isinstance(n, str):
             n = str(n)
         try:
@@ -256,14 +335,20 @@ class WriteExcel:
             return 11
            
     def __autofit_column_width(self, ws, df):
-        """Adjust column widths based on the content of the DataFrame."""    	
+        """
+        Adjust column widths based on the content of the DataFrame.
+        """
+        from openpyxl.utils import get_column_letter   # Third-party library imports (from PyPI or other package sources)          
         for col_idx, column in enumerate(df.columns, start=1):
             max_length = max(len(column), max(len(str(cell)) for cell in df[column]))
             adjusted_width = max(max_length * self.base_width, self.min_width)
             ws.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
                 
     def __apply_styles(self, sheet_name, font_style="Calibri Light", font_size=10):
-        """Apply pre-defined styles for data, headers, numbers, dates, and bold formatting."""
+        """
+        Apply pre-defined styles for data, headers, numbers, dates, and bold formatting.
+        """
+        from openpyxl.styles import NamedStyle, Font  # Third-party library imports (from PyPI or other package sources)           
         font_size = self.__coerce_numeric_min(n=font_size)
         styles = [
             NamedStyle(name=f"data_font_style_{sheet_name}", font=Font(bold=False, name=font_style, size=font_size), number_format="@"),
@@ -299,10 +384,11 @@ class WriteExcel:
         ws = self.wb.create_sheet(title=sheet_name)
         return ws
         
-    # Write Financial Statement
-    #-----------------------------------------------------------------------------------------------------------------------------------        
-    def write_statement(self, df, reporting_structure=statement_layouts):
-        """ Writes the financial statement to an Excel sheet with indentation, subtotal/total styling, and right alignment except the first column. """
+    def write_statement(self, df, reporting_structure=_STATEMENT_LAYOUTS):
+        """
+        Writes the financial statement to an Excel sheet with indentation, subtotal/total styling, and right alignment except the first column.
+        """
+        from openpyxl.styles import Alignment, PatternFill, Border, Side   # Third-party library imports (from PyPI or other package sources)          
         sheet_name = self.__which_statement(df)
         ws = self.__create_or_replace_sheet(sheet_name, overwrite=True)
         self.__apply_styles(sheet_name)
@@ -343,17 +429,17 @@ class WriteExcel:
                     cell.border = Border(bottom=Side(style="thin"))
                 elif index in subtotal_total_accounts[-1]:
                     cell.border = Border(bottom=Side(style="double"))
-
         self.__autofit_column_width(ws, df)
 
-    
     def save(self, filename=None, overwrite=True):
-        """Save the workbook to the specified filename, with optional overwrite."""    	
+        """
+        Save the workbook to the specified filename, with optional overwrite.
+        """    	
         try:
             if not self.wb.sheetnames:
                 self.wb.create_sheet('Sheet1')
             if filename is None:
-                filename = f'output_{datetime.datetime.now().strftime("%Y-%m-%d %H_%M_%S")}_{random.randint(1000, 5000)}.xlsx'
+                filename = f'output_{datetime.now().strftime("%Y-%m-%d %H_%M_%S")}_{random.randint(1000, 5000)}.xlsx'
             else:
                 if not filename.endswith(".xlsx"):
                     filename += ".xlsx"
@@ -363,17 +449,13 @@ class WriteExcel:
             print(f"File '{filename}' has been saved successfully.")
             return True         
         except Exception as e:
-            print(f"Error occurred while saving file: {e}")
-            raise
+            raise WorkbookSaveError(f"Failed to save workbook to '{filename}': {e}")
 
     def close(self):
-        """Close the workbook, releasing any associated resources."""    	
+        """
+        Close the workbook, releasing any associated resources.
+        """    	
         self.wb.close()
 
-
-
-
 def __dir__():
-    return ['WriteExcel']
-
-__all__ = ['WriteExcel']
+    return __all__

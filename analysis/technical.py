@@ -52,15 +52,136 @@
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
 
+"""
+technical: Unified Engine for Technical Indicator Computation & Signal Analysis
+════════════════════════════════════════════════════════════════════════════════
 
+Module Purpose
+────────────────────────────────────────────────────
+`technical` provides a single, robust interface for calculating, visualizing,
+and analyzing a full suite of technical indicators on historical financial data.
+Its flagship class, `tAnalyze`, is designed for analysts, quant developers,
+and automated trading systems that need reliable, extensible computation of
+trend, momentum, volatility, and volume-based signals for equities, crypto, or FX.
 
+Unlike “black box” wrappers, this module emphasizes **data validation,
+transparency, and extendibility**, with DataFrame-in/DataFrame-out idioms and
+plot-ready methods for every signal.
+
+Key Features
+────────────────────────────────────────────────────
+- **Unified API**: All indicator logic, signal detection, and plotting tools are accessed via the `tAnalyze` object.
+- **Schema-agnostic preprocessing**: Accepts nearly any time series format (crypto or equity), with automatic column normalization and type enforcement.
+- **Production-grade validation**: All methods raise descriptive exceptions for missing columns, bad data, or insufficient history.
+- **Rich indicator set**: Supports industry-standard signals (DMI/ADX, Aroon, OBV, MACD, RSI, Stochastic, MA/EMA/Bollinger Bands, ATR) with “get” and “plot” accessors for all.
+- **Signal detection**: Buy/sell/neutral/crossover and divergence signals are included for most indicators, enabling strategy backtesting or visual scanning.
+- **Self-contained plotting**: Every major indicator provides matplotlib visualizations with annotated signals and trend zones.
+
+Supported Indicators & Methods
+────────────────────────────────────────────────────
+• `DirectionalMovementIndex(period=14, adx_threshold=25)`  
+  Computes +DI, -DI, ADX, and trend signals (buy/sell, strong trend).
+• `AroonIndicator(period=25)`  
+  Calculates Aroon Up/Down and detects uptrend/downtrend/range signals.
+• `OnBalanceVolume()`  
+  OBV calculation, with price/OBV divergence detection and visualization.
+• `AccumulationDistributionLine()`  
+  Computes A/D Line, detects price-volume divergences, plots overlay.
+• `MACD(short_window=12, long_window=26, signal_window=9)`  
+  Full MACD, Signal, Histogram, and crossover/zero-line analysis.
+• `RelativeStrengthIndex(period=14)`  
+  RSI values, overbought/oversold detection, divergence, support/resistance mapping.
+• `FastStochasticOscillator(k_period=14, d_period=3)`  
+  %K/%D calculation, overbought/oversold, crosses, divergence.
+• `MovingAveragesAndBollingerBands(sma_period=20, ema_period=20, bb_period=20, bb_std=2)`  
+  SMA, EMA, Bollinger Bands, and all crossover signals.
+• `AverageTrueRange(atr_period=14)`  
+  ATR/volatility analysis, regime shifts, and volatility plotting.
+
+System Architecture & Workflow
+────────────────────────────────────────────────────
+1. **Data Preparation**
+   - Incoming data is normalized and validated by `tAnalyze.Dataframe`.
+   - Supports flexible naming for 'Symbol', 'Date', 'Open', 'High', 'Low', 'Close', 'Volume', using regex-based matching.
+   - Dates are standardized and filtered to a single asset per object.
+
+2. **Indicator Computation**
+   - Each technical indicator is encapsulated in a dedicated sub-class, providing its own computation, signal detection, and plotting logic.
+   - Methods return enriched DataFrames (all columns preserved, new columns for signals).
+
+3. **Signal & Divergence Analysis**
+   - All indicators produce not only the “raw” values, but also columns for buy/sell/cross/divergence signals, aiding both manual and programmatic use.
+
+4. **Visualization**
+   - All core methods include matplotlib-powered plotting routines, with labeled signals, highlighted regions, and dual-axis overlays where appropriate.
+   - Plots are consistent, visually annotated, and ready for Jupyter, scripts, or web integration.
+
+5. **Error Handling & Robustness**
+   - All methods verify period sufficiency and input schema.
+   - Missing or insufficient data triggers clear, instructive error messages.
+
+Example Usage
+────────────────────────────────────────────────────
+from quantsumore.api import tAnalysis
+
+# Load raw price data (works with equities or crypto)
+df = pd.DataFrame({
+    'Date': pd.date_range('2020-01-01', periods=100),
+    'High': np.random.rand(100)*100+150,
+    'Low': np.random.rand(100)*100+100,
+    'Open': np.random.rand(100)*100+125,
+    'Close': np.random.rand(100)*100+130,
+    'Volume': np.random.randint(100, 1000, 100),
+    'Symbol': ['AAPL']*100
+})
+analyze = tAnalysis(df)
+
+# Compute indicators and get DataFrames or plots
+dmi = analyze.DirectionalMovementIndex(period=14, adx_threshold=25)
+dmi.get_signals()
+dmi.plot_indicators()
+
+macd = analyze.MACD()
+macd.plot_macd()
+
+rsi = analyze.RelativeStrengthIndex()
+rsi.plot_rsi()
+
+Design Features
+────────────────────────────────────────────────────
+• Extensible by design: Add new indicators or signal logic by subclassing and plugging into the tAnalyze framework.
+• Pure DataFrame logic: All calculations are pandas-native; intermediate and final values always accessible.
+• No external dependencies except pandas, numpy, matplotlib.
+• Error transparency: All user-facing errors are descriptive and suggest correctable input problems.
+
+• Integration & Usage Notes
+────────────────────────────────────────────────────
+• Best used as a backend analysis layer for dashboards, scripts, or batch processing pipelines.
+• Visualization is matplotlib-based; for production UIs, access .get_*() methods and plot elsewhere as needed.
+• To analyze multiple tickers, instantiate one tAnalyze per symbol.
+• To avoid column name conflicts, only pass data for a single asset per instance.
+
+Warnings & Best Practices
+────────────────────────────────────────────────────
+• Ensure at least max(period) unique dates for the desired indicator before calling methods.
+• Data must include 'Open', 'High', 'Low', 'Close', 'Volume', and 'Date'; column names are flexible but must match the schema after normalization.
+• Always inspect returned DataFrames before using buy/sell signals in live trading logic.
+• Indicators are intended for research and educational purposes; verify any trading strategy with robust backtesting.
+
+Available Classes
+────────────────────────────────────────────────────
+• tAnalyze — Unified interface for technical analysis
+• All indicator-specific classes are accessed through tAnalyze methods
+"""
 import re
 from copy import deepcopy
 
-#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
+from ..date_parser import dtparse
+from ..proxy import Proxy
+from ..exceptions import DataInitializationError
+
+__all__ = ['tAnalyze']
 
 
 
@@ -70,6 +191,13 @@ import numpy as np
 # execution—if applicable—encapsulated in class and function constructs.
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
+
+# Lazily load the entire modules; actual imports occurs on first use.
+pd = Proxy("pandas", None)  # Third-party library imports (from PyPI or other package sources)  
+plt = Proxy("matplotlib.pyplot")  # Third-party library imports (from PyPI or other package sources)  
+np = Proxy("numpy")  # Third-party library imports (from PyPI or other package sources)  
+
+
 class tAnalyze:
     """
     tAnalyze class to handle and preprocess financial data, and compute various technical indicators.
@@ -138,7 +266,7 @@ class tAnalyze:
             self.ticker = self.df['Symbol'].iloc[0] 
             print(f"Historical prices successfully loaded for {self.ticker}.")
         except Exception as e:
-            print(f"Historical prices could not be loaded for {self.ticker or 'ticker symbol'}. Error: {e}")
+            raise DataInitializationError(f"Historical prices could not be loaded for {self.ticker or 'ticker symbol'}. Error: {e}")
 
     def __dir__(self):
         return [
@@ -166,6 +294,12 @@ class tAnalyze:
                 raise ValueError(f"Missing required columns: {missing}")
                
         def rename_cols(self):
+        # —— NEW: if the very first column is "Timestamp", treat it as Date —— #
+        cols = list(self.df.columns)
+        if cols and cols[0].lower() == 'timestamp':
+            # rename Timestamp → Date so that the rest of your logic picks it up
+            self.df = self.df.rename(columns={cols[0]: 'Date'})
+        # —— end new logic —— #        	
             def find_best_matches(df):
                 keyword_map = {
                     'Symbol': ['ticker', 'symbol'],
@@ -203,12 +337,12 @@ class tAnalyze:
                 self.df[col] = pd.to_numeric(self.df[col], errors='coerce')
                 if self.df[col].isna().any():
                     raise ValueError(f"Conversion to float failed for column: {col}")
-                    
+
         def normalize_date(self):
             if 'Date' not in self.df.columns:
-                raise ValueError("Date column is missing")    
+                raise ValueError("Date column is missing")
             try:
-                self.df['Date'] = self.df['Date'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d'))
+                self.df['Date'] = self.df['Date'].apply(lambda x: dtparse.parse(x, to_format='%Y-%m-%d'))
             except Exception as e:
                 raise ValueError(f"Date conversion failed: {str(e)}")
 
@@ -484,7 +618,7 @@ class tAnalyze:
             divergence_df = self.df[self.df['Divergence'] != 'none'][['Date', 'Close', 'OBV', 'Divergence']]
             
             if divergence_df.empty:
-                print("No divergence detected between OBV and price.")
+                print("No divergence detected between OBV and price.")      
             return divergence_df
 
         def plot_obv_with_divergence(self):
@@ -555,7 +689,7 @@ class tAnalyze:
             divergence_df = self.df[self.df['Divergence'] != 'none'][['Date', 'Close', 'AD_Line', 'Divergence']]
             
             if divergence_df.empty:
-                print("No divergence detected between A/D Line and price.")
+                print("No divergence detected between A/D Line and price.")                      
             return divergence_df
 
         def plot_ad_line_with_divergence(self):
@@ -1283,10 +1417,5 @@ class tAnalyze:
         return self._AverageTrueRange(self, atr_period)
 
 
-
-
-
 def __dir__():
-    return ['tAnalyze']
-
-__all__ = ['tAnalyze']
+    return __all__

@@ -53,70 +53,78 @@
 #
 
 """
-HTTPLite: Singleton HTTP Client for Web Automation and Resilient Interaction
+_httpClient: Strict Singleton HTTP Client for Backend Communication
 ────────────────────────────────────────────────────────────────────────────
 
-Understanding the Module
+Module Purpose
 ────────────────────────────────────────────────────
-HTTPLite is a high-resilience HTTP client designed for advanced web interaction,
-particularly in environments that demand discreet and robust request management.
-Rather than acting as a basic communication layer, it embeds adaptive behaviors
-such as randomized headers and agent cycling to emulate natural traffic patterns.
+_httpClient provides a tightly-controlled, singleton HTTP client for communicating
+with the Quantsumore backend relay infrastructure. It serves as the only client-
+side point for initiating outbound API calls, abstracting all interaction with
+remote services through a controlled gateway.
 
-This client goes beyond traditional HTTP interfaces by introducing intelligent
-controls that improve reliability and reduce the risk of detection or throttling,
-making it well-suited for data-intensive automation, scraping, and API orchestration.
+This client **does not directly interface with 3rd-party services like Yahoo or Nasdaq**.
+Instead, it relays requests to an internal relay backend that manages scraping,
+authentication, header spoofing, response caching, and rate enforcement.
 
-Role in the System Architecture
+Design Goals
 ────────────────────────────────────────────────────
-HTTPLite functions as a centralized HTTP interaction layer. It abstracts and
-manages low-level request details, providing a single access point for outbound
-web communication across the application.
+- **Singleton by design:** Only one instance of `_httpClient` is ever allowed. Any
+  attempt to construct a second instance will raise a `RuntimeError`.
+- **Externally immutable:** Core client state (like the API key) cannot be
+  modified or deleted after being set — except via an approved method.
+- **Encapsulated API key injection:** A separate callable `APIKey` object is
+  provided to end-users, abstracting the singleton from direct access and enforcing
+  strict structural validation before key assignment.
 
-Through persistent sessions, header randomization, user-agent variability,
-and delay injection, it stabilizes and anonymizes request traffic, especially
-in adversarial or rate-limited environments.
-
-Core Focus
+System Role
 ────────────────────────────────────────────────────
-- Singleton architecture for consistent, centralized session handling
-- Dynamic user-agent rotation to simulate diverse access patterns
-- Request pacing via managed delays to reduce detection risk
-- Header shuffling for obfuscation against bot detection systems
-- Support for persistent sessions to maintain authentication or state
-- Compatibility with the `requests` library for HTTP operations
+_httpClient acts as the **gatekeeper for outbound requests** from any CLI tool,
+automated agent, or dashboard that relies on the Quantsumore backend. Its job is
+to attach the API key, route requests to the right uplink (relay vs direct),
+and capture response metadata for further analysis.
 
-Usage Context
-────────────────────────────────────────────────────
-HTTPLite is typically used in:
-- Web scraping pipelines that require stealth and reliability
-- Automated API clients where rate limits or anti-bot rules apply
-- Data ingestion layers that depend on consistent HTTP state and session reuse
+All logic related to relay routing, and content decoding
+lives here — but scraping behavior has been entirely delegated to the backend.
 
-Implementation Note
+Core Features
 ────────────────────────────────────────────────────
-This module does not manage content parsing or extraction logic itself.
-Instead, it underpins higher-level systems that require stable, intelligent
-HTTP communication. It is often used alongside content processors such as
-`response_utils` or `extractors`, providing them with a resilient data stream
-to work from.
+- True singleton enforcement — no re-instantiation after the first use
+- Thread-safe, stateless request routing with automatic base URL updates
+- Dedicated method for controlled API key injection (`APIKey(...)`)
+- API key is protected from being modified or deleted by external code
+- Flexible request interface (`req`, `req_all`) with relay-awareness
+- Graceful error handling and extraction of quota/rate-limit headers
+- Lightweight by design — no local caching or session persistence beyond memory
+
+Usage
+────────────────────────────────────────────────────
+from http_lite import APIKey
+
+APIKey("your-validated-43char-apikey")  # validate and store key safely
+response = http_client.req(url="https://finance.eWFob28=.com/")
+
+Implementation Notes
+────────────────────────────────────────────────────
+- The _httpClient class is private and should never be constructed manually.
+- A private instance (http_client) is created eagerly and exposed via module scope.
+- Attempts to instantiate _httpClient more than once raise an error.
+- Direct setting or deletion of api_key is silently blocked to prevent tampering.
+- APIKey validates Base64 structure, length, and decodes to confirm expected byte length.
+
+This design ensures high confidence in both the validity of client state and the
+protection of critical configuration, while offering a frictionless surface to consumers.
+
 """
-
-import random
-from collections import OrderedDict
-import time
-import re
-import os
-import json
 import threading
-
-#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
-import requests_cache
-import requests
+# import re
+# import os
 
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
-from .utils import UserAgentRandomizer, findhost
-# from .utils import find_os_in_user_agent
+from ..__relaytable__ import __RELAY_UPLINK__, __KEYCHECK_UPLINK__
+from ..exceptions import APIKeyError, APIKeyRequiredError, APIRequestError
+
+__all__ = ['Connection', 'APIKey']
 
 
 # ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -125,350 +133,339 @@ from .utils import UserAgentRandomizer, findhost
 # execution—if applicable—encapsulated in class and function constructs.
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
-class HTTPLite:
+
+
+
+# =============================================================================
+# _httpClient
+# -----------------------------------------------------------------------------
+# Internal singleton class responsible for all HTTP communication logic,
+# quota header handling, and secure API key storage.
+#
+# Design Highlights:
+# - **Strict Singleton:** Only one instance can ever be created per process.
+#   Subsequent attempts to instantiate `_httpClient()` will raise a RuntimeError.
+#
+# - **Controlled Initialization:** The instance is created eagerly at module load,
+#   and is accessed safely through the `http_client` alias or `.instance()`.
+#
+# - **API Key Lockdown:**
+#   - `api_key` is a protected, read-only property.
+#   - Only modifiable through `.APIKey(key)` (called by `APIKey` facade).
+#   - Direct reassignment or deletion of `api_key` is silently ignored.
+#
+# - **HTTP Logic:**
+#   - Routes to direct uplink based on host.
+#   - Automatically tracks status code, content type, and rate/quota headers.
+#   - Supports multi-threaded batch requests via `.req_all()`.
+#
+# - **Destruction Logic:**
+#   - `.destroy_instance()` irreversibly disables the instance for the process.
+#   - After destruction, all methods are replaced with stubs that raise errors.
+#
+#
+# DO NOT instantiate directly outside of this module.
+# =============================================================================
+def findhost(url):
     """
-    HTTPLite is a singleton-pattern HTTP client tailored for sophisticated HTTP interactions, ideal for
-    automated web interactions and web scraping tasks where mimicry of human browser behavior is essential.
-    It handles persistent HTTP sessions with a focus on header management, request throttling, and user-agent rotation,
-    optimizing for both performance and stealth in high-demand scenarios.
-
-    The class leverages a requests.Session object to maintain connection pooling and header persistence across requests,
-    ensuring efficiency and consistency in the communication with web services. Features like header shuffling and
-    randomized request delays are specifically designed to obscure the non-human origin of the requests, thereby
-    reducing the likelihood of detection and blocking by web servers.
-
-    Attributes:
-        base_url (str): Base URL to which the HTTPLite client directs all its requests. This is a foundational attribute that sets the scope of operations for HTTP interactions.
-        host (str): The network host extracted from the base_url. This is crucial for optimizing connection reuse and for context-specific request handling.
-        last_request_time (float): Timestamp of the last executed request, used to manage request pacing and ensure compliance with rate limits or courtesy policies.
-        session (requests.Session): Configured session object which holds and manages persistent connections and state across multiple requests.
-        initialized (bool): A boolean flag indicating whether the HTTPLite instance has completed its initialization, ensuring it's ready for operation.
-
-    Methods:
-        update_base_url(new_url): Set a new base URL, adapting the client's target endpoint and associated network host, enabling dynamic adjustment to changing server configurations or API endpoints.
-        findhost(url): Derive the host component from a URL, crucial for extracting and managing the network layer of the URL structure.
-        random_delay(): Implements a strategically randomized delay between consecutive requests to the same host, simulating human-like interaction patterns and aiding in avoiding automated access patterns detection.
-        shuffle_headers(): Randomizes the sequence of HTTP headers in requests to further simulate the non-deterministic header order typical in browser-generated HTTP traffic.
-        update_header(key, value): Provides the capability to dynamically adjust HTTP headers, facilitating context-specific tuning of requests, such as modifying user-agent or content-type headers in response to server requirements.
-        get_headers(key=None): Retrieves currently configured headers, supporting both complete retrieval and lookup for specific header values, which is vital for debugging and compliance verification.
-        make_request(params): Executes a prepared HTTP request considering all configured optimizations like base URL, header shuffling, and enforced delays, tailored to handle both typical and complex request scenarios.
-        destroy_instance(): Deactivates the singleton instance of HTTPLite, effectively cleaning up resources and resetting the class state to prevent misuse or resource leakage in a controlled shutdown process.
+    Extract the hostname from a URL or raw host string.
+    Accepts either a URL string or (base, endpoint) tuple/list.
     """
+    from urllib.parse import urlparse
+
+    if not url:
+        return None
+    if isinstance(url, (tuple, list)):
+        url = url[0]
+    parsed = urlparse(url if "://" in url else f"//{url}")
+    return parsed.netloc or parsed.path
+
+class _httpClient:
     _instance = None
     _lock = threading.Lock()
+    _destroyed = False              # prevents recreation after destroy_instance()
 
     def __new__(cls, *args, **kwargs):
-        """
-        Override the __new__ method to implement a singleton pattern. This ensures that only one instance of HTTPLite exists.
+        if cls._destroyed:
+            raise RuntimeError("_httpClient was destroyed and cannot be re-instantiated.")
 
-        Returns:
-            HTTPLite: A singleton instance of the HTTPLite class.
-        """    	
-        if not cls._instance:
-            cls._instance = super(HTTPLite, cls).__new__(cls)
-            cls._instance.initialized = False
+        with cls._lock:                       # thread-safe first-creation
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance.initialized = False
+            else:
+                # first one already exists → forbid a second construction
+                raise RuntimeError(
+                    "_httpClient is a singleton; use _httpClient.instance() "
+                    "or the exported http_client() helper instead."
+                )
         return cls._instance
 
-    def __init__(self, base_url=None, expire_after=600):
-        """
-        Initializes the HTTPLite instance with a session and default headers aimed to mimic browser behavior. The headers are dynamically adjusted based on the user agent.
-        Also sets up HTTP caching using requests-cache.
+    @classmethod
+    def instance(cls):
+        if cls._instance is None:
+            raise RuntimeError("_httpClient has not been initialised yet.")
+        return cls._instance
 
-        Parameters:
-            base_url (str, optional): The base URL for all the requests made using this instance. If not provided, it can be set later via the update_base_url method.
-            expire_after (int): Time (in seconds) after which the cache expires. Defaults to 10 minutes.
-
-        Note:
-            This method is only called once during the first creation of the instance due to the singleton pattern implemented in __new__.
-        """
-        if not getattr(self, "initialized", False):        
-            self.session = requests_cache.CachedSession(
-                cache_name='http_cache',
-                backend='memory',
-                expire_after=expire_after,
-                allowable_codes=(200,),
-                allowable_methods=('GET',),
-            )
-
-            # # --- BEGIN Test proxy definition (but NOT enabled yet) ---
-            # proxy = 'host:port pair or a proxy address'
-            # proxy_auth = 'username:password pair'
-            # self.Proxies = {
-            #     'http': f'http://{proxy_auth}@{proxy}',
-            #     'https': f'http://{proxy_auth}@{proxy}'
-            # }            
-            # self._proxy_enabled = False      
-            # # --- END Test proxy definition ---
-                                    
-            self.session.headers.update({
-                "User-Agent": UserAgentRandomizer.get_random_user_agent(),  																																													 # Rotates to mimic real browser fingerprints
-                # "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7", # Removed for being overly verbose and suspicious in scraping contexts; some parts like 'application/signed-exchange' are rarely used outside full browser navs and can trigger detection
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",  																																				 # Mimics a typical browser Accept header            
-                "Accept-Language": "en-US,en;q=0.9",  																																																								 # Standard browser language fallback
-                "Connection": "keep-alive", 																																																													 # Usually safe, but may need removal when proxies modify connection behavior
-                # "Accept-Encoding": "gzip, deflate, br, zstd",																																																				 # Removed 'zstd' — not all servers (especially Yahoo's edge CDN) support it; may result in 406/5xx errors            
-                "Accept-Encoding": "gzip, deflate, br",																																																								 # Removed 'zstd' — not all servers (especially Yahoo's edge CDN) support it; may result in 406/5xx errors
-                # "Cache-Control": "max-age=0", 																																																											 # Overly aggressive; can interfere with proxy-side or server caching, leading to inconsistent behavior
-                # "DNT": "1", 																																																																				 # "Do Not Track" is uncommon in bot requests and may raise suspicion (few real users enable it)
-                # "Upgrade-Insecure-Requests": "1",   																																																								 # Used by browsers during navigation; unnecessary in script-based GETs
-                # "Priority": "u=0, i",   																																																														 # Chrome-only hint with no clear benefit here; Yahoo may treat it as noise or a nonstandard signal
-                # "Sec-Ch-Ua-Mobile": "?0",   																																																												 # Part of Client Hints, but many headers in this family are tied to Chromium internals; incomplete or mismatched sets can appear fake
-                # "Sec-Fetch-Mode": "navigate",   																																																										 # Fetch metadata headers are often stripped or altered by real browsers; standalone inclusion raises flags
-                # "Sec-Fetch-Site": random.choice(["same-origin", "same-site"]),   																																										 # Same issue — not consistently sent by browsers and hard to spoof accurately
-                # "Sec-Fetch-User": "?1",   																																																													 # Misused unless part of full browser-initiated navigation
-                # "Sec-Fetch-Dest": "document",   																																																										 # Again, belongs to tightly coupled Fetch family; triggers heuristics if out of context
-                "Referer": "https://www.google.com"   																																																								 # Safe and helpful for some endpoints; gives illusion of natural origin
-            })
-            # self.session.headers.update({"Sec-Ch-Ua-Platform": find_os_in_user_agent(self.session.headers["User-Agent"])})  																				 # Same as above — too specific to Chromium client hints
-            self.last_request_time = None
+    def __init__(self, base_url=None):
+        if not getattr(self, "initialized", False):
+            object.__setattr__(self, "_api_key", None)        #  ←  use builtin
             self.initialized = True
-            
-        self.base_url = base_url if base_url else None
-        self.host = findhost(self.base_url) if self.base_url else None   
-        self.last_host = None   
-        self.code = None       
-        self.content_type = None     
-        
-    # def enable_proxy(self):
-    #     """Turn proxy ON for subsequent requests."""
-    #     self.session.proxies.update(self.Proxies)        
-    #     self._proxy_enabled = True
-    # 
-    # def disable_proxy(self):
-    #     """Turn proxy OFF for subsequent requests."""
-    #     self.session.proxies.clear()
-    #     self._proxy_enabled = False        
-        
-    def update_base_url(self, new_url):
-        """
-        Updates the base URL of the HTTP client and sets the associated host based on the new URL.
 
-        Parameters:
-            new_url (str): The new base URL to be used for subsequent requests.
-        """
-        self.base_url = new_url
-        self.host = findhost(new_url)
-        
-    def random_delay(self, concurrent=False, delay_enabled=False):
-        """
-        Introduces a configurable delay between consecutive requests to prevent rate limiting or detection.
-        The delay is applied only if delay_enabled is True, facilitating easy toggling for testing purposes.
-        """
-        if not delay_enabled:
-            return
-        
-        if concurrent:
-            delay = random.uniform(1, 5)
-            time.sleep(delay)
-        else:
-            if self.last_host and self.last_host == self.host:
-                if self.last_request_time is not None:
-                    elapsed_time = time.time() - self.last_request_time
-                    if elapsed_time < 3:
-                        time.sleep(3 - elapsed_time)
-            self.last_request_time = time.time()
-            self.last_host = self.host
-        
-    def shuffle_headers(self):
-        """
-        Randomizes the order of HTTP headers to mimic the non-deterministic order seen in browsers.
-        """
-        header_items = list(self.session.headers.items())
-        random.shuffle(header_items)
-        self.session.headers = OrderedDict(header_items)
-        
-    def update_header(self, key, value):
-        """
-        Updates or adds a specific header to the current session headers.
+        # these may legitimately change run-time
+        self.base_url = base_url
+        self.host = None
+        if self.base_url:
+            base = self.base_url[0] if isinstance(self.base_url, (tuple, list)) else self.base_url
+            self.host = findhost(base)
+        self.code = None
+        self.content_type = None
 
-        Parameters:
-            key (str): The key of the header to update or add.
-            value (str): The value of the header to update or add.
-        """
-        self.session.headers.update({key: value})
+    def _get_session(self):
+        if not hasattr(self, "_session"):
+            import requests # Third-party library imports (from PyPI or other package sources)
+            self._session = requests.Session()
+            self._session.headers.update({"User-Agent": "_httpClient-Client/1.0"})
+        return self._session
+       
+    @property
+    def api_key(self):
+        """Read-only property; use APIKey() to change."""
+        return self._api_key
 
-    def get_headers(self, key=None):
-        """
-        Retrieves the current session headers or a specific header value if a key is provided.
+    def APIKey(self, key):
+        """The **only** way to set or change the API key."""
+        object.__setattr__(self, "_api_key", key)
 
-        Parameters:
-            key (str, optional): The key of the header whose value is to be retrieved. If None, all headers are returned.
+    # Prevent external code from writing or deleting the attribute
+    def __setattr__(self, name, value):
+        if name in ("api_key", "_api_key"):
+            return  # Silently ignore the attempt to set these attributes            
+        super().__setattr__(name, value)
 
-        Returns:
-            dict or str: All headers as a dictionary, or the value of a specific header if a key was provided.
-        """
-        headers = dict(self.session.headers)
-        if key:
-            return headers.get(key, f"Header '{key}' not found")
-        return headers
+    def __delattr__(self, name):
+        if name in ("api_key", "_api_key"):
+            return  # Silently ignore the attempt to set these attributes            
+        super().__delattr__(name)
 
-    def verify_content_type(self, type_input):
-        """
-        Determines the type of content by examining the content type string provided, 
-        classifying it as either 'html' or 'json' based on predefined patterns.
-
-        Args:
-            type_input (str): A string representing the content type header from an HTTP response,
-                              typically containing MIME type and possibly other information.
-
-        Returns:
-            str | None: Returns 'html' if the input matches HTML content patterns,
-                        'json' if it matches JSON content patterns, or None if no match is found.
-
-        Note:
-            The method internally uses regular expressions to check for matches against 
-            the content type. Patterns for HTML include keywords like 'text' and 'html',
-            while JSON detection is based on the presence of 'application' and 'json'.
-        """        
-        html_patterns = [r'text', r'html', r'charset', r'utf']
-        json_patterns = [r'application', r'json']
-        
-        content_type = type_input.lower()
-
-        def matches_any(patterns, content_type):
-            return any(re.search(pattern, content_type) for pattern in patterns)
-
-        if matches_any(html_patterns, content_type):
-            return "html"
-        elif matches_any(json_patterns, content_type):
-            return "json"
-        else:
-            return None
-
-    def make_request(
+    def _req(
         self,
-        params,
-        concurrent=False,
+        api_key=None,
+        url=None,
+        params=None,
         return_url=True,
-        delay_enabled=True,
-        # use_proxy=True
     ):
-        """
-        Sends a request to the server using the current base URL and provided parameters, handling header shuffling and random delays.
+        import requests
+        api_key = api_key or self.api_key           # fallback to stored key
+        if not api_key:
+            raise APIKeyRequiredError("API key is required. Use APIKey() first or pass api_key.")
+        if url:
+            self.update_base_url(url)
+        else:
+            url = self.base_url
 
-        Parameters:
-            params (dict): The parameters to be included in the request. The 'format' key can specify the desired response format ('html' or 'json').
-
-        Returns:
-            dict: A dictionary containing the 'response' which can either be text or JSON, depending on the request parameters.
-        """
+        endpoint = __RELAY_UPLINK__
         try:
-            # # Switch proxy according to use_proxy flag
-            # if use_proxy and not self._proxy_enabled:
-            #     self.enable_proxy()
-            # elif not use_proxy and self._proxy_enabled:
-            #     self.disable_proxy()
+            headers  = {"X-API-Key": api_key}
 
-            if 'format' not in params:
-                params['format'] = 'html'
-
-            self.host = findhost(self.base_url)
-            self.shuffle_headers()
-
-            response = self.session.get(self.base_url, params=params)
-            self.code = response.status_code
-            self.content_type = response.headers.get('Content-Type')
-
-            if response.from_cache:
-                pass                
-
-            if not response.from_cache:
-                self.random_delay(concurrent=concurrent, delay_enabled=delay_enabled)
-
-            response.raise_for_status()
-
-            content_type_result = self.verify_content_type(self.content_type)
-            if content_type_result == "json":
-                response_data = {"response": response.json()}
-            elif content_type_result == "html":
-                response_data = {"response": response.text}
+            if isinstance(url, (tuple, list)) and len(url) == 2:
+                base = url[0]
+                # ensure str (not bytes)
+                if isinstance(base, bytes):
+                    base = base.decode()
+                req_params = {
+                    "base": base,
+                    "endpoint": url[1]
+                }
             else:
-                raise ValueError("Unsupported content type")
+                req_params = {"url": url}
+            # --------------------------------------------------------
+            if params:
+                req_params.update(params)
 
-            if concurrent:
-                return response_data
-            else:
-                if return_url:
-                    return [{self.base_url: response_data}]
-                else:
-                    return response_data
+            res = self._get_session().get(endpoint, params=req_params, headers=headers, timeout=15)
+            res.raise_for_status()
+
+            self.code = res.status_code
+            self.content_type = res.headers.get("Content-Type", "")
+            quota_warning = res.headers.get("X-Quota-Warning")
+
+            response_body = res.json() if "application/json" in self.content_type else res.text
+            response_data = {"response": response_body}
+            if quota_warning is not None:
+                response_data["quota_warning"] = quota_warning
+
+            # return [{url: response_data}] if return_url else response_data
+            return [{'+'.join(url): response_data}] if return_url else response_data            
 
         except requests.exceptions.HTTPError as e:
-            error_message = {"error": f"HTTP Error {e.response.status_code}: {str(e)}"}
-        except Exception as e:
-            error_message = {"error": str(e)}
-
-        if not concurrent:
-            return [{self.base_url: error_message}]
-        return error_message
+            raise APIRequestError(e)
+        except Exception:
+            raise APIRequestError(requests.exceptions.HTTPError("Unknown error"))
            
-    def make_requests_concurrently(
+    def update_base_url(self, new_url):
+        self.base_url = new_url
+        base = new_url[0] if isinstance(new_url, (tuple, list)) else new_url
+        self.host = findhost(base)
+    
+    def Request(self, url, api_key=None, params=None, return_url=True):
+        """
+        Smart wrapper around `.req` / `.req_all`.
+        Always expects:
+          - a 2-tuple or 2-element list: (base, endpoint)
+        """
+        if isinstance(url, str):
+            raise ValueError("url must be a 2-tuple, not a single string.")
+
+        url = list(url)
+        if len(url) != 2:
+            raise ValueError("url must be a 2-tuple or a list with 2 elements.")
+
+        # Optionally, check/enforce types here:
+        base, endpoint = url
+        assert isinstance(base, (str, bytes))
+        assert isinstance(endpoint, str)
+
+        # Send to the internal request handler
+        return self._req(
+            api_key=api_key,
+            url=tuple(url),
+            params=params,
+            return_url=return_url,
+        )
+        
+    def RequestBatch(
         self,
-        urls,        
-        params,
-        return_url=True,
-        delay_enabled=True,
-        # use_proxy=True
+        urls,
+        api_key = None,
+        timeout = 30
     ):
         """
-        Makes multiple HTTP requests concurrently using threading.
+        Batch proxy to /relay/batch.  
+        urls: list of (base, endpoint) pairs.
+        Returns: list of { "base+endpoint": { "response": ..., ... } } dicts.
+        """
+        __RELAY_BATCH_UPLINK__ = __RELAY_UPLINK__ + "/batch"
+        
+        api_key = api_key or self.api_key
+        if not api_key:
+            raise APIKeyRequiredError("API key is required. Use APIKey() first or pass api_key.")
 
-        Parameters:
-            urls (list): A list of URLs to send requests to.
-            params (dict): The parameters to pass with each request.
+        # Build payload
+        payload = [
+            {"base": base, "endpoint": endpoint}
+            for base, endpoint in urls
+        ]
 
-        Returns:
-            list: A list of responses from all URLs.
-        """          
-        results = []
-        def worker(url):
-            self.update_base_url(url)
-            result = self.make_request(
-                params,
-                concurrent=True,
-                return_url=return_url,
-                delay_enabled=delay_enabled,
-                # use_proxy=use_proxy
-            )
-            with self._lock:
-                if return_url:
-                    results.append({url: result})
-                else:
-                    results.append(result)
-        threads = []
+        # Send batch request
+        session = self._get_session()
+        headers = {
+            "X-API-Key": api_key,
+            "Content-Type": "application/json"
+        }
+        res = session.post(
+            __RELAY_BATCH_UPLINK__,
+            json=payload,
+            headers=headers,
+            timeout=timeout
+        )
+        res.raise_for_status()
 
-        for url in urls:
-            thread = threading.Thread(target=worker, args=(url,))
-            threads.append(thread)
-            thread.start()
-            
-        for thread in threads:
-            thread.join()
-        return results
-       
+        return res.json()        
+
     @classmethod
     def destroy_instance(cls):
-        """
-        Destroys the singleton instance of the HTTPLite class, rendering it unusable by replacing all callable attributes with a method that raises an error.
-        """        
+        """Make existing instance unusable **and** forbid future ones."""
         if cls._instance:
             for key in dir(cls._instance):
                 attr = getattr(cls._instance, key)
-                if callable(attr) and key not in ['__class__', '__del__', '__dict__']:
+                if callable(attr) and key not in ("__class__", "__del__", "__dict__"):
                     setattr(cls._instance, key, cls._make_unusable)
-            cls._instance = None
+            cls._instance  = None
+            cls._destroyed = True
 
     @staticmethod
-    def _make_unusable(*args, **kwargs):
-        """ A static method designed to replace callable methods in the HTTPLite class instance once it is destroyed. """          
-        raise RuntimeError("This instance has been destroyed and is no longer usable.")
+    def _make_unusable(*_a, **_kw):
+        raise RuntimeError("This _httpClient instance has been destroyed.")
+
+# single, private instance created
+Connection = _httpClient()
 
 
-http_client = HTTPLite()
 
+# =============================================================================
+# _SetApiKeyCallable
+# -----------------------------------------------------------------------------
+# Internal helper used to expose a clean public API (`APIKey`) that lets
+# users configure their API key without ever accessing or seeing the singleton
+# _httpClient client directly.
+#
+# - Implements `__call__`, so it can be used like a function.
+# - Performs strict structural validation on the key (URL-safe Base64, 43 chars).
+# - Thread-safe using a lock to prevent race conditions.
+# - Calls `Connection.APIKey()` internally to update the key.
+# - Returns the existing singleton instance for convenience chaining if needed.
+#
+# Usage pattern (from public interface):
+#     >>> from http_lite import APIKey
+#     >>> APIKey("abc123...")   # safe, validated, encapsulated
+# =============================================================================
+class _SetApiKeyCallable:
+    """
+    Validate and store the Quantsumore API key.
 
+    Usage
+    -----
+    >>> from http_lite import APIKey
+    >>> APIKey("your-api-key-string")
+
+    • Calls a remote endpoint to validate API key.
+    • Thread-safe: a lock guards concurrent updates.
+    • Returns the singleton `Connection` so we can chain:
+        client = APIKey(my_key).req(url="…")
+    """
+    _lock = threading.Lock()
+    _KEYCHECK_UPLINK = __KEYCHECK_UPLINK__
+
+    def _is_remotely_valid_key(self, api_key):
+        import requests  # Third-party library imports (from PyPI or other package sources)   
+        try:
+            headers = {"X-API-Key": api_key}
+            response = requests.get(self._KEYCHECK_UPLINK, headers=headers, timeout=5)
+            if response.status_code == 200:
+                result = response.json()
+                return result.get("valid") is True
+            return False
+        except Exception as e:
+            raise APIKeyError(f"API key validation error: {e}")
+            return False
+
+    def __call__(self, key, verbose=True):
+        if not self._is_remotely_valid_key(key):
+            raise APIKeyError("Key Invalid or not active")
+        with self._lock:
+            Connection.APIKey(key)
+        if verbose:
+            print("API key set successfully.")
+            
+
+# ---- singleton instance -------------------------------------------
+APIKey = _SetApiKeyCallable()
+APIKey.__doc__ = """
+Set or update the Quantsumore API key.
+
+>>> from http_lite import APIKey
+>>> APIKey("43-char-urlsafe-base64-string")
+
+Raises
+------
+ValueError
+    If the key is not structurally valid.
+"""
 
 def __dir__():
-    return ['http_client']
+    return __all__
 
-__all__ = ['http_client']
+
+
+

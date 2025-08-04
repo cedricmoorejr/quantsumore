@@ -56,6 +56,8 @@
 from .cpi.calculateGUI import InflationCalculatorApp
 from quantsumore.api.cpi.ConsumerPriceIndexAPI import engine as gui
 
+__all__ = ['GUI']
+
 
 # ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
 # This segment delineates the functional backbone of the module.
@@ -67,5 +69,3 @@ inflation_calculator = gui.CPI_U.InflationAdjustment
 
 # Create the app object
 GUI = InflationCalculatorApp(inflation_calculator)
-
-__all__ = ['GUI']

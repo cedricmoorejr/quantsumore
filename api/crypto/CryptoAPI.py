@@ -52,17 +52,127 @@
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
 
+"""
+CryptoAPI — Unified Cryptocurrency Data Interface
+═════════════════════════════════════════════════
 
+Purpose
+───────
+    The `CryptoAPI.py` module provides the primary, user-facing interface for cryptocurrency data
+    retrieval and analysis in the Quantsumore library. It abstracts away all provider-specific logic,
+    endpoint quirks, and slug normalization — allowing end-users to seamlessly access both real-time
+    and historical market data for any supported digital asset via a consistent, well-documented API.
 
-from copy import deepcopy
+Key Capabilities
+───────────────
+- **Live Crypto Market Data:** Instantly fetches the most recent trade, liquidity, and price data for any
+  coin or token, with full support for exchange, base/quote filtering, and live order book metrics.
+- **Historical OHLCV and Time Series:** Retrieves daily (or other interval) price, volume, and market cap
+  history for all tracked assets, with robust date normalization and error handling.
+- **Automatic Input Validation:** Slug, symbol, and ID validation handled centrally (see `prep.py`),
+  with full support for canonicalization, error messaging, and defensive normalization.
+- **Provider Obfuscation and Routing:** All upstream provider logic is abstracted; users interact only with
+  stable, neutral interfaces (see “Data Attribution Policy” in `prep.py` for details).
 
+Design Overview
+───────────────
+- **Single Entry Point:** Users interact exclusively through `APIClient`, constructed with a validated
+  asset registry (typically `crypto_adapter` from `prep.py`).
+- **Centralized URL Construction:** All endpoints, query params, and date conversions are built via
+  `crypto_adapter.make(...)`, with strict input checking and multi-provider support.
+- **Response Parsing and Shaping:** Raw API responses are parsed and normalized into pandas DataFrames by
+  `crypto.live_quote` and `crypto.crypto_historical` (from `parse.crypto`), with consistent schema and
+  timestamp formatting.
+- **Unified Exception Hierarchy:** All downstream errors are mapped to clear, Quantsumore-defined exceptions.
+
+Typical Workflow
+────────────────
+1. **Install and Import:**
+       from quantsumore.api import crypto
+2. **Initialize Client:**
+       engine = crypto.APIClient(crypto.crypto_adapter)
+3. **Set API Key (if required):**
+       from quantsumore.api import APIKey
+       APIKey("my-secret-key")
+4. **Fetch Live Data:**
+       df = engine.Latest(slug="bitcoin", cryptoExchange="binance")
+5. **Fetch Historical Data:**
+       df = engine.Historical(slug="bitcoin", start="2023-01-01", end="2023-06-30")
+
+Supported Workflows
+───────────────────
+- **Batch Queries:** Both methods support single coin or list-of-coins for batch data retrieval.
+- **Fine-Grained Filtering:** Live queries support filtering by base currency, quote currency, exchange, type, etc.
+- **Time Series Customization:** Historical queries support arbitrary date ranges (UTC), with ISO or Unix input.
+- **Extensible Endpoint Logic:** Adding new query types or intervals only requires changes to internal routing logic.
+
+Core Classes and Methods
+────────────────────────
+- **APIClient(adapter)**
+    - `.Latest(slug, baseCurrencySymbol=None, quoteCurrencySymbol=None, limit=100, exchangeType="all", cryptoExchange=None, api_key=None)`
+      - Returns: `pandas.DataFrame` (live market pairs with columns: coin, symbol, exchange, price, volume, liquidity, etc.)
+    - `.Historical(slug, start, end, api_key=None)`
+      - Returns: `pandas.DataFrame` (daily OHLCV, market cap, volume, timestamp, etc.)
+
+API Key Handling
+────────────────
+- **Automatic Storage:** Set your API key once with `APIKey("key")`; persists in singleton connection.
+- **Per-Request Override:** Optionally pass `api_key` for a specific call.
+- **Error Handling:** Raises `APIKeyRequiredError` if a key is required but not found.
+
+Return Types and Data Structure
+───────────────────────────────
+All data is returned as pandas DataFrames with a standardized column set. Examples include:
+
+Live Market Data:
+    - 'coinName', 'coinSymbol', 'exchangeName', 'marketPair', 'category', 'baseSymbol', 'quoteSymbol',
+      'price', 'volumeUsd', 'effectiveLiquidity', 'lastUpdated', 'quote', 'volumeBase', 'volumeQuote',
+      'feeType', 'depthUsdNegativeTwo', 'depthUsdPositiveTwo', 'volumePercent', 'exchangeType', 'timeQueried'
+Historical Time Series:
+    - 'symbol', 'name', 'date', 'open', 'high', 'low', 'close', 'volume', 'marketCap', 'time_queried'
+
+Exception Handling
+──────────────────
+- `APIKeyRequiredError`: API key missing or invalid.
+- `ValueError`: Malformed or missing input arguments.
+- `CryptoLiveQuoteNoDataError`, `CryptoHistoricalNoDataError`: No valid data returned.
+- `CryptoLiveQuoteUnavailableError`, `CryptoHistoricalUnavailableError`: Provider down or unresponsive.
+
+Internal Structure & Related Modules
+────────────────────────────────────
+- **prep.py:** Handles asset and slug validation, data provider obfuscation, and all input normalization.
+- **parse/crypto.py:** Parses API responses and shapes them into DataFrames.
+- **_http/connection.py:** Underlying HTTP(S) connection manager, with API key and session support.
+
+Data Attribution & Licensing Policy
+───────────────────────────────────
+- All external provider logic is routed through abstract labels (e.g., “CryptoProviderA”);
+  no explicit provider branding or endpoint URLs are exposed to end-users.
+- For compliance, see the “Provider Label Registry” in `prep.py`.
+
+Reference Table: Method Inputs/Outputs
+──────────────────────────────────────
+| Method     | Input(s)                                 | Output                        | Supports Multi? |
+|------------|------------------------------------------|-------------------------------|-----------------|
+| Latest     | slug(s), base/quote, limit, exchange     | DataFrame: market pairs       | Yes             |
+| Historical | slug(s), start, end                      | DataFrame: daily OHLCV        | Yes             |
+
+Example
+───────
+    >>> from quantsumore.api import crypto
+    >>> engine = crypto.APIClient(crypto.crypto_adapter)
+    >>> df = engine.Latest(slug=["bitcoin", "ethereum"], baseCurrencySymbol="USD", exchangeType="cex")
+    >>> print(df.head())
+
+    >>> df = engine.Historical(slug="bitcoin", start="2024-01-01", end="2024-01-31")
+    >>> print(df.head())
+"""
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
-from ..prep import crypto_asset
+from ..prep import crypto_adapter
 from .parse import crypto
-from ..._http.response_utils import Request
+from ..._http.connection import Connection
 
-
-
+__all__ = ['engine']
 
 
 # ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -72,10 +182,14 @@ from ..._http.response_utils import Request
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
 class APIClient:
-    def __init__(self, asset):
-        self.asset = asset
+    def __init__(self, adapter):
+        self.adapter = adapter
 
-    def cLatest(self, slug, baseCurrencySymbol=None, quoteCurrencySymbol=None, limit=100, exchangeType="all", cryptoExchange=None):
+    # Notes:
+    # -----
+    # >>>>>>>>>>>>>>>>>>>>> REAL-TIME DATA - LIVE FEED <<<<<<<<<<<<<<<<<<<<<<
+    # Returned results reflect the most current trading data available at the time of the request.  
+    def Latest(self, slug, baseCurrencySymbol=None, quoteCurrencySymbol=None, limit=100, exchangeType="all", cryptoExchange=None, api_key=None):
         """
         Fetches and returns the latest live cryptocurrency market data for a specified asset.
 
@@ -84,10 +198,20 @@ class APIClient:
         symbols, the specific cryptocurrency exchange, the maximum number of results, and the type of exchange.
         The data is structured as a DataFrame containing various metrics related to live trading activity.
 
+        API Key Usage:
+        -------------
+        If `api_key` is not provided, the method expects that an API key has already been set using:
+
+            from quantsumore.api import APIKey
+            APIKey("your-api-key-string")
+
+        This securely stores your API key for all subsequent requests via a singleton connection manager.
+        Passing `api_key` directly will override any stored key for this request.
+        
         Parameters:
         ----------
-        slug : str or list of str
-            The identifier(s) for the cryptocurrency asset(s). Accepts a single identifier (e.g., "bitcoin") or a list of identifiers (e.g., ["bitcoin", "ethereum"]).
+        slug : str
+            The identifier(s) for the cryptocurrency asset(s). Accepts a single identifier (e.g., "bitcoin").
         baseCurrencySymbol : str, optional
             The symbol of the base currency (e.g., "USD"). Defaults to None.
         quoteCurrencySymbol : str, optional
@@ -98,6 +222,9 @@ class APIClient:
             The maximum number of results to return. Defaults to 100.
         exchangeType : str, optional
             The type of exchange to filter by (e.g., "all", "cex", "dex"). Defaults to "all".
+        api_key : str, optional
+            The API key for authenticated requests. If not provided, an API key must have
+            been previously set using `APIKey()`.
 
         Returns:
         -------
@@ -127,23 +254,35 @@ class APIClient:
 
         Example:
         -------
-        >>> engine = APIClient(asset=some_asset_instance)
-        >>> latest_data = engine.cLatest(slug="bitcoin", baseCurrencySymbol="USD", quoteCurrencySymbol="JPY", cryptoExchange="binance", limit=100, exchangeType="all")
+        >>> engine = APIClient(adapter=some_asset_instance)
+        >>> latest_data = engine.Latest(slug="bitcoin", baseCurrencySymbol="USD", quoteCurrencySymbol="JPY", cryptoExchange="binance", limit=100, exchangeType="all")
         >>> print(latest_data)
           coinName coinSymbol  ... exchangeType                      timeQueried
         0  Bitcoin        BTC  ...          cex 2024-08-27 14:57:32.938000+00:00
 
         [1 rows x 20 columns]
+        
+        Raises:
+        ------
+        APIKeyRequiredError
+            If no API key is provided and none has been set using `APIKey()`.        
         """    	
-        make_method = getattr(self.asset, 'make')
+        make_method = getattr(self.adapter, 'make')
         url = make_method(query='live', slug=slug, baseCurrencySymbol=baseCurrencySymbol, quoteCurrencySymbol=quoteCurrencySymbol, limit=limit, exchangeType=exchangeType)
-        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)         
+        base = url[0].decode() if isinstance(url[0], bytes) else url[0]
+        endpoint = url[1]
+        content = Connection.Request(
+            url=(base, endpoint),
+            api_key=api_key,
+            params=None,
+            return_url=True
+        )         
         if content:
             obj = crypto.live_quote(content, cryptoExchange=cryptoExchange)
             data = obj.DATA()
             return data
 
-    def cHistorical(self, slug, start, end):
+    def Historical(self, slug, start, end, api_key=None):
         """
         Fetches and returns historical cryptocurrency data for a specified asset within a given date range.
 
@@ -152,14 +291,27 @@ class APIClient:
         `start` and `end` parameters. The result is structured as a DataFrame containing various metrics 
         such as open, high, low, close prices, volume, market capitalization, and timestamps.
 
+        API Key Usage:
+        -------------
+        If `api_key` is not provided, the method expects that an API key has already been set using:
+
+            from quantsumore.api import APIKey
+            APIKey("your-api-key-string")
+
+        This securely stores your API key for all subsequent requests via a singleton connection manager.
+        Passing `api_key` directly will override any stored key for this request.
+        
         Parameters:
         ----------
-        slug : str or list of str
-            The identifier(s) for the cryptocurrency asset(s). Accepts a single identifier (e.g., "bitcoin") or a list of identifiers (e.g., ["bitcoin", "ethereum"]).
+        slug : str
+            The identifier(s) for the cryptocurrency asset(s). Accepts a single identifier (e.g., "bitcoin").
         start : str
             The start date for the historical data retrieval in the format "YYYY-MM-DD".
         end : str
             The end date for the historical data retrieval in the format "YYYY-MM-DD".
+        api_key : str, optional
+            The API key for authenticated requests. If not provided, an API key must have
+            been previously set using `APIKey()`.            
 
         Returns:
         -------
@@ -183,8 +335,8 @@ class APIClient:
 
         Example:
         -------
-        >>> engine = APIClient(asset=some_asset_instance)
-        >>> historical_data = engine.cHistorical(slug="bitcoin", start="2024-01-01", end="2024-01-10")
+        >>> engine = APIClient(adapter=some_asset_instance)
+        >>> historical_data = engine.Historical(slug="bitcoin", start="2024-01-01", end="2024-01-10")
         >>> print(historical_data)
           symbol  ...                     time_queried
         0    BTC  ... 2024-08-27 14:52:44.320000+00:00
@@ -198,27 +350,39 @@ class APIClient:
         8    BTC  ... 2024-08-27 14:52:44.320000+00:00
 
         [9 rows x 14 columns]
+
+        Raises:
+        ------
+        APIKeyRequiredError
+            If no API key is provided and none has been set using `APIKey()`.        
         """    	
         if all(x is None for x in [start, end]):
             raise ValueError("Start and end dates must be provided for historical data requests.")
-        make_method = getattr(self.asset, 'make')
+        make_method = getattr(self.adapter, 'make')
         url = make_method(query='historical', slug=slug, start=start, end=end)
-        content = Request(url, headers_to_update=None, response_format='json', target_response_key='response', return_url=True, onlyParse=True, no_content=False)         
+        base = url[0].decode() if isinstance(url[0], bytes) else url[0]
+        endpoint = url[1]
+        content = Connection.Request(
+            url=(base, endpoint),
+            api_key=api_key,
+            params=None,
+            return_url=True
+        )          
         if content:
             obj = crypto.crypto_historical(content)
             data = obj.DATA()
             return data
            
     def __dir__(self):
-        return ['cHistorical','cLatest'] 
+        return ['Historical','Latest'] 
 
 
 
-engine = APIClient(crypto_asset)
+engine = APIClient(crypto_adapter)
 
 def __dir__():
-    return ['engine']
+    return __all__
 
-__all__ = ['engine']
+
 
 

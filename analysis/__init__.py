@@ -58,6 +58,9 @@ from ._fa import process as PROC
 from .fundamental import fAnalyze
 from .technical import tAnalyze as tAnalysis
 
+__all__ = ['tAnalysis', 'fAnalysis']
+
+
 # ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
 # This segment delineates the functional backbone of the module.
 # It comprises the abstractions and behaviors essential for runtime
@@ -67,9 +70,7 @@ from .technical import tAnalyze as tAnalysis
 # Create the object
 fAnalysis = fAnalyze(engine=PROC)
 
-
-
 def __dir__():
-    return ['tAnalysis', 'fAnalysis']
+    return __all__
 
-__all__ = ['tAnalysis', 'fAnalysis']
+

@@ -62,11 +62,8 @@ import threading
 import time
 import queue
 
-#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
-from PIL import Image, ImageTk
 
-
-
+__all__ = ['InflationCalculatorApp']
 
 # ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
 # This segment delineates the functional backbone of the module.
@@ -74,69 +71,72 @@ from PIL import Image, ImageTk
 # execution—if applicable—encapsulated in class and function constructs.
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
-class AssetFinder:
-    class fPath:
-        def __init__(self, unique_identifier="## -- quantsumore -- ##"):
-            self.unique_identifier = unique_identifier
 
-        def _root(self):
-            """Finds the root directory marked by a unique identifier in its __init__.py."""
-            current_directory = os.path.dirname(os.path.abspath(__file__))
-            while current_directory != os.path.dirname(current_directory):
-                init_file_path = os.path.join(current_directory, '__init__.py')
-                if os.path.isfile(init_file_path):
-                    with open(init_file_path, 'r') as f:
-                        if self.unique_identifier in f.read():
-                            return current_directory
-                current_directory = os.path.dirname(current_directory)
-            return None
+# class AssetFinder:
+#     class fPath:
+#         def __init__(self, unique_identifier="## -- quantsumore -- ##"):
+#             self.unique_identifier = unique_identifier
+# 
+#         def _root(self):
+#             """Finds the root directory marked by a unique identifier in its __init__.py."""
+#             current_directory = os.path.dirname(os.path.abspath(__file__))
+#             while current_directory != os.path.dirname(current_directory):
+#                 init_file_path = os.path.join(current_directory, '__init__.py')
+#                 if os.path.isfile(init_file_path):
+#                     with open(init_file_path, 'r') as f:
+#                         if self.unique_identifier in f.read():
+#                             return current_directory
+#                 current_directory = os.path.dirname(current_directory)
+#             return None
+# 
+#         def _find_file(self, directory, file_name):
+#             """Searches for a file within the given directory."""
+#             if not os.path.splitext(file_name)[1]:
+#                 file_name += '.py'
+#             for dirpath, dirnames, filenames in os.walk(directory):
+#                 if file_name in filenames:
+#                     return os.path.join(dirpath, file_name)
+#             return None
+# 
+#         def _find_directory(self, root_directory, target_directory):
+#             """Searches for a directory within the given root directory."""
+#             for dirpath, dirnames, _ in os.walk(root_directory):
+#                 if target_directory in dirnames:
+#                     return os.path.join(dirpath, target_directory)
+#             return None
+# 
+#         def return_path(self, file=None, directory=None):
+#             """Find either a file or directory based on input."""
+#             if file and not directory:
+#                 return self._find_file(directory=self._root(), file_name=file)
+#             elif directory and not file:
+#                 return self._find_directory(root_directory=self._root(), target_directory=directory)
+#             else:
+#                 return None
+#     
+#     def __init__(self, encoding='utf-8'):
+#         self.encoding = encoding
+#         self.path_handler = self.fPath()
+#                 
+#     def trace(self, file=None, directory=None):
+#         return self.path_handler.return_path(file=file, directory=directory) 
+# 
+# picPath = AssetFinder()
 
-        def _find_file(self, directory, file_name):
-            """Searches for a file within the given directory."""
-            if not os.path.splitext(file_name)[1]:
-                file_name += '.py'
-            for dirpath, dirnames, filenames in os.walk(directory):
-                if file_name in filenames:
-                    return os.path.join(dirpath, file_name)
-            return None
+def get_assets_dir():
+    # Get the directory containing THIS script
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # Move UP one level (to .../gui) and then into 'assets'
+    assets_dir = os.path.join(base_dir, '..', 'assets')
+    # Normalize to absolute path
+    assets_dir = os.path.abspath(assets_dir)
+    return assets_dir
 
-        def _find_directory(self, root_directory, target_directory):
-            """Searches for a directory within the given root directory."""
-            for dirpath, dirnames, _ in os.walk(root_directory):
-                if target_directory in dirnames:
-                    return os.path.join(dirpath, target_directory)
-            return None
-
-        def return_path(self, file=None, directory=None):
-            """Find either a file or directory based on input."""
-            if file and not directory:
-                return self._find_file(directory=self._root(), file_name=file)
-            elif directory and not file:
-                return self._find_directory(root_directory=self._root(), target_directory=directory)
-            else:
-                return None
-    
-    def __init__(self, encoding='utf-8'):
-        self.encoding = encoding
-        self.path_handler = self.fPath()
-                
-    def trace(self, file=None, directory=None):
-        return self.path_handler.return_path(file=file, directory=directory) 
-
-
-picPath = AssetFinder()
+assets_path = get_assets_dir()
 
 
 
 
-
-
-
-
-
-
-
-__all__ = ['InflationCalculatorApp']
 
 
 class InflationCalculatorApp(tk.Tk):
@@ -183,12 +183,15 @@ class InflationCalculatorApp(tk.Tk):
         self.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
 
     def initialize(self):
+        from PIL import Image, ImageTk # Third-party library imports (from PyPI or other package sources)
+        
         self.title("Inflation Calculator")
         self.deiconify()
 
         # Set the window icon using an absolute path
-        script_dir = picPath.trace(directory="assets")
-        icon_path = os.path.join(script_dir, 'icon.ico')
+        # script_dir = picPath.trace(directory="assets")
+        # icon_path = os.path.join(script_dir, 'icon.ico')
+        icon_path = os.path.join(assets_path, 'icon.ico')       
         self.iconbitmap(icon_path)
 
         # Set the initial size of the window
@@ -196,7 +199,8 @@ class InflationCalculatorApp(tk.Tk):
         self.minsize(600, 500)
 
         # Load the logo image
-        logo_path = os.path.join(script_dir, 'icon.png')
+        # logo_path = os.path.join(script_dir, 'icon.png')
+        logo_path = os.path.join(assets_path, 'icon.png')       
         self.logo_image = Image.open(logo_path)
 
         # Desired width while maintaining aspect ratio
@@ -386,3 +390,6 @@ class InflationCalculatorApp(tk.Tk):
     def __dir__(self):
         return ['run']
 
+
+def __dir__():
+    return __all__

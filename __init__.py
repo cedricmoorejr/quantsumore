@@ -52,35 +52,7 @@
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
 
-
-
-from ._version import __version__
-
-
 """
-###############################################################################
-#                                                                             #
-#  *** ATTENTION ***                                                          #
-#                                                                             #
-#  DO NOT REMOVE OR MODIFY THE LINE BELOW:                                    #
-#                                                                             #
-#  ## -- quantsumore -- ##                                                    #
-#                                                                             #
-#  This line is a critical marker that indicates the root directory.          #
-#  Removing or changing this line will break the script and cause errors.     #
-#                                                                             #
-#  YOU HAVE BEEN WARNED!                                                      #
-#                                                                             #
-###############################################################################
-"""
-
-## -- quantsumore -- ##
-
-
-
-
-# Disclaimer message defined as a string
-disclaimer = """
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════╗
 ║                                      Legal Disclaimer:                                               ║
 ╠══════════════════════════════════════════════════════════════════════════════════════════════════════╣
@@ -94,25 +66,42 @@ disclaimer = """
 ║ errors, or omissions in the data provided.                                                           ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════╝
 """
+from ._version import __version__
+
+# Import the Device class, which provides cross-platform logic
+# for locating and managing system application data directories.
+from .sys_utils import Device
+
+# Define a package-wide constant, APP_DATA_DIR, that points to
+# the default data directory for the quantsumore library.
+# 
+# This uses Device.quantsumore_default, which:
+#   - Automatically selects the correct system-specific app data location
+#     (e.g., %LOCALAPPDATA% on Windows, ~/Library/Application Support on Mac, etc.)
+#   - Appends the standard 'quantsu_data' folder name
+#   - Creates the directory on first access, if it doesn't already exist
+#
+# All modules in the package can safely import APP_DATA_DIR and use it to
+# read/write data, ensuring consistency and portability for user data storage.
+APP_DATA_DIR = Device.quantsumore_default
 
 
-# Equity notice due to Yahoo Finance bot protection
-equity_notice = """
-╔═════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                    Notice: Partial Disruption in Yahoo-Based Equity Endpoints:                      ║
-╠═════════════════════════════════════════════════════════════════════════════════════════════════════╣
-║ Yahoo Finance has implemented aggressive bot protections:                                           ║
-║ • Many endpoints now return fake 404s to non-browser clients.                                       ║
-║ • Profile and stats pages use JavaScript rendering and anti-bot tokens.                             ║
-║ • User-agent spoofing alone is no longer sufficient for scraping.                                   ║
-║                                                                                                     ║
-║ As a result, the following equity methods are currently unavailable:                                ║
-║ • CompanyBio, CompanyExecutives, CompanyDetails, Stats, sLatest, Lastn, sHistorical                 ║
-║                                                                                                     ║
-║ Other modules (crypto, CPI, treasury, forex) remain unaffected.                                     ║
-╚═════════════════════════════════════════════════════════════════════════════════════════════════════╝
-"""
 
-# Print the disclaimer and equity notice when the module is imported
-print(disclaimer)
-print(equity_notice)
+
+# # Disclaimer message defined as a string
+# disclaimer = """
+# ╔══════════════════════════════════════════════════════════════════════════════════════════════════════╗
+# ║                                      Legal Disclaimer:                                               ║
+# ╠══════════════════════════════════════════════════════════════════════════════════════════════════════╣
+# ║ quantsumore is an independent Python library that provides users with the ability to fetch market    ║
+# ║ data for various financial instruments. The creators and maintainers of quantsumore do not own any   ║
+# ║ of the data retrieved through this library. Furthermore, quantsumore is not affiliated with any      ║
+# ║ financial institutions or data providers. The data sourced by quantsumore is owned and distributed   ║
+# ║ by respective data providers, with whom quantsumore has no affiliation or endorsement. Users of      ║
+# ║ quantsumore should verify the data independently and rely on their judgment and professional advice  ║
+# ║ for investment decisions. The developers of quantsumore assume no responsibility for inaccuracies,   ║
+# ║ errors, or omissions in the data provided.                                                           ║
+# ╚══════════════════════════════════════════════════════════════════════════════════════════════════════╝
+# """
+# # Print the disclaimer when the module is imported
+# print(disclaimer)

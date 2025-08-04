@@ -52,25 +52,24 @@
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
 
-
-
-import re
-from copy import deepcopy
-
-#────────── Third-party library imports (from PyPI or other package sources) ─────────────────────────────────
-import pandas as pd
-import numpy as np
-
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from ...date_parser import dtparse
 from ...strata_utils import IterDict
 from ...parse_tools import (
     convert_to_float,
-    extract_symbol_from_url,
     convert_to_yield,
 )
 from ...shape_tools import is_valid_dataframe
+from ...statement_types.types import FinancialStatement, DividendSummary, DividendHistory
+from ...proxy import Proxy
+from ...exceptions import (
+    # DividendHistoryError,
+    DividendHistoryNoDataError,
+    DividendHistoryUnavailableError,
+)
+from ...markup import idextract
 
+__all__ = ['dividend_history']
 
 
 # ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -79,216 +78,262 @@ from ...shape_tools import is_valid_dataframe
 # execution—if applicable—encapsulated in class and function constructs.
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
-class FinancialStatement(pd.DataFrame):
-    @property
-    def _constructor(self):
-        return FinancialStatement
 
-    @property
-    def _constructor_sliced(self):
-        return pd.Series
-
-class DividendSummary(FinancialStatement):
-    pass
-   
-class DividendHistory(FinancialStatement):
-    pass
-   
-
+# Lazily load the entire module; actual import occurs on first use.
+pd = Proxy("pandas", None)  # Third-party library imports (from PyPI or other package sources)  
 
 class dividend_history:
-    def __init__(self, json_content=None):
-        self.Dividend_Data = None
-        self.Dividend_Summary = None
-        self.error_messages = []
-        self.error = True
-        
-        if json_content:
-            self.json_content = IterDict.isNested(json_content)
-            self.check_data()  
-            self.display_error_messages() 
-            if not self.error:
-                self.parse()  
+    """
+    Expected Input: Dividend History API Response
 
-    def display_error_messages(self):
-        if self.error_messages:
-            for x, t in self.error_messages:
-                print(f'{x}: {t}')
-                
-    def check_data(self):
-        dividend_content = self.json_content
-        
-        def verify_dividend_data(dividend_datasets):
-            acceptable_data = []
-            for entry in dividend_datasets:
-                url, response_info = list(entry.items())[0]
-                
-                if response_info['response']['status']['rCode'] == 200:
-                    data = response_info['response']['data']
-                    if data and data.get('dividends', None):
-                        if data['dividends'].get('rows', []):
-                            message = response_info['response'].get('message')
-                            error_message = response_info['response']['status'].get('bCodeMessage')
-                            if any((message is not None, error_message)):
-                                if error_message and any(em.get('errorMessage') for em in error_message):
-                                    acceptable_data.append((url, False))
-                                else:
-                                    acceptable_data.append((url, False))
-                            else:
-                                acceptable_data.append((url, True))
-                        else:
-                            acceptable_data.append((url, False))
-                    else:
-                        acceptable_data.append((url, False))
-                else:
-                    acceptable_data.append((url, False))
-            return acceptable_data
+    This class expects as input the parsed JSON response from a dividend history endpoint, providing
+    summary and detailed dividend data for a given equity instrument.
 
-        validate_dividend_data = verify_dividend_data(dividend_content)
+    Example Input Structure:
+    [
+      {
+        "<string-key>": {  # Usually a URL-encoded path or endpoint signature, e.g. "...+NVDA/dividends?assetclass=stocks"
+          "response": {
+            "data": {
+              "dividendHeaderValues": [
+                {"label": str, "value": str},  # e.g. "Ex-Dividend Date", "Dividend Yield", etc.
+                # ...other header fields...
+              ],
+              "exDividendDate": str,             # e.g. "06/11/2025"
+              "dividendPaymentDate": str,        # e.g. "07/03/2025"
+              "yield": str,                      # e.g. "0.02%"
+              "annualizedDividend": str,         # e.g. "0.04"
+              "payoutRatio": str,                # e.g. "22.92"
+              "dividends": {
+                "asOf": str or null,
+                "headers": {
+                  "exOrEffDate": str,
+                  "type": str,
+                  "amount": str,
+                  "declarationDate": str,
+                  "recordDate": str,
+                  "paymentDate": str
+                },
+                "rows": [
+                  {
+                    "exOrEffDate": str,        # Ex/EFF Date (e.g. "06/11/2025")
+                    "type": str,               # "Cash" (most common) or other types
+                    "amount": str,             # e.g. "$0.01"
+                    "declarationDate": str,    # e.g. "05/28/2025"
+                    "recordDate": str,         # e.g. "06/11/2025"
+                    "paymentDate": str,        # e.g. "07/03/2025"
+                    "currency": str            # e.g. "USD"
+                  },
+                  # ...more dividend events...
+                ]
+              }
+            },
+            "message": str or null,              # Usually null
+            "status": {
+              "rCode": int,                      # e.g. 200 (success)
+              "bCodeMessage": str or null,       # May contain error or status info
+              "developerMessage": str or null
+            }
+          }
+        }
+      }
+    ]
+    
+    Handling Non-Dividend Securities:
+    - If a security does not pay dividends, all summary fields will be set to "N/A".
+    - In this case, `"dividends": {"headers": null, "rows": null}`.
+    - The message field may provide further context (e.g., "Dividend History for Non-Nasdaq symbols is not available").
+    - Always check for "N/A" or nulls before processing data.    
 
-        # Initialize the list to store messages
-        error_messages_list = []
+    Notes:
+    - The top-level list supports batch queries for multiple instruments.
+    - "<string-key>" is typically a full URL or encoded request signature.
+    - The “dividends” sub-table contains the full historical payout record with headers and rows.
+    - Dates are always strings, typically in "MM/DD/YYYY" format.
+    - Amounts and yield are strings and may include currency symbols.
+    - Defensive parsing is attempted for nulls, empty arrays, or partial data.
+    """
+    DATE_COLS = ('exOrEffDate', 'declarationDate', 'recordDate', 'paymentDate')
 
-        for url, check in validate_dividend_data:
-            if not check: 
-                ticker = extract_symbol_from_url(url)
-                data = IterDict.find(dividend_content, target_key=url)
-                found_message = IterDict.filter(data, 'message', "^(?!None$)(?i).*", True)
-                if found_message:
-                    n_message = IterDict.find(found_message, 'message')
-                    message = (n_message.rstrip() + ('' if re.search(r'\.$', n_message.rstrip()) else '.') if n_message is not None else None)  
-                    error_messages_list.append((ticker, message))
-                else:
-                    found_error_message = IterDict.filter(data, 'errorMessage', "^(?!None$)(?i).*", True)
-                    if found_error_message:
-                        n_message = IterDict.find(found_error_message, 'errorMessage')
-                        message = (n_message.rstrip() + ('' if re.search(r'\.$', n_message.rstrip()) else '.') if n_message is not None else None)  
-                        if message and "not exists" in message:
-                            message = "Dividend History information is presently unavailable for this company. It's possible that this company has delisted."
-                        error_messages_list.append((ticker, message))
-                    else:
-                        default_message = "Dividend data could not be found."
-                        error_messages_list.append((ticker, default_message))	
+    def __init__(self, json_content=None, verbose=False):
+        self.summary = None
+        self.history = None
+        self.errors  = []
 
-            self.error_messages = error_messages_list
-            
-            # Filter to get only URLs that passed validation (those with True status)
-            invalid_div = [url for url, is_valid in validate_dividend_data if not is_valid]
-            
-            # Filter out invalid dividend data
-            dividend_content = [item for item in dividend_content if list(item.keys())[0] not in invalid_div]
+        if json_content is None:
+            return                                  
 
-            # Update self properties based on validation results
-            self.json_content = dividend_content if dividend_content else None
+        self._content = IterDict.isNested(json_content)
+        valid_chunks = self._validate_content(verbose)
 
-            # Set error flag based on the presence of valid content
-            self.error = not self.json_content
+        if valid_chunks:                             # only parse if at least one success
+            self._content = valid_chunks
+            self.summary = DividendSummary(self._parse_summary())
+            self.history = DividendHistory(self._parse_history())
 
-    def _check_all_na(self, values):
-        return all(pd.isna(value) or value == 'N/A' for value in values)
+    # ───────────────────────────── Validation ────────────────────────────
+    def _validate_content(self, verbose):
+        """
+        Screen each entry; keep the ones that contain non‑empty dividend rows.
+        Collect (ticker, message) tuples in self.errors for the rest.
+        """
+        valid, errs = [], []
 
-    def parse(self):
-        dreport = self.parse_report()
-        ddata = self.parse_data()
+        for entry in self._content:
+            url, payload = list(entry.items())[0]
+            resp   = payload['response']
+            status = resp['status']
+            data   = resp['data']
+            ticker = idextract.extract(url, idextract.SYMBOL)          
 
-        if is_valid_dataframe(dreport) and is_valid_dataframe(ddata):
-            if dreport['Ticker'].nunique() == 1:
-                ticker = dreport["Ticker"].iloc[0]
-                dreport=dreport.drop(columns=['Ticker'])
-                new_row = {'Metric': 'Ticker', 'Value': ticker}
-                dreport.loc[len(dreport)] = new_row
-            report = FinancialStatement(dreport)
-                    
-            report.__class__ = DividendSummary
-            self.Dividend_Summary = DividendSummary(report)
+            rows = data.get('dividends', {}).get('rows')
 
-            data = FinancialStatement(ddata)
-            data.__class__ = DividendHistory
-            self.Dividend_Data = DividendHistory(data)     
-            
-    def parse_report(self):
-        json_content = self.json_content        
-        dataframes = []
-        summary_frames = []
+            ok = (status['rCode'] == 200) and rows
+            if ok:
+                valid.append(entry)
+                continue
 
-        for data_item in json_content:
-            url, json_content = list(data_item.items())[0]
-            headers = IterDict.find(json_content, target_key='dividendHeaderValues', key_path=None, wrap=False)
-            headers_df = pd.DataFrame(headers)
-            headers_df['URL'] = url
-            dataframes.append(headers_df)
+            # build best‑effort error text
+            msg = None
+            for key in ('message', 'errorMessage'):
+                found = IterDict.filter(resp, key, r'^(?!None$).*', regex=True)
+                if found:
+                    msg = IterDict.find(found, key)
+                    break
+            if not msg:
+                msg = "Dividend data could not be found."
 
-        for df in dataframes:
-            if 'label' in df.columns:
-                summary_frames.append(df)
+            if "not exists" in str(msg):
+                msg = ("Dividend History information is presently unavailable "
+                       "for this company. It's possible that the company has delisted.")
 
-        summary = pd.concat(summary_frames, ignore_index=True)
-        summary['Symbol'] = summary['URL'].apply(extract_symbol_from_url)
-        summary = summary.drop('URL', axis=1)
-        summary = deepcopy(summary)
+            errs.append((ticker, msg.rstrip('.') + '.'))
+
+        self.errors = errs
+        if verbose and errs:
+            for tkr, msg in errs:
+                print(f"{tkr}: {msg}")
+
+        return valid
+
+    # ───────────────────────────── Parsing helpers ───────────────────────
+    def _parse_summary(self):
+        frames = []
+        for chunk in self._content:
+            url, payload = list(chunk.items())[0]
+            header_rows = IterDict.find(payload, target_key='dividendHeaderValues')
+            if not header_rows:
+                continue
+            df = pd.DataFrame(header_rows)
+            df['URL'] = url
+            frames.append(df)
+
+        if not frames:
+            return pd.DataFrame()
+
+        summary = pd.concat(frames, ignore_index=True)
+        summary['Symbol'] = summary['URL'].apply(lambda url: idextract.extract(url, idextract.SYMBOL))     
+        summary = summary.drop(columns='URL')
         summary.columns = ['Metric', 'Value', 'Ticker']
-        index = summary[summary['Metric'] == 'Annual Dividend'].index.tolist()
-        summary.loc[index, 'Value'] = summary.loc[index, 'Value'].apply(convert_to_float)
-        summary.loc[summary['Metric'] == 'Dividend Yield', 'Value'] = summary.loc[summary['Metric'] == 'Dividend Yield', 'Value'].apply(convert_to_yield)
-        summary.loc[summary['Metric'] == 'P/E Ratio', 'Value'] = summary.loc[summary['Metric'] == 'P/E Ratio', 'Value'].apply(convert_to_float)
-        summary['Value'] = pd.to_datetime(summary['Value'], errors='coerce').dt.strftime('%Y-%m-%d').fillna(summary['Value'])
-        tickers_with_all_na = summary.groupby('Ticker')['Value'].apply(self._check_all_na)
-        summary = summary[~summary['Ticker'].isin(tickers_with_all_na[tickers_with_all_na].index)]
-        return summary
 
-    def parse_data(self):
-        json_content = self.json_content
-        
-        dataframes = []
-        history_frames = []
+        # type cleanup
+        summary.loc[summary['Metric'] == 'Annual Dividend', 'Value'] = \
+            summary.loc[summary['Metric'] == 'Annual Dividend', 'Value'].apply(convert_to_float)
 
-        for data_item in json_content:
-            url, json_content = list(data_item.items())[0]
-            dividends = json_content['response']['data']['dividends']['rows']
-            dividends_df = pd.DataFrame(dividends)
-            dividends_df['URL'] = url
-            dataframes.append(dividends_df)
-            
-        for df in dataframes:
-            if 'label' not in df.columns:
-                history_frames.append(df)
+        summary.loc[summary['Metric'] == 'Dividend Yield', 'Value'] = \
+            summary.loc[summary['Metric'] == 'Dividend Yield', 'Value'].apply(convert_to_yield)
 
-        history = pd.concat(history_frames, ignore_index=True)
-        history['Symbol'] = history['URL'].apply(extract_symbol_from_url)
-        history = history.drop('URL', axis=1) 
-        history['exOrEffDate'] = history['exOrEffDate'].apply(lambda x: pd.to_datetime(x, format='%m/%d/%Y', errors='coerce').strftime('%Y-%m-%d') if pd.notna(pd.to_datetime(x, format='%m/%d/%Y', errors='coerce')) else x)
-        history['declarationDate'] = history['declarationDate'].apply(lambda x: pd.to_datetime(x, format='%m/%d/%Y', errors='coerce').strftime('%Y-%m-%d') if pd.notna(pd.to_datetime(x, format='%m/%d/%Y', errors='coerce')) else x)
-        history['recordDate'] = history['recordDate'].apply(lambda x: pd.to_datetime(x, format='%m/%d/%Y', errors='coerce').strftime('%Y-%m-%d') if pd.notna(pd.to_datetime(x, format='%m/%d/%Y', errors='coerce')) else x)
-        history['paymentDate'] = history['paymentDate'].apply(lambda x: pd.to_datetime(x, format='%m/%d/%Y', errors='coerce').strftime('%Y-%m-%d') if pd.notna(pd.to_datetime(x, format='%m/%d/%Y', errors='coerce')) else x)        
-        history['timeQueried'] = dtparse.now(utc=True, as_unix=True) 
-        history['timeQueried'] = history['timeQueried'].apply(lambda x: pd.to_datetime(x, unit='s').strftime('%Y-%m-%d %H:%M:%S:%f'))
-        history.columns = [f.replace("Symbol", "Ticker") for f in history.columns]
-        history['amount'] = history['amount'].apply(convert_to_float)        
-        return history
-        
+        summary.loc[summary['Metric'] == 'P/E Ratio', 'Value'] = \
+            summary.loc[summary['Metric'] == 'P/E Ratio', 'Value'].apply(convert_to_float)
+
+        # date strings → ISO
+        summary['Value'] = pd.to_datetime(summary['Value'], errors='coerce')\
+                              .dt.strftime('%Y-%m-%d')\
+                              .fillna(summary['Value'])
+
+        # drop tickers whose entire value column is NA / 'N/A'
+        mask_all_na = summary.groupby('Ticker')['Value'].apply(self._all_na)
+        summary = summary[~summary['Ticker'].isin(mask_all_na[mask_all_na].index)]
+
+        # If only one ticker left, append a 'Ticker' metric row
+        if is_valid_dataframe(summary) and summary['Ticker'].nunique() == 1:
+            tkr = summary['Ticker'].iloc[0]
+            summary = summary.drop(columns='Ticker')
+            summary.loc[len(summary)] = {'Metric': 'Ticker', 'Value': tkr}
+
+        return FinancialStatement(summary)
+
+    def _parse_history(self):
+        frames = []
+        for chunk in self._content:
+            url, payload = list(chunk.items())[0]
+            rows = payload['response']['data']['dividends'].get('rows') or []
+            if rows:
+                df = pd.DataFrame(rows)
+                df['URL'] = url
+                frames.append(df)
+
+        if not frames:
+            return pd.DataFrame()
+
+        hist = pd.concat(frames, ignore_index=True)
+        hist['Symbol'] = hist['URL'].apply(lambda url: idextract.extract(url, idextract.SYMBOL))      
+        hist = hist.drop(columns='URL')
+
+        # date cols
+        for col in self.DATE_COLS:
+            if col in hist.columns:
+                hist[col] = pd.to_datetime(hist[col], format='%m/%d/%Y', errors='coerce')\
+                               .dt.strftime('%Y-%m-%d')\
+                               .fillna(hist[col])
+
+        # numeric
+        if 'amount' in hist.columns:
+            hist['amount'] = hist['amount'].apply(convert_to_float)
+
+        # timestamp column
+        hist['timeQueried'] = dtparse.now(utc=True, as_unix=True)
+        hist['timeQueried'] = pd.to_datetime(hist['timeQueried'], unit='s')\
+                                   .dt.strftime('%Y-%m-%d %H:%M:%S:%f')
+
+        # naming consistency
+        hist.columns = [c.replace('Symbol', 'Ticker') for c in hist.columns]
+
+        return FinancialStatement(hist)
+
+    # ───────────────────────────── Utilities ─────────────────────────────
+    @staticmethod
+    def _all_na(values):
+        """Helper to see if every element is NA or literal 'N/A'."""
+        return all(pd.isna(v) or v == 'N/A' for v in values)
+
+    # ───────────────────────────── Public properties ─────────────────────
     @property
     def DividendReport(self):
-        if not is_valid_dataframe(self.Dividend_Summary) or not is_valid_dataframe(self.Dividend_Data):
-            if not self.error_messages:
-                return "Dividend data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."
-        return self.Dividend_Summary
+        """Alias kept for legacy callers."""
+        if not is_valid_dataframe(self.summary):
+            if self.errors:
+                raise DividendHistoryNoDataError(self.errors)
+            raise DividendHistoryUnavailableError()
+        return self.summary
 
     @property
     def DividendData(self):
-        if not is_valid_dataframe(self.Dividend_Summary) or not is_valid_dataframe(self.Dividend_Data):
-            if not self.error_messages:
-                return "Dividend data is currently unavailable. Please try again later. If the issue persists, report it at https://github.com/cedricmoorejr/quantsumore."            
-        return self.Dividend_Data
+        """Alias kept for legacy callers."""
+        if not is_valid_dataframe(self.history):
+            if self.errors:
+                raise DividendHistoryNoDataError(self.errors)
+            raise DividendHistoryUnavailableError()
+        return self.history
 
+    # keep tab‑completion tidy
     def __dir__(self):
-        return ['DividendReport', 'DividendData']
-
-
+        return ['summary', 'history', 'errors', 'DividendReport', 'DividendData']
 
 def __dir__():
-    return ['dividend_history']
+    return __all__
 
-__all__ = ['dividend_history']
+
 
 
 
