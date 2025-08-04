@@ -63,18 +63,25 @@ import base64
 import random
 import json
 
-    
+# Get the root directory of the project
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 NASDAQ_STOCK_LIST_URL = base64.b64decode('aHR0cDovL3d3dy5uYXNkYXF0cmFkZXIuY29tL2R5bmFtaWMvc3ltZGlyL25hc2RhcWxpc3RlZC50eHQ=').decode('utf-8')
 NYSE_STOCK_LIST_URL = base64.b64decode('aHR0cHM6Ly93d3cubnlzZS5jb20vcHVibGljZG9jcy9ueXNlL3N5bWJvbHMvRUxJR0lCTEVTVE9DS1NfTllTRUFtZXJpY2FuLnhscw==').decode('utf-8')
 
-# Load user agents
-with open('files/user_agents.json', 'r') as file:
-    user_agents = json.load(file)
+# # Load user agents
+# with open('files/user_agents.json', 'r') as file:
+#     user_agents = json.load(file)
 
-key = random.choice(list(user_agents['Desktop User-Agents'].keys()))
-randkey = str(random.randint(1, 5))
-ua = user_agents['Desktop User-Agents'][key][randkey]
-headers = {'User-Agent': ua}
+# key = random.choice(list(user_agents['Desktop User-Agents'].keys()))
+# randkey = str(random.randint(1, 5))
+# ua = user_agents['Desktop User-Agents'][key][randkey]
+# headers = {'User-Agent': ua}
+
+# Basic headers
+headers = {
+    'User-Agent': 'Mozilla/5.0 (compatible; GitHubActionBot/1.0)'
+}
 
 def get_stock_ticker_data(url):
     response = requests.get(url, headers=headers, timeout=10)
@@ -111,6 +118,7 @@ def get_stock_ticker_data(url):
         dataframe = dataframe[~dataframe["Symbol"].str.contains('TEST', case=False, na=False)]
         dataframe.loc[:, "Exchange"] = "NYSE"
         dataframe = dataframe[['Symbol', 'Company', 'Exchange', 'yahoo_mapping', 'nasdaq_mapping']]
+    
     return dataframe
 
 def combine_stock_data(ticker_data, truncate=False):
@@ -118,7 +126,11 @@ def combine_stock_data(ticker_data, truncate=False):
     combined = combined.sort_values(by='Symbol', ascending=True)
     duplicates = combined.duplicated(subset=['Symbol'], keep=False)
     df_dup = combined[duplicates].groupby('Symbol')['Exchange'].agg(set)
-    combined['Both_Exchanges'] = combined['Symbol'].apply(lambda x: 'Both' if set(['NYSE', 'NASDAQ']) == df_dup.get(x, set()) else combined.loc[combined['Symbol'] == x, 'Exchange'].iloc[0])
+    
+    combined['Both_Exchanges'] = combined['Symbol'].apply(
+        lambda x: 'Both' if set(['NYSE', 'NASDAQ']) == df_dup.get(x, set()) 
+        else combined.loc[combined['Symbol'] == x, 'Exchange'].iloc[0]
+    )
     
     df = combined[['Symbol', 'Company', 'Both_Exchanges', 'yahoo_mapping', 'nasdaq_mapping']]
     df.columns = ['Symbol', 'Company', 'Exchange', 'yahoo_mapping', 'nasdaq_mapping']
@@ -139,8 +151,10 @@ if __name__ == "__main__":
     nyse_data = get_stock_ticker_data(NYSE_STOCK_LIST_URL)
     ticker_data = {"NASDAQ": nasdaq_data, "NYSE": nyse_data}
     combined_data = combine_stock_data(ticker_data, truncate=False)
-    combined_data.to_csv('files/stock_tickers.txt', index=False)
-
+    
+    output_path = os.path.join(ROOT_DIR, "files", "stock_tickers.txt")
+    combined_data.to_csv(output_path, index=False)
+    print(f"Stock ticker data saved to {output_path}")
 
 
 

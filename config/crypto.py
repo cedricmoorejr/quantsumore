@@ -60,18 +60,26 @@ import requests
 import base64
 import random
 
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # Decode URLs
 exchanges_url = base64.b64decode('aHR0cHM6Ly9zMy5jb2lubWFya2V0Y2FwLmNvbS9nZW5lcmF0ZWQvY29yZS9leGNoYW5nZS9leGNoYW5nZXMuanNvbg==').decode('utf-8')
 cryptos_url = base64.b64decode('aHR0cHM6Ly9zMy5jb2lubWFya2V0Y2FwLmNvbS9nZW5lcmF0ZWQvY29yZS9jcnlwdG8vY3J5cHRvcy5qc29u').decode('utf-8')
 
-# Load user agents
-with open('files/user_agents.json', 'r') as file:
-    user_agents = json.load(file)
+# # Load user agents
+# with open('files/user_agents.json', 'r') as file:
+#     user_agents = json.load(file)
 
-key = random.choice(list(user_agents['Desktop User-Agents'].keys()))
-randkey = str(random.randint(1, 5))
-ua = user_agents['Desktop User-Agents'][key][randkey]
-headers = {'User-Agent': ua, 'Accept': 'application/json'}
+# key = random.choice(list(user_agents['Desktop User-Agents'].keys()))
+# randkey = str(random.randint(1, 5))
+# ua = user_agents['Desktop User-Agents'][key][randkey]
+# headers = {'User-Agent': ua, 'Accept': 'application/json'}
+
+# Use a basic user agent
+headers = {
+    'User-Agent': 'Mozilla/5.0 (compatible; GitHubActionBot/1.0)',
+    'Accept': 'application/json'
+}
 
 def fetch_data(url):
     try:
@@ -104,7 +112,7 @@ def process_exchanges(url):
             "exchangeSlug": value[2]
         }
     output = {"crypto_exchanges": crypto_exchanges}
-    file_path = "files/crypto/exchanges.json"
+    file_path = os.path.join(ROOT_DIR, "files", "crypto", "exchanges.json")
     save_to_file(output, file_path)
     print(f"Exchange data saved to {file_path}")
 
@@ -129,7 +137,7 @@ def process_cryptos(url):
             "rank": value[6]
         }
     output = {"cryptos": cryptos}
-    file_path = "files/crypto/cryptocurrency.json"
+    file_path = os.path.join(ROOT_DIR, "files", "crypto", "cryptocurrency.json")
     save_to_file(output, file_path)
     print(f"Crypto data saved to {file_path}")
 
@@ -145,12 +153,23 @@ if __name__ == "__main__":
     process_exchanges(exchanges_url)
     process_cryptos(cryptos_url)
 
-    with open('files/crypto/cryptocurrency.json', 'r') as file:
-        cryptos = json.load(file)
-    with open('files/crypto/exchanges.json', 'r') as file:
-        exchanges = json.load(file)
-    with open('files/crypto/pairs.json', 'r') as file:
-        pairs = json.load(file)
-        
-    combined_data = {**cryptos, **exchanges, **pairs}
-    save_to_file(combined_data, 'files/crypto/all_data.json')
+    try:
+        with open(os.path.join(ROOT_DIR, "files", "crypto", "cryptocurrency.json"), 'r') as file:
+            cryptos = json.load(file)
+        with open(os.path.join(ROOT_DIR, "files", "crypto", "exchanges.json"), 'r') as file:
+            exchanges = json.load(file)
+        with open(os.path.join(ROOT_DIR, "files", "crypto", "pairs.json"), 'r') as file:
+            pairs = json.load(file)
+
+        combined_data = {**cryptos, **exchanges, **pairs}
+        save_to_file(combined_data, os.path.join(ROOT_DIR, "files", "crypto", "all_data.json"))
+    except Exception as e:
+        print(f"Error combining or saving crypto data: {e}")
+
+
+
+
+
+
+
+    

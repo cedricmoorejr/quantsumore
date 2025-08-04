@@ -7,7 +7,7 @@ on:
     - cron: '0 0 * * 1-5'
   push:
     branches:
-      - v2.1.5b1
+      - vv3.0.0b1
       
 jobs:
   download-and-process:
@@ -26,7 +26,7 @@ jobs:
         run: pip install requests pandas
 
       - name: Run Python script to download and process stock data
-        run: python __stock_config.py
+        run: python config/stock.py
 
       - name: Commit and Push stock_tickers.txt
         run: |
