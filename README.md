@@ -1,11 +1,21 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v2.1.5b1/gui/assets/py_quantsumore_logo.png" alt="quantsumore Logo" width="700"/>
+  <img src="https://raw.githubusercontent.com/cedricmoorejr/quantsumore/v3.0.0b1/gui/assets/py_quantsumore_logo.png" alt="quantsumore Logo" width="700"/>
 </p>
 
 
 
 
 # 🚀 Power Up Your Financial Analysis with quantsumore
+
+---
+
+## ⚠️ NEW REQUIREMENT: API Key Registration
+
+**You must register for a free API key to use quantsumore.**  
+Get your key here: [https://doydl.studio/#quantsumore](https://doydl.studio/#quantsumore)
+
+> ⚠️ **Note:** Free API keys come with a quota of **500 requests per month**.  
+> Consider caching responses or batching your requests to stay within this limit.
 
 ---
 
@@ -41,32 +51,36 @@ Users are advised to independently verify the accuracy of the data obtained via 
 
 👉 Please note that the APIs are intended primarily for personal and non-commercial use. Users should refer to the individual terms of use for guidelines on commercial applications.
 
----
 
 </td></tr></table>
-
-
-
 <div align="center">
-<table border=1 cellpadding=10 width="100%" style="border: 2px solid #ffc107;"><tr><td>
-
-<div align="center">
-
-### ⚠️ **Notice: Limited Functionality for Yahoo-Based Equity Endpoints** ⚠️
-
-</div>
-
-- `CompanyBio`, `CompanyExecutives`, `CompanyDetails`, `Stats`, `sLatest`, `Lastn`, `sHistorical`
-
-<div align="center">
-
-These endpoints may return empty responses or raise HTTP 404 errors even when the data exists.  
-We are actively monitoring the situation. All other modules and endpoints remain unaffected.
-
-</div>
-
+  <table border="1" cellpadding="10" width="100%" style="border: 2px solid #ffc107;">
+    <tr>
+      <td>
+        <div align="center">
+          <h3>⚠️ <strong>Notice: Limited Functionality for Forex Endpoints</strong> ⚠️</h3>
+        </div>
+        <p>
+          The following endpoints may temporarily return empty responses or HTTP 404 errors, even when valid data is available:
+        </p>
+        <ul>
+          <li>QuoteOverview</li>
+        </ul>
+        <div align="center">
+          <p>
+            This is due to ongoing technical restrictions affecting these specific data sources.<br>
+            We are actively monitoring the situation and will restore full access as soon as possible.<br>
+            <strong>All other API endpoints are operating normally.</strong><br>
+            If you need specific data urgently or have questions, please reach out via our
+            <a href="mailto:info@doydl.studio">support channel</a>.
+          </p>
+        </div>
+      </td>
+    </tr>
 </td></tr></table>
 </div>
+
+
 
 
 ### Summary of the `quantsumore` Library
@@ -79,6 +93,7 @@ We are actively monitoring the situation. All other modules and endpoints remain
 The `quantsumore` library is a comprehensive Python package designed for retrieving and analyzing a wide range of financial market data. It provides specialized API clients to fetch data from various financial markets, including cryptocurrencies, equities, Forex, Treasury instruments, and Consumer Price Index (CPI) metrics. Below is an overview of the key API clients and their functionalities.
 
 ## Table of Contents
+- [Quick Start (API Key Required)](#quick-start-api-key-required)
 - [Installation](#installation)
 - [Using the `quantsumore` API Clients](#using-the-quantsumore-api-clients)
   - [Cryptocurrency Data](#cryptocurrency-data)
@@ -90,6 +105,45 @@ The `quantsumore` library is a comprehensive Python package designed for retriev
   - [Setting Up Financial and Technical Analysis](#setting-up-financial-and-technical-analysis)
   - [Using Financial Statements, Ratios, and Indicators](#using-financial-statements-ratios-and-indicators)
   - [Examples of Financial and Technical Analysis Applications](#examples-of-financial-and-technical-analysis-applications)
+
+
+# Quick Start (API Key Required)
+
+1. **Sign up for your API key:**
+   👉 [https://doydl.studio/#quantsumore](https://doydl.studio/#quantsumore)
+
+2. **Install the package:**
+
+   ```bash
+   pip install quantsumore
+   ```
+
+3. **Set your API key globally** (recommended for most users):
+
+   ```python
+   from quantsumore.api import APIKey, equity
+
+   # Set your API key once (recommended)
+   APIKey("YOUR_API_KEY_HERE")
+
+   # Now you can make requests
+   company_bio = equity.CompanyBio(ticker="META")
+   ```
+
+4. **Or, pass your API key per request** (useful for multi-user or multi-key setups):
+
+   ```python
+   from quantsumore.api import equity
+
+   # Pass your API key directly to the method
+   company_bio = equity.CompanyBio(
+       ticker="META",
+       api_key="YOUR_API_KEY_HERE"
+   )
+   ```
+
+> **Note:**
+> If you forget to set or pass your API key, you’ll get an authentication error.
 
 
 # Installation
@@ -107,7 +161,7 @@ This will install the `quantsumore` package along with any required dependencies
 
 
 # Using the `quantsumore` API Clients
-
+*(**All examples assume you have set your API key as shown above!** The key must be set globally or passed directly to each function.)*
 ## Cryptocurrency Data
 
 The `crypto` API client allows users to easily fetch both real-time and historical cryptocurrency market data.
@@ -122,7 +176,7 @@ from quantsumore.api import crypto
 
 ```python
 # Fetch the latest market data for Bitcoin in USD from Binance
-latest_data = crypto.cLatest(slug="bitcoin", baseCurrencySymbol="USD", quoteCurrencySymbol="JPY", cryptoExchange="binance", limit=100, exchangeType="all")
+latest_data = crypto.Latest(slug="bitcoin", baseCurrencySymbol="USD", quoteCurrencySymbol="JPY", cryptoExchange="binance", limit=100, exchangeType="all")
 print(latest_data)
 ```
 
@@ -130,7 +184,7 @@ print(latest_data)
 
 ```python
 # Fetch historical data for Bitcoin from January 1, 2024, to January 10, 2024
-historical_data = crypto.cHistorical(slug="bitcoin", start="2024-01-01", end="2024-01-10")
+historical_data = crypto.Historical(slug="bitcoin", start="2024-01-01", end="2024-01-10")
 print(historical_data)
 ```
 
@@ -173,12 +227,11 @@ The `equity` API client provides users with tools to fetch company information, 
 ```python
 from quantsumore.api import equity
 ```
-
 ### Fetching Company Information
 
 ```python
 # Fetch company bio for Apple Inc.
-company_bio = equity.CompanyBio(ticker="AAPL")
+company_bio = equity.Profile.bio(ticker="AAPL")
 print(company_bio)
 ```
 
@@ -186,7 +239,7 @@ print(company_bio)
 
 ```python
 # Fetch the latest stock price for Apple Inc.
-latest_price = equity.sLatest(ticker="AAPL")
+latest_price = equity.Latest(ticker="AAPL")
 print(f"Latest stock price for AAPL: {latest_price}")
 ```
 
@@ -194,7 +247,7 @@ print(f"Latest stock price for AAPL: {latest_price}")
 
 ```python
 # Fetch historical stock price data for Apple from January 1, 2024, to January 10, 2024
-historical_data = equity.sHistorical(ticker="AAPL", start="2024-01-01", end="2024-01-10")
+historical_data = equity.Historical(ticker="AAPL", start="2024-01-01", end="2024-01-10")
 print(historical_data)
 ```
 
@@ -209,21 +262,21 @@ The `forex` API client allows users to fetch Forex-related data, including excha
 ```python
 from quantsumore.api import forex
 ```
-
-### Fetching Historical Exchange Rates
-
-```python
-# Fetch historical exchange rates for EUR/USD from January 1, 2024, to January 10, 2024
-historical_data = forex.fHistorical(currency_pair="EURUSD", start="2024-01-01", end="2024-01-10")
-print(historical_data)
-```
-
 ### Currency Conversion
 
 ```python
 # Convert 100 Euros to USD based on the latest conversion rates
 conversion_data = forex.CurrencyConversion(currency_pair="EURUSD", conversion_amount=100)
 print(conversion_data)
+```
+
+
+### Fetching Historical Exchange Rates
+
+```python
+# Fetch historical exchange rates for EUR/USD from January 1, 2024, to January 10, 2024
+historical_data = forex.Historical(currency_pair="EURUSD", start="2024-01-01", end="2024-01-10")
+print(historical_data)
 ```
 
 <br>
