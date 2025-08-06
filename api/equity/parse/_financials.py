@@ -83,7 +83,6 @@ __all__ = ['statements']
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
 
-
 """
 Expected Input: Financial Statement API Response
 
@@ -170,134 +169,65 @@ Summary:
 	• Designed for robust tabular rendering, comparison, and analysis.
 """
 class statements:
-    # map JSON keys → (DataFrame subclass, attribute name)
     _TABLE_MAP = {
         "incomeStatementTable": (IncomeStatement, "income_statement"),
-        "balanceSheetTable":  (BalanceSheet,  "balance_sheet"),
-        "cashFlowTable":      (CashFlowStatement, "cash_flow_statement"),
+        "balanceSheetTable": (BalanceSheet, "balance_sheet"),
+        "cashFlowTable": (CashFlowStatement, "cash_flow_statement"),
     }
-
     def __init__(self, json_content):
-        self.ticker = ""
-        self.error_messages = []
-        self.error = True
-        self._raw = IterDict.isNested(json_content)
-
-        # placeholders for the three statements
-        for _, attr in self._TABLE_MAP.values():
-            setattr(self, attr, None)
-
-        self._validate_and_filter()
-        self._report_errors()
-        if not self.error:
-            self._parse_all()
-
+        self.ticker = ""; self.error_messages = []; self.error = True; self._raw = IterDict.isNested(json_content)
+        for _, attr in self._TABLE_MAP.values(): setattr(self, attr, None)
+        self._validate_and_filter(); self._report_errors()
+        if not self.error: self._parse_all()
     def _validate_and_filter(self):
-        """
-        Check rCode, presence of tables, collect any error messages,
-        and filter out failing entries from self._raw.
-        """
         valid_entries = []
         for entry in self._raw:
             url, info = next(iter(entry.items()))
-            status = info["response"]["status"]["rCode"]
-            data   = info["response"].get("data", {})
-            ok = (
-                status == 200
-                and any(data.get(tbl) for tbl in self._TABLE_MAP)
-            )
-
+            status = info["response"]["status"]["rCode"]; data = info["response"].get("data", {})
+            ok = (status==200 and any(data.get(tbl) for tbl in self._TABLE_MAP))
             if not ok:
                 ticker = idextract.extract(url, idextract.SYMBOL)
-                # try to find a user-friendly message
-                msg = (
-                    IterDict.find(info["response"], "message")
-                    or IterDict.find(info["response"], "errorMessage")
-                    or "Financial statement data could not be found."
-                ).rstrip(".") + "."
+                msg = (IterDict.find(info["response"], "message") or IterDict.find(info["response"], "errorMessage") or "Financial statement data could not be found.").rstrip(".") + "."
                 self.error_messages.append((ticker, msg))
-            else:
-                valid_entries.append(entry)
-
-        self.error = len(valid_entries) == 0
-        self._raw = valid_entries
-
+            else: valid_entries.append(entry)
+        self.error = len(valid_entries) == 0; self._raw = valid_entries
     def _report_errors(self):
-        for ticker, msg in self.error_messages:
-            print(f"{ticker}: {msg}")
-
+        for ticker, msg in self.error_messages: print(f"{ticker}: {msg}")
     def _parse_all(self):
         entry = self._raw[0]
-        data  = next(iter(entry.values()))["response"]["data"]
+        data = next(iter(entry.values()))["response"]["data"]
         self.ticker = data.get("symbol", "") or self.ticker
-
         for key, (cls, attr) in self._TABLE_MAP.items():
             table = data.get(key)
-            if table:
-                df = self._parse_table(table["headers"], table["rows"], cls)
-                setattr(self, attr, df)
-
+            if table: setattr(self, attr, self._parse_table(table["headers"], table["rows"], cls))
     def _parse_table(self, headers, rows, df_class):
-        """
-        Build a FinancialStatement subclass from raw headers+rows.
-        """
-        # 1) Drop empty header columns
+        import pandas as pd    	
         valid_keys = {k: v for k, v in headers.items() if v}
-        drop_keys  = set(headers) - set(valid_keys)
+        drop_keys = set(headers) - set(valid_keys)
         for r in rows:
-            for k in drop_keys:
-                r.pop(k, None)
-
-        # 2) Build DataFrame
-        df = pd.DataFrame.from_records(
-            data=rows,
-            columns=sorted(valid_keys),
-        ).rename(columns=valid_keys)
-
-        # 3) Parse dates in columns 1:
+            for k in drop_keys: r.pop(k, None)
+        df = pd.DataFrame.from_records(data=rows, columns=sorted(valid_keys)).rename(columns=valid_keys)
         date_cols = list(df.columns[1:])
-        parsed_strs = [
-            dtparse.parse(date, to_format="%Y-%m-%d") for date in date_cols
-        ]
+        parsed_strs = [dtparse.parse(date, to_format="%Y-%m-%d") for date in date_cols]
         df.columns = [df.columns[0]] + parsed_strs
         sorted_dates = sorted(parsed_strs, reverse=True)
         df = df[[df.columns[0]] + sorted_dates]
-
-        # 4) Clean numeric data (currency-to-float) vectorized
-        def _to_float(x):
-            if isinstance(x, str) and x not in ("", "--"):
-                return float(x.replace("$","").replace(",",""))
-            return x
-
-        for col in sorted_dates:
-            df[col] = df[col].map(_to_float).fillna("")
-
-        # 5) set index on metric name
-        df = df.set_index(df.columns[0])
-        df.__class__ = df_class
-        return df
-
-    # user-facing properties
+        def _to_float(x): return float(x.replace("$", "").replace(",", "")) if isinstance(x, str) and x not in ("", "--") else x
+        for col in sorted_dates: df[col] = df[col].map(_to_float).fillna("")
+        df = df.set_index(df.columns[0]); df.__class__ = df_class; return df
     @property
     def IncomeStatement(self):
-        if not is_valid_dataframe(self.income_statement):
-            raise FinancialStatementUnavailableError("Income Statement unavailable.")
+        if not is_valid_dataframe(self.income_statement): raise FinancialStatementUnavailableError("Income Statement unavailable.")
         return self.income_statement
-
     @property
     def BalanceSheet(self):
-        if not is_valid_dataframe(self.balance_sheet):
-            raise FinancialStatementUnavailableError("Balance Sheet unavailable.")
+        if not is_valid_dataframe(self.balance_sheet): raise FinancialStatementUnavailableError("Balance Sheet unavailable.")
         return self.balance_sheet
-
     @property
     def CashFlowStatement(self):
-        if not is_valid_dataframe(self.cash_flow_statement):
-            raise FinancialStatementUnavailableError("Cash Flow Statement unavailable.")
+        if not is_valid_dataframe(self.cash_flow_statement): raise FinancialStatementUnavailableError("Cash Flow Statement unavailable.")
         return self.cash_flow_statement
-
-    def __dir__(self):
-        return ["IncomeStatement", "BalanceSheet", "CashFlowStatement"]
+    def __dir__(self): return ["IncomeStatement", "BalanceSheet", "CashFlowStatement"]
 
 def __dir__():
     return __all__
