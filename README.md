@@ -53,32 +53,7 @@ Users are advised to independently verify the accuracy of the data obtained via 
 
 
 </td></tr></table>
-<div align="center">
-  <table border="1" cellpadding="10" width="100%" style="border: 2px solid #ffc107;">
-    <tr>
-      <td>
-        <div align="center">
-          <h3>⚠️ <strong>Notice: Limited Functionality for Forex Endpoints</strong> ⚠️</h3>
-        </div>
-        <p>
-          The following endpoints may temporarily return empty responses or HTTP 404 errors, even when valid data is available:
-        </p>
-        <ul>
-          <li>QuoteOverview</li>
-        </ul>
-        <div align="center">
-          <p>
-            This is due to ongoing technical restrictions affecting these specific data sources.<br>
-            We are actively monitoring the situation and will restore full access as soon as possible.<br>
-            <strong>All other API endpoints are operating normally.</strong><br>
-            If you need specific data urgently or have questions, please reach out via our
-            <a href="mailto:info@doydl.studio">support channel</a>.
-          </p>
-        </div>
-      </td>
-    </tr>
-</td></tr></table>
-</div>
+
 
 
 
@@ -489,3 +464,4 @@ atr = analyze.AverageTrueRange()
 atr.plot_atr()
 ```
 ---
+
