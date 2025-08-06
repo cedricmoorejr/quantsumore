@@ -181,7 +181,7 @@ Attribution
 """
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from ..prep import cpi_adapter
-from .parse import cpi
+from .parse._inflation import CUUR0000AA0 
 
 
 __all__ = ['engine']
@@ -238,9 +238,9 @@ class APIClient:
         if not content:
             return None  # Or raise a warning/log it
         else:        
-            obj1 = cpi.CUUR0000AA0.Date(content)
+            obj1 = CUUR0000AA0.Date(content)
             end_date = obj1.date()
-            obj2 = cpi.CUUR0000AA0.Data(end_date=end_date)
+            obj2 = CUUR0000AA0.Data(end_date=end_date)
             data = obj2.all_items_index()
             return data          
 

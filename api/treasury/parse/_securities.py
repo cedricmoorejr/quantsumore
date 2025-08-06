@@ -52,13 +52,18 @@
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
 
-from copy import deepcopy
-
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
-from ..strata_utils import IterDict
+from ...date_parser import dtparse
+from ...proxy import Proxy
+from ...exceptions import (
+    # TreasuryPipelineError,
+    TreasuryDataValidationError,
+    TreasuryNoDataError,
+    TreasuryDataUnavailableError,
+)
 
 
-__all__ = ['Vertical_Analysis']
+__all__ = ['riskfreerate']
 
 
 
@@ -69,43 +74,147 @@ __all__ = ['Vertical_Analysis']
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
 
-class Vertical_Analysis:
-    def __init__(self, analyze_instance): self.parent = analyze_instance
-    def _VerticalAnalysis(self, financial_statement):
-        import pandas as pd
-        valid_statements = {
-            "Income Statement": ["I","IS","Income","Income_Statement","Income Statement"],
-            "Balance Sheet": ["Balance Sheet","B","BS","Balance_Sheet"],
-            "Cash Flow Statement": ["Cash Flow Statement","Cash_Flow_Statement","C","CF","Cash Flow","Cash_Flow","Cash"],
-        }
-        financial_statement = IterDict.key_from_mapping(financial_statement, valid_statements, invert=False)
-        if financial_statement == 'Income Statement':
-            statement = deepcopy(self.parent.income_statement)
-            if statement is not None and not statement.empty:
-                statement.replace(['--',''], pd.NA, inplace=True)
-                statement = statement.apply(pd.to_numeric, errors='coerce')
-                vertical = statement.div(statement.loc['Total Revenue'])
-                v_fmt = vertical.applymap(lambda x: f"{x:.2%}" if pd.notna(x) else '')
-                v_fmt = v_fmt.where(~self.parent.income_statement.isin(['--','']), self.parent.income_statement)
-                return v_fmt
-        if financial_statement == 'Balance Sheet':
-            statement = deepcopy(self.parent.balance_sheet)
-            if statement is not None and not statement.empty:
-                statement.replace(['--',''], pd.NA, inplace=True)
-                statement = statement.apply(pd.to_numeric, errors='coerce')
-                vertical = statement.div(statement.loc['Total Assets'])
-                v_fmt = vertical.applymap(lambda x: f"{x:.2%}" if pd.notna(x) else '')
-                v_fmt = v_fmt.where(~self.parent.balance_sheet.isin(['--','']), self.parent.balance_sheet)
-                return v_fmt
-        if financial_statement == 'Cash Flow Statement':
-            statement = deepcopy(self.parent.cash_flow_statement)
-            if statement is not None and not statement.empty:
-                statement.replace(['--',''], pd.NA, inplace=True)
-                statement = statement.apply(pd.to_numeric, errors='coerce')
-                vertical = statement.div(statement.loc['Net Cash Flow-Operating'])
-                v_fmt = vertical.applymap(lambda x: f"{x:.2%}" if pd.notna(x) else '')
-                v_fmt = v_fmt.where(~self.parent.cash_flow_statement.isin(['--','']), self.parent.cash_flow_statement)
-                return v_fmt
-               
+# Lazily load the entire module; actual import occurs on first use.
+pd = Proxy("pandas", None)  # Third-party library imports (from PyPI or other package sources)  
+
+
+"""
+riskfreerate: Comprehensive Risk-Free Rate Extraction and Processing
+
+
+This class is designed to efficiently process, validate, and standardize U.S. Treasury rate data
+for use as risk-free rates in quantitative finance, analytics, and reporting. It supports both
+T-bill rates and full Treasury yield curve data, enabling users to extract the latest rates or
+generate a cleaned historical table.
+
+Key Features:
+  • Accepts a pandas DataFrame containing raw Treasury rate data (T-bills or yield curve).
+  • Automatically detects and validates the type of data ("tbill" for Treasury bills or "tyield" for yield curve).
+  • Cleans and prepares the input data, including date parsing, column normalization, and sorting.
+  • Handles missing, malformed, or non-standard data gracefully, returning NaN or None where appropriate.
+
+Data Processing:
+  • Dates: Parses date strings into standardized datetime objects and sorts records chronologically.
+  • Rates: Converts all rates to decimal form (e.g., 0.045 for 4.5%), rounding to four decimal places.
+  • Columns: Remaps column names to user-friendly labels for both T-bill and yield curve data,
+    supporting both extraction of latest rates and historical tables.
+
+Internal Implementation:
+  • Static and internal helper methods manage date parsing, rate formatting, and DataFrame cleaning.
+  • Configurable column mappings support flexible extraction of both T-bill and yield curve maturities.
+  • Encapsulates all processing logic, ensuring that downstream consumers receive ready-to-use,
+    reliable, and standardized risk-free rate data.
+"""
+class riskfreerate:
+    @staticmethod
+    def _format_date(date_str):
+        try:
+            return dtparse.parse(date_str)
+        except Exception:
+            return pd.NaT
+
+    @staticmethod
+    def _format_rates(rates: dict) -> dict:
+        out = {}
+        for k, v in rates.items():
+            if v is None:
+                out[k] = None
+            elif 0 <= v <= 1:
+                out[k] = round(v, 4)
+            else:                       # convert % → decimal
+                out[k] = round(v / 100, 4)
+        return out
+
+    def __init__(self, df: pd.DataFrame, kind: str, *, full: bool = False):
+        self.kind = kind.lower()
+        if self.kind not in {"tbill", "tyield"}:
+            raise TreasuryDataValidationError("kind must be 'tbill' or 'tyield'")
+        self.full_requested = full
+
+        self.df = self._clean_and_prepare(df)
+        if self.df.empty:
+            raise TreasuryNoDataError("Input DataFrame is empty or invalid for treasury scan.")
+        elif self.full_requested:
+            self.result = (self._full_tbill_table(self.df) if self.kind == "tbill"
+                            else self._full_yield_table(self.df))
+        else:
+            latest = (self._extract_latest_tbills(self.df) if self.kind == "tbill"
+                      else self._extract_latest_yield(self.df))
+            self.result = self._format_rates(latest)
+
+    def _clean_and_prepare(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        df.columns = df.columns.str.title()
+        if "Date" in df.columns:
+            df["Date"] = df["Date"].apply(self._format_date)
+            df = df.sort_values("Date")
+        return df.reset_index(drop=True)
+
+    # T-Bill helpers
+    _tbill_column_map = {
+        "1-Month T-Bill":  "4 Weeks Coupon Equivalent",
+        "2-Month T-Bill":  "8 Weeks Coupon Equivalent",
+        "3-Month T-Bill":  "13 Weeks Coupon Equivalent",
+        "4-Month T-Bill":  "17 Weeks Coupon Equivalent",
+        "6-Month T-Bill":  "26 Weeks Coupon Equivalent",
+        "12-Month T-Bill": "52 Weeks Coupon Equivalent",
+    }
+
+    def _extract_latest_tbills(self, df):
+        last = df.loc[df["Date"] == df["Date"].max()]
+        out = {}
+        for display, col in self._tbill_column_map.items():
+            try:
+                out[display] = float(last.iloc[0][col])
+            except Exception:
+                out[display] = None
+        return out
+       
+    def _full_tbill_table(self, df):
+        keep = ["Date"] + [v for v in self._tbill_column_map.values() if v in df.columns]
+        table = df[keep].rename(columns={v: k for k, v in self._tbill_column_map.items()})
+        return table
+
+    # Yield-Curve helpers
+    _yield_column_map = {
+        "1 Mo":  "1-Month Treasury Bill (T-Bill)",
+        "2 Mo":  "2-Month Treasury Bill (T-Bill)",
+        "3 Mo":  "3-Month Treasury Bill (T-Bill)",
+        "4 Mo":  "4-Month Treasury Bill (T-Bill)",
+        "6 Mo":  "6-Month Treasury Bill (T-Bill)",
+        "1 Yr":  "1-Year Treasury Note",
+        "2 Yr":  "2-Year Treasury Note",
+        "3 Yr":  "3-Year Treasury Note",
+        "5 Yr":  "5-Year Treasury Note",
+        "7 Yr":  "7-Year Treasury Note",
+        "10 Yr": "10-Year Treasury Note",
+        "20 Yr": "20-Year Treasury Bond",
+        "30 Yr": "30-Year Treasury Bond",
+    }
+
+    def _extract_latest_yield(self, df):
+        last_row = df.loc[df['Date'] == df['Date'].max()]
+        rates = {}
+        for col, display in self._yield_column_map.items():
+            if col in last_row.columns:
+                value = last_row.iloc[0][col]
+                try:
+                    rates[display] = float(value)
+                except Exception:
+                    rates[display] = None
+            else:
+                rates[display] = None
+        return rates
+
+    def _full_yield_table(self, df):
+        keep = ["Date"] + [c for c in self._yield_column_map if c in df.columns]
+        table = df[keep].rename(columns=self._yield_column_map)
+        return table
+    
+    def DATA(self):
+        if self.result is None or (isinstance(self.result, dict) and not any(self.result.values())):
+            raise TreasuryDataUnavailableError()
+        return self.result
+
 def __dir__():
     return __all__

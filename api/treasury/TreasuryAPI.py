@@ -179,7 +179,7 @@ from io import StringIO
 
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from ..prep import treasury_adapter
-# from .parse import trates
+from .parse._securities import riskfreerate
 from ...date_parser import dtparse
 
 
@@ -311,7 +311,7 @@ class APIClient:
         url = make_method(query='tbill', period=period)
         content = self._request_csv(url=url, period=period)
         if self._exists(content):
-            obj = trates.scan(content, kind="tbill", full=full_table)
+            obj = riskfreerate(content, kind="tbill", full=full_table)
             return obj.DATA()
            
     def Yield(
@@ -348,7 +348,7 @@ class APIClient:
         url = make_method(query='tyield', period=period)
         content = self._request_csv(url=url, period=period)       
         if self._exists(content):
-            obj = trates.scan(content, kind="tyield", full=full_table)
+            obj = riskfreerate(content, kind="tyield", full=full_table)
             return obj.DATA()
            
     def YieldAll(

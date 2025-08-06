@@ -159,7 +159,7 @@ Exception Handling
 Internal Structure & Related Modules
 ────────────────────────────────────
 - **prep.py:** Handles adapter/pair validation, provider obfuscation, and all normalization.
-- **parse/fx.py:** Parses responses and shapes them for downstream consumption.
+- **parse/_intra|_periods|_rates.py:** Parses responses and shapes them for downstream consumption.
 - **_http/connection.py:** Handles HTTP(S) connections, API key/session injection.
 
 Data Attribution & Licensing Policy
@@ -199,7 +199,9 @@ Example
 """
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from ..prep import forex_adapter
-from .parse import fx
+from .parse._rates import interbank, conversion
+from .parse._periods import historical
+from .parse._intra import latest
 from ..._http.connection import Connection
 
 
@@ -275,7 +277,7 @@ class APIClient:
             return_url=True
         )     
         if content:
-            obj = fx.fx_historical(content)
+            obj = historical(content)
             historical_data = obj.DATA()
             return historical_data
            
@@ -342,7 +344,7 @@ class APIClient:
             return_url=True
         )        
         if content:
-            obj = fx.fx_interbank_rates(content)
+            obj = interbank(content)
             interbank_data = obj.DATA()
             return interbank_data
        
@@ -398,55 +400,9 @@ class APIClient:
             return_url=True
         )     
         if content:
-            obj = fx.live_bid_ask(content)
+            obj = latest(content)
             bid_ask_data = obj.DATA()
             return bid_ask_data   
-
-    # # Notes:
-    # # -----
-    # # >>>>>>>>>>>>>>>>>>>>> REAL-TIME DATA - LIVE FEED <<<<<<<<<<<<<<<<<<<<<<
-    # # Returned results reflect the most current trading data available at the time of the request.  
-    # def QuoteOverview(self, currency_pair, api_key=None):
-    #     """
-    #     Retrieves a live overview of forex trading data for a specified currency pair.
-    # 
-    #     API Key Usage:
-    #     -------------
-    #     If `api_key` is not provided, the method expects that an API key has already been set using:
-    # 
-    #         from quantsumore.api import APIKey
-    #         APIKey("your-api-key-string")
-    # 
-    #     This securely stores your API key for all subsequent requests via a singleton connection manager.
-    #     Passing `api_key` directly will override any stored key for this request.
-    # 
-    #     Parameters:
-    #     ----------
-    #     currency_pair : str
-    #         The currency pair for which data is requested, formatted as 'XXXYYY' (e.g., 'EURUSD').
-    #     api_key : str, optional
-    #         The API key for authenticated requests. If not provided, an API key must have
-    #         been previously set using `APIKey()`.
-    # 
-    #     Returns:
-    #     -------
-    #     dict or None
-    #         Dictionary with key forex data points (e.g., 'currencyPair', 'openPrice', 'bidPrice'),
-    #         or None if data is unavailable.
-    # 
-    #     Raises:
-    #     ------
-    #     APIKeyRequiredError
-    #         If no API key is provided and none has been set using `APIKey()`.
-    #     """  	
-    #     make_method = getattr(self.adapter, 'make')
-    #     url = make_method(query='current', currency_pair=currency_pair)
-    #     html_content = Connection.Request(url=url, api_key=api_key, params=None, return_url=True)        
-    #     if html_content:
-    #         obj = fx.live_quote(html_content)
-    #         quote_data = obj.DATA()
-    #         return quote_data
-    # 
 
     # Notes:
     # -----
@@ -513,7 +469,7 @@ class APIClient:
             return_url=True
         ) 
         if content:
-            obj = fx.conversion(content, conversion_amount=conversion_amount)
+            obj = conversion(content, conversion_amount=conversion_amount)
             conversion_data = obj.DATA()
             return conversion_data
        

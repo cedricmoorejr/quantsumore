@@ -93,9 +93,9 @@ System Architecture
 
 4. **Parsing and Structuring**  
    The categorized raw JSON is passed to dedicated parser classes:
-   - `fin_statement.financials`: converts statement JSON into Pandas DataFrames
+   - `statements`: converts statement JSON into Pandas DataFrames
      for Income, Balance, and Cash Flow Statements
-   - `dividend.dividend_history`: structures dividend history and summary reports
+   - `dividend`: structures dividend history and summary reports
 
 5. **Unified Results Dictionary**  
    Results are always returned as a dictionary with clear keys:
@@ -131,13 +131,12 @@ Implementation Notes
 • Asset adapters (like equity_adapter) are responsible for URL construction only — not for transport
 • Statement and dividend parsers enforce strict shape validation for DataFrames
 • No provider names, endpoints, or internal keys are exposed in public APIs or docstrings
-
 """
 import re
-# from copy import deepcopy
 
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
-from ..api.equity.parse import fin_statement, dividend
+from ..api.equity.parse._financials import statements
+from ..api.equity.parse._shareholders import dividend
 from ..api.prep import equity_adapter
 from ..._http.connection import Connection
 from ..strata_utils import IterDict
@@ -231,19 +230,7 @@ class APIClient:
         content : list of dict
             Raw response payload(s) as returned by the `Connection.Request` proxy.
         """    	
-        # base = url[0].decode() if isinstance(url[0], bytes) else url[0]
-        # endpoint = url[1]
-        # content = Connection.Request(
-        #     url=(base, endpoint),
-        #     api_key=api_key,
-        #     params=None,
-        #     return_url=True
-        # )  
-        content = Connection.RequestBatch(
-            urls=url,
-            api_key=api_key,
-        )
-        return content
+        return Connection.RequestBatch(urls=url, api_key=api_key)
     
     def _urls(self, ticker, period):
         """
@@ -268,24 +255,15 @@ class APIClient:
         """    	
         valid_periods = {'Quarterly': ['Q', 'Quarter', 'Qtr'], 'Annually': ['A', 'Annual']} 
         period = IterDict.key_from_mapping(period, valid_periods, invert=False)
-        if not period:
-            raise ValueError("Invalid period.")            
-        urls = []
-        make_method = getattr(self.adapter, 'make')
-        financials = make_method(query='financials', ticker=ticker, period=period)
-        financials_base = financials[0].decode() if isinstance(financials[0], bytes) else financials[0]
-        financials_endpoint = financials[1]
-
-        dividends = make_method(query='dividend_history', ticker=ticker) 
-        dividends_base = dividends[0].decode() if isinstance(dividends[0], bytes) else dividends[0]
-        dividends_endpoint = dividends[1]
-        
-        # Handle financial data
-        urls.append((financials_base, financials_endpoint))
-
-        # Handle dividend data
-        urls.append((dividends_base, dividends_endpoint))
-        
+        if not period: raise ValueError("Invalid period.")
+        urls = []; make = getattr(self.adapter, 'make')
+        f = make(query='financials', ticker=ticker, period=period)
+        f_base = f[0].decode() if isinstance(f[0], bytes) else f[0]
+        f_ep = f[1]
+        d = make(query='dividend_history', ticker=ticker)
+        d_base = d[0].decode() if isinstance(d[0], bytes) else d[0]
+        d_ep = d[1]
+        urls.append((f_base, f_ep)); urls.append((d_base, d_ep))
         return urls
 
     def _categorize_content(self, content):     
@@ -324,11 +302,9 @@ class APIClient:
         for entry in content:
             for url, data in entry.items():
                 if url_pattern.search(url):
-                    if "dividend" in url:
-                        categorized_content['dividend'].append({url: data})                    
-                    elif "financials" in url:
-                        categorized_content['financial_statements'].append({url: data})
-        return categorized_content       
+                    if "dividend" in url: categorized_content['dividend'].append({url: data})
+                    elif "financials" in url: categorized_content['financial_statements'].append({url: data})
+        return categorized_content     
 
     def Process(self, ticker, period="Q", api_key=None):
         """
@@ -356,43 +332,22 @@ class APIClient:
         downstream consumers are responsible for error handling and messaging.
         """    	
         urls = self._urls(ticker=ticker, period=period)
-        # content1 = self._make_request(urls[0], api_key=api_key)
-        # content2 = self._make_request(urls[1], api_key=api_key)   
-        # content = deepcopy(content1 + content2)           
-        content = self._make_request(urls, api_key=api_key)        
+        content = self._make_request(urls, api_key=api_key)
         categorized = self._categorize_content(content)
-
-        results = {
-            'financial_statements': [],
-            'dividend': []
-        }
-
-        # ─── 1) Financial statements ───────────────────────────────
+        results = {'financial_statements': [], 'dividend': []}
         fin_content = categorized.get('financial_statements', [])
         if fin_content:
             try:
-                fs_obj = fin_statement.financials(json_content=fin_content)
-                results['financial_statements'] = [
-                    (fs_obj.IncomeStatement, fs_obj.BalanceSheet, fs_obj.CashFlowStatement)
-                ]
-            except (FinancialDataNotLoadedError, FinancialStatementUnavailableError):
-                # Silently skip (let fundamental.py handle messaging)
-                pass
-
-        # ─── 2) Dividend data ───────────────────────────────────────
+                fs_obj = statements(json_content=fin_content)
+                results['financial_statements'] = [(fs_obj.IncomeStatement, fs_obj.BalanceSheet, fs_obj.CashFlowStatement)]
+            except (FinancialDataNotLoadedError, FinancialStatementUnavailableError): pass
         div_content = categorized.get('dividend', [])
         if div_content:
             try:
-                dv_obj = dividend.dividend_history(json_content=div_content)
-                results['dividend'] = [
-                    (dv_obj.DividendReport, dv_obj.DividendData)
-                ]
-            except (DividendHistoryNoDataError, DividendHistoryUnavailableError):
-                # Silently skip (let fundamental.py handle messaging)
-                pass
-
+                dv_obj = dividend(json_content=div_content)
+                results['dividend'] = [(dv_obj.DividendReport, dv_obj.DividendData)]
+            except (DividendHistoryNoDataError, DividendHistoryUnavailableError): pass
         return results
-       
        
 process = APIClient(equity_adapter)
 

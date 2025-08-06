@@ -79,80 +79,38 @@ __all__ = [
 pd = Proxy("pandas", None)  # Third-party library imports (from PyPI or other package sources)  
 
 
-def filter_dataframe_columns(df, column_names):
-    """
-    Filters the DataFrame to include only the specified columns.
-
-    Args:
-    df (pd.DataFrame): The DataFrame from which to filter columns.
-    column_names (list of str): A list of column names to include in the new DataFrame.
-
-    Returns:
-    pd.DataFrame: A new DataFrame containing only the specified columns that exist in the original DataFrame.
-    """
-    df_copy = deepcopy(df)    
-    if isinstance(column_names, str):
-        column_names = [column_names]
-    filtered_columns = [col for col in column_names if col in df_copy.columns]
-    return df_copy[filtered_columns]
+def filter_dataframe_columns(df, cols):
+    """Filter DataFrame to only given columns that exist."""
+    df2 = deepcopy(df)
+    if isinstance(cols, str): cols = [cols]
+    return df2[[c for c in cols if c in df2.columns]]
 
 def rename_dataframe_columns(df, rename_dict):
-    """
-    Renames the columns of the DataFrame based on a provided dictionary mapping.
+    """Rename DataFrame columns using a valid mapping dict."""
+    df2 = deepcopy(df)
+    renames = {k:v for k,v in rename_dict.items() if k in df2.columns}
+    return df2.rename(columns=renames)
 
-    Args:
-    df (pd.DataFrame): The DataFrame whose columns are to be renamed.
-    rename_dict (dict): A dictionary mapping current column names to new names.
-
-    Returns:
-    pd.DataFrame: A DataFrame with renamed columns, where applicable.
-    """
-    df_copy = deepcopy(df)    
-    valid_renames = {old_name: new_name for old_name, new_name in rename_dict.items() if old_name in df_copy.columns}
-    return df_copy.rename(columns=valid_renames)
-
-def apply_conversion_to_columns(df, columns, fun):
-    """
-    Applies a specified function to the specified columns of a DataFrame.
-
-    Args:
-    df (pd.DataFrame): The DataFrame to modify.
-    columns (list of str): List of column names to apply the conversion on.
-    fun (function): The function to apply to the specified columns.
-
-    Returns:
-    pd.DataFrame: The modified DataFrame with specified columns converted.
-    """
-    df_copy = deepcopy(df)    
-    if isinstance(columns, str):
-        columns = [columns]    
-    for col in columns:
-        if col in df_copy.columns:
-            df_copy[col] = [fun(x) if isinstance(x, (str, int, float)) else x for x in df_copy[col]]            
-    return df_copy
+def apply_conversion_to_columns(df, cols, fun):
+    """Apply a function to given columns of DataFrame."""
+    df2 = deepcopy(df)
+    if isinstance(cols, str): cols = [cols]
+    for col in cols:
+        if col in df2.columns:
+            df2[col] = [fun(x) if isinstance(x,(str,int,float)) else x for x in df2[col]]
+    return df2
 
 def is_valid_dataframe(df):
-    """
-    Checks if the input is a valid, non-empty DataFrame.
+    """True if valid, non-empty DataFrame."""
+    return isinstance(df, pd.DataFrame) and not df.empty
 
-    Args:
-    df (pd.DataFrame): The DataFrame to check.
-    """
-    if not isinstance(df, pd.DataFrame):
-        return False
-    if df.empty:
-        return False
-    return True
-
-def normalize_time(df, column_names):
-    """Normalize the time part of datetime in the specified column to 00:00:00."""
-    df_copy = deepcopy(df)    
-    if isinstance(column_names, str):
-        column_names = [column_names]
-    for column_name in column_names:
-        df[column_name] = pd.to_datetime(df[column_name])
-        df[column_name] = df[column_name].dt.normalize()
-    return df
+def normalize_time(df, cols):
+    """Normalize datetime columns to midnight."""
+    df2 = deepcopy(df)
+    if isinstance(cols, str): cols = [cols]
+    for c in cols:
+        df2[c] = pd.to_datetime(df2[c]).dt.normalize()
+    return df2
 
 def __dir__():
     return __all__

@@ -75,57 +75,30 @@ __all__ = [
 # Precompile regex patterns for efficiency
 
 def convert_to_float(value, roundn=0):
-    """
-    Converts a given string value to a float after removing any dollar signs and commas,
-    except when the string contains a percentage sign or a slash, in which case the original
-    string is returned unchanged.
-
-    Args:
-    value (str): The string value to convert.
-    roundn (int): The number of decimal places to round the float to; if 0, rounding is skipped.
-
-    Returns:
-    float or str: Returns the float conversion if applicable, rounded as specified, 
-                  or the original value if it contains '%' or '/'.
-    """
+    """Convert string to float (removes $/comma), skips if '%' or '/' present."""
     try:
-        str_value = str(value)
-        cleaned_value = re.sub(r'[\$,]', '', str_value)
-        
-        if '%' in cleaned_value or '/' in cleaned_value:
-            return value
-        
-        float_value = float(cleaned_value)
-        return round(float_value, roundn) if roundn else float_value
+        s = str(value)
+        if '%' in s or '/' in s: return value
+        f = float(re.sub(r'[\$,]', '', s))
+        return round(f, roundn) if roundn else f
     except (ValueError, TypeError):
         return value
 
 def convert_date(date, from_format=None, to_format='%Y-%m-%d %H:%M:%S', to_unix_timestamp=False):
     try:
-        dt = dtparse.parse(date_input=str(date), from_format=from_format, to_format=to_format, to_unix_timestamp=to_unix_timestamp)
-        return dt
-    except:
-        return date
-       
+        return dtparse.parse(date_input=str(date), from_format=from_format, to_format=to_format, to_unix_timestamp=to_unix_timestamp)
+    except: return date
+
 def convert_to_yield(dyield):
-    if dyield is None:
-        return None
-    if isinstance(dyield, str) and dyield.endswith('%'):
-        dyield = dyield.replace('%', '')
-        if dyield.replace('.', '', 1).isdigit():
-            dyield = float(dyield) / 100
-        else:
-            return None 
-    elif isinstance(dyield, str):
-        if dyield.replace('.', '', 1).isdigit():
-            dyield = float(dyield)
-        else:
-            return None
-    if isinstance(dyield, (float, int)):
-        return round(dyield, 4)
-    return None       
+    if dyield is None: return None
+    if isinstance(dyield, str):
+        s = dyield.strip().replace('%', '')
+        if s.replace('.', '', 1).isdigit():
+            v = float(s) / 100 if dyield.endswith('%') else float(s)
+        else: return None
+    else:
+        v = dyield
+    return round(v, 4) if isinstance(v, (float, int)) else None
        
 def __dir__():
     return __all__
-
-

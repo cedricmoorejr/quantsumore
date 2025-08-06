@@ -547,13 +547,11 @@ class fAnalyze:
             - Dividend data is optional and may not be available for some tickers (e.g., delisted or pre-IPO companies).
             - This method should be called before accessing any analysis or export features.
         """       	
-        # allow a list/tuple but pick the first element        
         if isinstance(ticker, (list, tuple)):
             if not ticker:
                 raise TickerNotFoundError("Cannot find ticker symbol!")
             ticker = ticker[0]
 
-        # enforce string
         if not isinstance(ticker, str):
             raise ValueError("Ticker must be a single string value.")
 
@@ -568,7 +566,7 @@ class fAnalyze:
             self.dividend_data = cached_data.get('dividend_data', None)
             self.dividend_report = cached_data.get('dividend_report', None)
         else:
-            # ─── 1. Attempt to Load Financial Statements ─────────────────────────────
+            # 1. Attempt to Load Financial Statements
             data = self.engine.Process(self.ticker, period)
             statements = data.get('financial_statements', [])
 
@@ -620,7 +618,7 @@ class fAnalyze:
                     print(f"Financial Statements loaded for {self.ticker}.")
                     print(f"  • Missing: {', '.join(missing)}")
 
-            # ─── 2. Attempt to Load Dividend Data ─────────────────────────────────────
+            # 2. Attempt to Load Dividend Data
             divs = data.get('dividend', [])
 
             # 2a. API returned a string error
@@ -1693,27 +1691,3 @@ class fAnalyze:
 
 def __dir__():
     return __all__
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

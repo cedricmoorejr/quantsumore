@@ -52,13 +52,34 @@
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
 
+import re
 from copy import deepcopy
 
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
-from ..strata_utils import IterDict
+from ...shape_tools import is_valid_dataframe
+from ...proxy import Proxy
+from ...exceptions import (
+    # FXPipelineError,
+    # FXInterbankError,
+    # FXNoDataError,
+    # FXDataUnavailableError,
+    # FXInterbankNoDataError,
+    # FXInterbankDataUnavailableError,
+    LiveBidAskNoDataError,
+    LiveBidAskUnavailableError,
+    # LiveQuoteValidationError,
+    # LiveQuoteUnavailableError,
+    # ConversionValidationError,
+    # ConversionUnavailableError,
+    # ConversionNoDataError,
+    # InvalidCurrencyPairError,
+    # CurrencyPairNotFoundError,
+    # ConversionError,
+)
+# from ...markup import idextract  
 
 
-__all__ = ['Vertical_Analysis']
+__all__ = ['latest']
 
 
 
@@ -69,43 +90,127 @@ __all__ = ['Vertical_Analysis']
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
 
-class Vertical_Analysis:
-    def __init__(self, analyze_instance): self.parent = analyze_instance
-    def _VerticalAnalysis(self, financial_statement):
-        import pandas as pd
-        valid_statements = {
-            "Income Statement": ["I","IS","Income","Income_Statement","Income Statement"],
-            "Balance Sheet": ["Balance Sheet","B","BS","Balance_Sheet"],
-            "Cash Flow Statement": ["Cash Flow Statement","Cash_Flow_Statement","C","CF","Cash Flow","Cash_Flow","Cash"],
+
+# Lazily load the entire module; actual import occurs on first use.
+pd = Proxy("pandas", None)  # Third-party library imports (from PyPI or other package sources)  
+
+
+######################################################################
+# DATA TYPE 2
+######################################################################
+"""
+Expected Input: Live Bid/Ask API Response
+
+This class expects as input the parsed JSON response from a live currency bid/ask API call.
+The structure includes summary statistics and metadata for a given forex symbol, as returned by the external service.
+
+Example structure:
+[
+  {
+    "<string-key>": {
+      "response": {
+        "data": {
+          "symbol": str,           # e.g. "EURUSD"
+          "summaryData": {
+            "Bid": {
+              "label": str,        # "Bid"
+              "value": str         # e.g. "1.1572"
+            },
+            "Ask": {
+              "label": str,        # "Ask"
+              "value": str         # e.g. "1.1573"
+            },
+            "TodaysHigh": {
+              "label": str,        # "Today's High"
+              "value": str         # e.g. "1.1597"
+            },
+            "TodaysLow": {
+              "label": str,        # "Today's Low"
+              "value": str         # e.g. "1.1551"
+            },
+            "Open": {
+              "label": str,        # "Open"
+              "value": str         # e.g. "1.1586"
+            },
+            "NetChangePercent": {
+              "label": str,        # "Net Change %"
+              "value": str         # e.g. "-0.12%"
+            },
+            "pc": {
+              "label": str,        # "Net Change"
+              "value": str         # e.g. "-0.0014"
+            },
+            "Price": {
+              "label": str,        # "Last Value"
+              "value": str         # e.g. "1.1572"
+            },
+            "Time": {
+              "label": str,        # "Time of Last Value"
+              "value": str         # e.g. "08/04/2025 01:39:01"
+            },
+            "OneDayRange": {
+              "label": str,        # "1 Day Range"
+              "value": str         # e.g. "1.1551-1.1597"
+            }
+            # ...more fields possible...
+          },
+          "assetClass": str,        # e.g. "CURRENCIES"
+          "additionalData": None,   # could also be more data
+          "bidAsk": None            # could also be more data
+        },
+        "message": None,            # could also be a string message
+        "status": {
+          "rCode": int,             # HTTP-style code, e.g. 200
+          "bCodeMessage": None,     # backend code message or None
+          "developerMessage": None  # extra dev info or None
         }
-        financial_statement = IterDict.key_from_mapping(financial_statement, valid_statements, invert=False)
-        if financial_statement == 'Income Statement':
-            statement = deepcopy(self.parent.income_statement)
-            if statement is not None and not statement.empty:
-                statement.replace(['--',''], pd.NA, inplace=True)
-                statement = statement.apply(pd.to_numeric, errors='coerce')
-                vertical = statement.div(statement.loc['Total Revenue'])
-                v_fmt = vertical.applymap(lambda x: f"{x:.2%}" if pd.notna(x) else '')
-                v_fmt = v_fmt.where(~self.parent.income_statement.isin(['--','']), self.parent.income_statement)
-                return v_fmt
-        if financial_statement == 'Balance Sheet':
-            statement = deepcopy(self.parent.balance_sheet)
-            if statement is not None and not statement.empty:
-                statement.replace(['--',''], pd.NA, inplace=True)
-                statement = statement.apply(pd.to_numeric, errors='coerce')
-                vertical = statement.div(statement.loc['Total Assets'])
-                v_fmt = vertical.applymap(lambda x: f"{x:.2%}" if pd.notna(x) else '')
-                v_fmt = v_fmt.where(~self.parent.balance_sheet.isin(['--','']), self.parent.balance_sheet)
-                return v_fmt
-        if financial_statement == 'Cash Flow Statement':
-            statement = deepcopy(self.parent.cash_flow_statement)
-            if statement is not None and not statement.empty:
-                statement.replace(['--',''], pd.NA, inplace=True)
-                statement = statement.apply(pd.to_numeric, errors='coerce')
-                vertical = statement.div(statement.loc['Net Cash Flow-Operating'])
-                v_fmt = vertical.applymap(lambda x: f"{x:.2%}" if pd.notna(x) else '')
-                v_fmt = v_fmt.where(~self.parent.cash_flow_statement.isin(['--','']), self.parent.cash_flow_statement)
-                return v_fmt
-               
+      }
+    }
+  }
+]
+""" 
+class latest:
+    def __init__(self, json_content=None):
+        self.cleaned_data = None; self.data = None; self.json_content = None
+        if json_content: self.json_content = latest._response_status(json_content)
+        if self.json_content:
+            self.parse()
+            if self.cleaned_data: self._create_dataframe()
+    @staticmethod
+    def _response_status(json_content):
+        dataset = deepcopy(json_content)
+        if isinstance(json_content, list):
+            if not json_content: raise LiveBidAskError("Response is not a non-empty list")
+            node = json_content[0]
+        elif isinstance(json_content, dict): node = json_content
+        else: raise LiveBidAskError(f"Unsupported response type: {type(json_content)}")
+        if (isinstance(node, dict) and len(node)==1 and not any(k in node for k in ["response","error","data"])):
+            node = next(iter(node.values()))
+        if isinstance(node, dict) and "error" in node: raise LiveBidAskError(node["error"])
+        data = node["response"] if isinstance(node, dict) and "response" in node else node
+        if not isinstance(data, dict): raise LiveBidAskError("Unexpected structure for data payload")
+        if "data" not in data: raise LiveBidAskNoDataError("No 'data' key found in response")
+        data_dict = data["data"]
+        summary = data_dict.get("summaryData")
+        if not isinstance(summary, dict) or not summary: raise LiveBidAskNoDataError("No summary data available in response")
+        return data_dict
+    def _create_dataframe(self):
+        df = pd.DataFrame(self.cleaned_data); self.data = df
+    def parse(self):
+        rows = []; content = deepcopy(self.json_content)
+        entries = [content] if isinstance(content, dict) else content if isinstance(content, list) else []
+        for entry in entries:
+            row = {}; row['Symbol'] = entry.get('symbol'); row['Asset Class'] = entry.get('assetClass')
+            summary_data = entry.get('summaryData', {})
+            for val in summary_data.values():
+                label = val.get('label'); value = val.get('value')
+                if label is not None: row[label] = value
+            rows.append(row)
+        if rows: self.cleaned_data = rows
+    def DATA(self):
+        if not is_valid_dataframe(self.data): raise LiveBidAskUnavailableError()
+        return self.data
+    def __dir__(self): return ['DATA']
+
 def __dir__():
     return __all__

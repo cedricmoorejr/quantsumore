@@ -81,7 +81,7 @@ Design Overview
 - **Centralized URL Construction:** All endpoints, query params, and date conversions are built via
   `crypto_adapter.make(...)`, with strict input checking and multi-provider support.
 - **Response Parsing and Shaping:** Raw API responses are parsed and normalized into pandas DataFrames by
-  `crypto.live_quote` and `crypto.crypto_historical` (from `parse.crypto`), with consistent schema and
+  `latest` and `historical` (from `parse.crypto`), with consistent schema and
   timestamp formatting.
 - **Unified Exception Hierarchy:** All downstream errors are mapped to clear, Quantsumore-defined exceptions.
 
@@ -169,8 +169,10 @@ Example
 """
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from ..prep import crypto_adapter
-from .parse import crypto
+from .parse._periods import historical
+from .parse._intra import latest
 from ..._http.connection import Connection
+
 
 __all__ = ['engine']
 
@@ -278,7 +280,7 @@ class APIClient:
             return_url=True
         )         
         if content:
-            obj = crypto.live_quote(content, cryptoExchange=cryptoExchange)
+            obj = latest(content, cryptoExchange=cryptoExchange)
             data = obj.DATA()
             return data
 
@@ -369,7 +371,7 @@ class APIClient:
             return_url=True
         )          
         if content:
-            obj = crypto.crypto_historical(content)
+            obj = historical(content)
             data = obj.DATA()
             return data
            

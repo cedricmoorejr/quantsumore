@@ -294,12 +294,12 @@ class tAnalyze:
                 raise ValueError(f"Missing required columns: {missing}")
                
         def rename_cols(self):
-        # —— NEW: if the very first column is "Timestamp", treat it as Date —— #
+        # —— ADDITION: if the very first column is "Timestamp", treat it as Date —— #
         cols = list(self.df.columns)
         if cols and cols[0].lower() == 'timestamp':
             # rename Timestamp → Date so that the rest of your logic picks it up
             self.df = self.df.rename(columns={cols[0]: 'Date'})
-        # —— end new logic —— #        	
+        # —— end —— #        	
             def find_best_matches(df):
                 keyword_map = {
                     'Symbol': ['ticker', 'symbol'],

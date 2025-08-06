@@ -172,7 +172,14 @@ Example
 """
 # ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
 from ..prep import equity_adapter
-from .parse import stock as equity_parse, fin_statement as stmt_parse, dividend as dividend_parse
+from .parse._info import profile
+from .parse._metric import quote_statistics
+from .parse._intra import latest
+from .parse._trailing import last
+from .parse._periods import historical
+from .parse._listing import ipo
+from .parse._shareholders import dividend
+from .parse._financials import statements
 from ..._http.connection import Connection
 from ...strata_utils import IterDict
 # from ...date_parser import dtparse
@@ -204,7 +211,7 @@ class ProfileClient:
             return_url=True
         ) 
         if content:
-            obj = equity_parse.profile(content)
+            obj = profile(content)
             return obj.DATA()
 
     def bio(self, ticker, api_key=None):
@@ -436,6 +443,44 @@ class ProfileClient:
         data = self._fetch(ticker, api_key)
         return data and data.get('security_details')
 
+    def filings(self, ticker, api_key=None):
+        """
+        Retrieves a company's regulatory filings based on its ticker symbol.
+
+        This method returns a list or dictionary of company filings, such as SEC filings,
+        quarterly/annual reports, and other important regulatory documents.
+
+        API Key Usage:
+        -------------
+        If `api_key` is not provided, the method expects that an API key has already been set using:
+
+            from quantsumore.api import APIKey
+            APIKey("your-api-key-string")
+
+        This securely stores your API key for all subsequent requests via a singleton connection manager.
+        Passing `api_key` directly will override any stored key for this request.
+
+        Parameters:
+        ----------
+        ticker : str
+            The ticker symbol of the company whose filings are to be retrieved.
+        api_key : str, optional
+            The API key for authenticated requests. If not provided, an API key must have
+            been previously set using `APIKey()`.
+
+        Returns:
+        -------
+        list or dict or None
+            Returns the list or dictionary of company filings, or None if not available.
+
+        Raises:
+        ------
+        APIKeyRequiredError
+            If no API key is provided and none has been set using `APIKey()`.
+        """
+        data = self._fetch(ticker, api_key)
+        return data and data.get('company_filings')
+
     def full(self, ticker, api_key=None):
         """
         Retrieves the complete company profile as a processed dictionary.
@@ -482,9 +527,10 @@ class ProfileClient:
             'industry',
             'contact',
             'security',
+            'filings',            
             'full',
         ]
-
+        
 
 
 
@@ -542,7 +588,7 @@ class APIClient:
             return_url=True
         )            
         if content:
-            obj = equity_parse.quote_statistics(content)
+            obj = quote_statistics(content)
             return obj.DATA()        
 
     def Historical(self, ticker, start, end, api_key=None):
@@ -602,7 +648,7 @@ class APIClient:
             return_url=True
         )            
         if content:
-            obj = equity_parse.historical(content)
+            obj = historical(content)
             return obj.DATA()
 
     # Notes:
@@ -661,14 +707,14 @@ class APIClient:
             return_url=True
         )       
         if content:
-            obj = equity_parse.latest(content)
+            obj = latest(content)
             return obj.DATA()
 
     # Notes:
     # -----
     # - The method constructs a request URL using the adapter's `make` method, tailored to query dividend information,
     #   and sends the request to retrieve the data in JSON format.
-    # - The `dividend_parse.dividend_history` function is used to process the JSON response and create a structured dividend
+    # - The `dividend` function is used to process the JSON response and create a structured dividend
     #   data object from the returned content.
     def Dividends(self, ticker, api_key=None):
         """
@@ -718,7 +764,7 @@ class APIClient:
             return_url=True
         )         
         if content:
-            obj = dividend_parse.dividend_history(content)
+            obj = dividend(content)
             return (obj.DividendReport, obj.DividendData)
 
     # Notes:
@@ -786,8 +832,73 @@ class APIClient:
         - Invalid range/interval combinations are automatically detected and rejected before the request is made.
         - If the requested range/interval combination would result in a response exceeding 100,000 data points,
           the interval is automatically increased (coarsened) to reduce the data size, and a warning may be emitted.
-        - To fetch the maximum amount of historical data, use `range='max'` with a coarser interval like '1d', '1wk', or '1mo'.
-        - For intraday/minute-level data, use short ranges ('1d', '5d') and fine intervals ('1m', '5m', etc.).
+
+
+        Understanding `range` and `interval` (API Client)
+        -------------------------------------------------
+        The `range` and `interval` arguments control **how much historical data you receive** and **how detailed each data point is**.
+        Here’s how to use them and what to keep in mind:
+
+        range
+            - What it does:
+                Specifies how far back in time you want to fetch data.
+                Example values: `1d` (1 day), `1mo` (1 month), `1y` (1 year), etc.
+            - Valid values:
+                `1d`, `5d`, `1mo`, `3mo`, `6mo`, `1y`, `2y`, `5y`, `10y`, `ytd`, `max`
+            - Note:
+                Use these exact strings—custom ranges like `30d` are not supported.
+
+        interval
+            - What it does:
+                Sets how granular each data point is.
+                Example values: `1m` (1 minute), `1d` (1 day), `1wk` (1 week).
+            - Valid values (depend on range):
+                `1m`, `2m`, `5m`, `15m`, `30m`, `60m`, `90m`, `1h`, `1d`, `5d`, `1wk`, `1mo`, `3mo`
+            - Note:
+                Not every interval is available for every range. Fine intervals (like `1m`) can only be used with short ranges (like `1d` or `5d`). For longer ranges, use coarser intervals (`1d`, `1wk`, `1mo`).
+
+        Allowed Combinations
+
+            | range   | Allowed intervals                      | Example Use               |
+            | ------- | -------------------------------------- | ------------------------- |
+            | 1d      | 1m, 2m, 5m, 15m, 30m, 60m              | Intraday, high detail     |
+            | 5d      | 5m, 15m, 30m, 60m, 90m                 | Intraday, medium detail   |
+            | 1mo or longer | 1d                               | Daily closes only         |
+            | 3mo or longer | 1d, 1wk, 1mo                     | Coarser, for long history |
+
+            Note: If you use a fine interval (like `1m`) with a long range (like `1y`), you will get an error.
+            - For minute-level data, use short ranges: `1d` or `5d`.
+            - For long time spans, use daily or weekly intervals.
+
+        Examples
+
+            | range | interval | What you get                          |
+            | ----- | -------- | ------------------------------------- |
+            | 1d    | 1m       | 1-minute data for today (high detail) |
+            | 5d    | 15m      | 5 days, one point every 15 minutes    |
+            | 1mo   | 1d       | 1 month of daily closing prices       |
+            | 6mo   | 1wk      | 6 months, weekly prices               |
+
+            If you want all available historical data (`range='max'`), use only coarser intervals like `1d`, `1wk`, or `1mo`.
+
+        General Guidelines
+
+            - range: “How much time do you want?”
+            - interval: “How detailed should each data point be?”
+            - If you request too much data or an invalid combination, you’ll get an error.
+
+        Example Call
+        -----------
+            output = equity.Lastn(ticker="AAPL", range="1d", interval="60m")
+
+            Returns prices for the past day, one data point per hour block (e.g., 10:30, 11:30, etc).
+
+        Developer Tips
+        --------------
+            - Always validate your range and interval combination before sending a request.
+            - Minute-level intervals are only supported for very recent data (about 1–7 days).
+            - Medium intervals (5m, 15m, etc.) are available for up to about 60 days.
+            - For months/years of data, use intervals like `1d`, `1wk`, or `1mo`.
         """
         make_method = getattr(self.adapter, 'make')
         url = make_method(query='last', ticker=ticker, range=range, interval=interval)
@@ -800,7 +911,7 @@ class APIClient:
             return_url=True
         )         
         if content:
-            obj = equity_parse.last(content)
+            obj = last(content)
             return obj.DATA()
 
     # Notes:
@@ -809,7 +920,7 @@ class APIClient:
     #   and periods. This allows for case-insensitive input and use of common synonyms (e.g., 'IS' for 'Income Statement').
     # - The method constructs a request URL using the adapter's `make` method and sends the request to retrieve the
     #   financial data in JSON format.
-    # - This method requires that the `stmt_parse.financials` object is available to parse the returned content
+    # - This method requires that the `statements` object is available to parse the returned content
     #   into a structured financial statement object.
     def Financials(self, ticker, period="Quarterly", api_key=None):
         """
@@ -869,14 +980,14 @@ class APIClient:
             return_url=True
         )      
         if content:
-            obj = stmt_parse.financials(json_content=content)
+            obj = statements(json_content=content)
             return (obj.IncomeStatement, obj.BalanceSheet, obj.CashFlowStatement)
 
     # Notes:
     # -----
     # - The method constructs a request URL using the adapter's `make` method, tailored to query IPO information for a specific period,
     #   and sends the request to retrieve the data.
-    # - The `equity_parse.ipo` function is used to process the JSON response and create a structured IPO data object from the returned content.
+    # - The `ipo` function is used to process the JSON response and create a structured IPO data object from the returned content.
     def IPO(self, date=None, api_key=None):
         """
         Retrieves IPO data for the specified date or date range.
@@ -926,7 +1037,7 @@ class APIClient:
             return_url=True
         )     
         if content:
-            obj = equity_parse.ipo(content)
+            obj = ipo(content)
             return obj.DATA()
 
     def __dir__(self):

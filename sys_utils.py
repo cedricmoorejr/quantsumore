@@ -54,6 +54,7 @@
 
 import os
 from datetime import datetime, timedelta
+import re
 import platform
 from pathlib import Path
 from functools import lru_cache
@@ -68,540 +69,234 @@ __all__ = ['Device', 'Download', 'FileInspector', 'Package']
 ######################################################################
 # SYSTEM DIRECTORY FIND
 ######################################################################
+"""
+Locate and manage the current system's application data directories.
 
+- Windows:
+    • Local data:   %LOCALAPPDATA%
+    • Roaming data: %APPDATA%
+    • Common data:  %PROGRAMDATA%
+- macOS (Darwin):
+    • Local data:   ~/Library/Application Support
+    • Config data:  ~/Library/Preferences
+    • Common data:  /Library/Application Support
+- Linux/Unix:
+    • Local data:   $XDG_DATA_HOME or ~/.local/share
+    • Config data:  $XDG_CONFIG_HOME or ~/.config
+    • Common data:  /usr/local/share
+"""
 # --- helper descriptor ---
 class classproperty:
-    def __init__(self, func):
-        self.func = func
-    def __get__(self, instance, owner):
-        return self.func(owner)
-       
-class Device:
-    """
-    Locate and manage the current system's application data directories.
+    def __init__(self, func): self.func = func
+    def __get__(self, instance, owner): return self.func(owner)
 
-    - Windows:
-        • Local data:   %LOCALAPPDATA%
-        • Roaming data: %APPDATA%
-        • Common data:  %PROGRAMDATA%
-    - macOS (Darwin):
-        • Local data:   ~/Library/Application Support
-        • Config data:  ~/Library/Preferences
-        • Common data:  /Library/Application Support
-    - Linux/Unix:
-        • Local data:   $XDG_DATA_HOME or ~/.local/share
-        • Config data:  $XDG_CONFIG_HOME or ~/.config
-        • Common data:  /usr/local/share
-    """
+class Device:
     APP_NAME = "quantsu_data"
-    
     @classmethod
     @lru_cache(maxsize=None)
     def get_dir(cls, kind: Literal["local", "roaming", "common", "config"]) -> Path:
-        system = platform.system()
-        if system == "Windows":
-            return cls._windows_dir(kind)
-        if system == "Darwin":
-            return cls._macos_dir(kind)
+        s = platform.system()
+        if s == "Windows": return cls._windows_dir(kind)
+        if s == "Darwin": return cls._macos_dir(kind)
         return cls._linux_dir(kind)
-
     @staticmethod
     def _windows_dir(kind: str) -> Path:
-        env_map = {
-            "local":   "LOCALAPPDATA",
-            "roaming": "APPDATA",
-            "common":  "PROGRAMDATA",
-            "config":  "APPDATA",
-        }
-        try:
-            var = env_map[kind]
-        except KeyError:
-            raise ValueError(f"Unknown kind '{kind}' for Windows")
+        env_map = {"local":"LOCALAPPDATA","roaming":"APPDATA","common":"PROGRAMDATA","config":"APPDATA"}
+        try: var = env_map[kind]
+        except KeyError: raise ValueError(f"Unknown kind '{kind}' for Windows")
         val = os.getenv(var)
-        if not val:
-            raise EnvironmentError(f"Environment variable {var!r} is not set on Windows")
+        if not val: raise EnvironmentError(f"Environment variable {var!r} is not set on Windows")
         return Path(val)
-
     @staticmethod
     def _macos_dir(kind: str) -> Path:
         home = Path.home()
-        if kind in ("local", "roaming"):
-            return home / "Library" / "Application Support"
-        if kind == "common":
-            return Path("/Library") / "Application Support"
-        if kind == "config":
-            return home / "Library" / "Preferences"
+        if kind in ("local","roaming"): return home/"Library"/"Application Support"
+        if kind=="common": return Path("/Library")/"Application Support"
+        if kind=="config": return home/"Library"/"Preferences"
         raise ValueError(f"Unknown kind '{kind}' for macOS")
-
     @staticmethod
     def _linux_dir(kind: str) -> Path:
         home = Path.home()
-        if kind == "local":
+        if kind=="local":
             xdg = os.getenv("XDG_DATA_HOME")
-            return Path(xdg) if xdg else home / ".local" / "share"
-        if kind == "config":
+            return Path(xdg) if xdg else home/".local"/"share"
+        if kind=="config":
             xdg = os.getenv("XDG_CONFIG_HOME")
-            return Path(xdg) if xdg else home / ".config"
-        if kind == "roaming":
-            # Linux doesn't distinguish roaming—alias to config
+            return Path(xdg) if xdg else home/".config"
+        if kind=="roaming":
             xdg = os.getenv("XDG_CONFIG_HOME")
-            return Path(xdg) if xdg else home / ".config"
-        if kind == "common":
-            return Path("/usr") / "local" / "share"
+            return Path(xdg) if xdg else home/".config"
+        if kind=="common": return Path("/usr")/"local"/"share"
         raise ValueError(f"Unknown kind '{kind}' for Linux/Unix")
-
     @classmethod
-    def get_local_appdata(cls) -> Path:
-        return cls.get_dir("local")
-
+    def get_local_appdata(cls): return cls.get_dir("local")
     @classmethod
-    def get_roaming_appdata(cls) -> Path:
-        return cls.get_dir("roaming")
-
+    def get_roaming_appdata(cls): return cls.get_dir("roaming")
     @classmethod
-    def get_common_appdata(cls) -> Path:
-        return cls.get_dir("common")
-
+    def get_common_appdata(cls): return cls.get_dir("common")
     @classmethod
-    def get_config_appdata(cls) -> Path:
-        return cls.get_dir("config")
-
+    def get_config_appdata(cls): return cls.get_dir("config")
     @classmethod
-    def get_subdir(
-        cls,
-        kind: Literal["local", "roaming", "common", "config"],
-        *subpath: str,
-        create: bool = False
-    ) -> Path:
-        """
-        Returns a Path object pointing to a subdirectory under a specified application data root.
-
-        This method constructs a path to a nested folder (or subfolders) under one of the standard application data directories
-        (local, roaming, common, or config), as determined by the operating system. Optionally, the subdirectory can be created
-        if it does not already exist.
-
-        Parameters:
-        ----------
-        kind : {'local', 'roaming', 'common', 'config'}
-            The type of app data directory to use as the root. Platform-specific root folders are chosen accordingly.
-        *subpath : str
-            One or more strings specifying subdirectory names (e.g., "myapp", "cache").
-        create : bool, optional
-            If True, creates the full directory path if it does not exist (default: False).
-
-        Returns:
-        -------
-        Path
-            Path object representing the requested subdirectory.
-
-        Raises:
-        ------
-        ValueError
-            If `kind` is not a recognized app-data root type.
-        EnvironmentError
-            If a required environment variable for the target directory is missing.
-        OSError
-            If directory creation fails due to permissions or file system errors.
-
-        Example:
-        -------
-            # Get (and create, if missing) a "cache" folder under local app data
-            Device.get_subdir("local", "myapp", "cache", create=True)
-        """     
-        base = cls.get_dir(kind)
-        target = base.joinpath(*subpath)
-        if create:
-            target.mkdir(parents=True, exist_ok=True)
+    def get_subdir(cls, kind: Literal["local", "roaming", "common", "config"], *subpath: str, create: bool = False) -> Path:
+        base = cls.get_dir(kind); target = base.joinpath(*subpath)
+        if create: target.mkdir(parents=True, exist_ok=True)
         return target
-
     @classmethod
-    def find_app_folder(
-        cls,
-        folder_name: str,
-        recursive: bool = False
-    ) -> Optional[Path]:
-        """
-        Searches for a directory with a given name under all standard application data roots.
-
-        This method looks for a folder named `folder_name` beneath each of the recognized application data directories
-        ("local", "roaming", "common", "config"), as determined by the operating system. Optionally, the search can be recursive.
-
-        Parameters:
-        ----------
-        folder_name : str
-            Name of the folder to search for.
-        recursive : bool, optional
-            If True, search subdirectories recursively; if False (default), only look at top-level directories.
-
-        Returns:
-        -------
-        Path or None
-            Returns a Path to the first matching directory found, or None if not found in any location.
-
-        Example:
-        -------
-            # Search recursively for "quantsu_data" in all app data roots
-            path = Device.find_app_folder("quantsu_data", recursive=True)
-            if path:
-                print("Found at:", path)
-            else:
-                print("Not found.")
-        """
-        roots = {
-            "local":   cls.get_local_appdata(),
-            "roaming": cls.get_roaming_appdata(),
-            "common":  cls.get_common_appdata(),
-            "config":  cls.get_config_appdata(),
-        }
-
+    def find_app_folder(cls, folder_name: str, recursive: bool = False) -> Optional[Path]:
+        roots = {"local":cls.get_local_appdata(),"roaming":cls.get_roaming_appdata(),"common":cls.get_common_appdata(),"config":cls.get_config_appdata()}
         for kind, base in roots.items():
             if recursive:
                 for dirpath, dirnames, _ in os.walk(base):
-                    if folder_name in dirnames:
-                        return Path(dirpath) / folder_name
+                    if folder_name in dirnames: return Path(dirpath)/folder_name
             else:
-                candidate = base / folder_name
-                if candidate.is_dir():
-                    return candidate
-
+                candidate = base/folder_name
+                if candidate.is_dir(): return candidate
         return None
-    
     @classproperty
     def quantsumore_default(cls) -> Path:
-        """
-        Platform-appropriate “local” app data for quantsu_data,
-        created on first access.
-        """
-        local_root = cls.get_dir("local")
-        data_dir = local_root / cls.APP_NAME
+        local_root = cls.get_dir("local"); data_dir = local_root/cls.APP_NAME
         data_dir.mkdir(parents=True, exist_ok=True)
         return data_dir
-
 
 
 ######################################################################
 # FILE INSPECTION
 ######################################################################
-
-# When True, use the file’s creation timestamp; otherwise use its modified timestamp.
-_USE_CREATION_DATE = True
-
-# Derive the default field name from the boolean
-_DEFAULT_DATE_FIELD = "created" if _USE_CREATION_DATE else "modified"
+_USE_CREATION_DATE = True # When True, use the file’s creation timestamp; otherwise use its modified timestamp.
+_DEFAULT_DATE_FIELD = "created" if _USE_CREATION_DATE else "modified" # Derive the default field name from the boolean
 
 @dataclass
 class FileInfo:
-    path: Path
-    exists: bool
-    creation_time: Optional[datetime]
-    modification_time: Optional[datetime]
-    checked_time: Optional[datetime]
-    age: Optional[timedelta]
-    is_older_than: Optional[bool] = None
-    is_younger_than: Optional[bool] = None
+    path: Path; exists: bool; creation_time: Optional[datetime]; modification_time: Optional[datetime]
+    checked_time: Optional[datetime]; age: Optional[timedelta]
+    is_older_than: Optional[bool]=None; is_younger_than: Optional[bool]=None
 
-
+# Notes:
+# -----
+# Regarding the inspect method, Inspect one or more files under self.base_path.
+# 
+# - date_field: "created" (birth/ctime) or "modified" (mtime).
+# - threshold_n + threshold_unit: compare file age to a timedelta.
+# - threshold_dt: compare chosen timestamp to an absolute datetime.
+# - include_shortcuts: how to handle " - Shortcut.lnk" files.
 class FileInspector:
     def __init__(self, base_path: Union[str, Path]):
         self.base_path = Path(base_path)
         if not self.base_path.exists() or not self.base_path.is_dir():
             raise ValueError(f"{self.base_path!r} is not a valid directory")
-
-    def inspect(self,
-                filenames: Union[str, List[str]],
-                *,
-                date_field: str = _DEFAULT_DATE_FIELD,
-                threshold_n: Optional[float] = None,
-                threshold_unit: str = "days",
-                threshold_dt: Optional[datetime] = None,
-                include_shortcuts: bool = True
-               ) -> Dict[str, FileInfo]:
-        """
-        Inspect one or more files under self.base_path.
-        
-        - date_field: "created" (birth/ctime) or "modified" (mtime).
-        - threshold_n + threshold_unit: compare file age to a timedelta.
-        - threshold_dt: compare chosen timestamp to an absolute datetime.
-        - include_shortcuts: how to handle " - Shortcut.lnk" files.
-        """
-        # validate date_field
-        if date_field not in {"created", "modified"}:
-            raise ValueError("date_field must be 'created' or 'modified'")
-
-        if threshold_n is not None and threshold_dt is not None:
-            raise ValueError("Specify either threshold_n or threshold_dt, not both")
-
-        # build timedelta threshold if requested
+    def inspect(self, filenames: Union[str, List[str]], *, date_field: str = _DEFAULT_DATE_FIELD,
+                threshold_n: Optional[float] = None, threshold_unit: str = "days",
+                threshold_dt: Optional[datetime] = None, include_shortcuts: bool = True) -> Dict[str, FileInfo]:
+        if date_field not in {"created","modified"}: raise ValueError("date_field must be 'created' or 'modified'")
+        if threshold_n is not None and threshold_dt is not None: raise ValueError("Specify either threshold_n or threshold_dt, not both")
         td_threshold = None
         if threshold_n is not None:
             if threshold_unit not in {"days","hours","minutes","seconds"}:
                 raise ValueError("threshold_unit must be one of days, hours, minutes, seconds")
             td_threshold = timedelta(**{threshold_unit: threshold_n})
-
-        now = datetime.now()
-        suffix = " - Shortcut.lnk"
-        results: Dict[str, FileInfo] = {}
-
-        if isinstance(filenames, str):
-            filenames = [filenames]
-
+        now = datetime.now(); suffix = " - Shortcut.lnk"; results = {}
+        if isinstance(filenames, str): filenames = [filenames]
         for orig in filenames:
-            # resolve raw vs. shortcut handling
-            if include_shortcuts:
-                candidates = [self.base_path / orig]
+            if include_shortcuts: candidates = [self.base_path/orig]
             else:
                 raw = orig[:-len(suffix)] if orig.endswith(suffix) else orig
-                candidates = [
-                    self.base_path / raw,
-                    self.base_path / (raw + suffix)
-                ]
-
+                candidates = [self.base_path/raw, self.base_path/(raw+suffix)]
             chosen = next((p for p in candidates if p.exists()), candidates[0])
             exists = chosen.exists()
-
-            # fetch timestamps
             ctime = mtime = checked = age = None
             if exists:
                 stat = chosen.stat()
-                # always record both raw times
-                ctime = datetime.fromtimestamp(getattr(stat, "st_birthtime", stat.st_ctime))
+                ctime = datetime.fromtimestamp(getattr(stat,"st_birthtime",stat.st_ctime))
                 mtime = datetime.fromtimestamp(stat.st_mtime)
-
-                # pick which one to check against the threshold
-                if date_field == 'created':
-                    checked = ctime
-                else:
-                    checked = mtime
+                checked = ctime if date_field=='created' else mtime
                 age = now - checked
-
-            # Compare to whichever threshold was given
             is_older = is_younger = None
             if checked and threshold_dt:
-                is_older   = checked < threshold_dt
-                is_younger = checked > threshold_dt
+                is_older = checked < threshold_dt; is_younger = checked > threshold_dt
             elif age and td_threshold:
-                is_older   = age > td_threshold
-                is_younger = age < td_threshold
-
-            results[orig] = FileInfo(
-                path=chosen,
-                exists=exists,
-                creation_time=ctime,
-                modification_time=mtime,
-                checked_time=checked,
-                age=age,
-                is_older_than=is_older,
-                is_younger_than=is_younger
-            )
-
+                is_older = age > td_threshold; is_younger = age < td_threshold
+            results[orig] = FileInfo(path=chosen, exists=exists, creation_time=ctime, modification_time=mtime,
+                                    checked_time=checked, age=age, is_older_than=is_older, is_younger_than=is_younger)
         return results
-
-    def Date(self,
-             year: int,
-             month: int,
-             day: int,
-             hour: int = 0,
-             minute: int = 0,
-             second: int = 0,
-             microsecond: int = 0
-            ) -> datetime:
-        """
-        Construct and return a datetime from the given components.
-        Example:
-            insp.Date(2025, 7, 9, 2, 16, 40, 667068)
-        """
+    def Date(self, year: int, month: int, day: int, hour: int=0, minute: int=0, second: int=0, microsecond: int=0) -> datetime:
         return datetime(year, month, day, hour, minute, second, microsecond)
-       
-    def last_scheduled_update(self,
-                              hour: int = 0,
-                              minute: int = 0,
-                              now: Optional[datetime] = None
-                             ) -> datetime:
-        """
-        Return the most recent Mon–Fri at `hour:minute` (skipping weekends).
-        """
-        now = now or datetime.now()
-        weekday = now.weekday()  # Mon=0 … Sun=6
+    def last_scheduled_update(self, hour: int = 0, minute: int = 0, now: Optional[datetime] = None) -> datetime:
+        now = now or datetime.now(); weekday = now.weekday()
         scheduled = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-
-        if weekday >= 5:
-            # Sat (5) or Sun (6) → back up to Friday
-            days_back = weekday - 4
-            last = (now - timedelta(days=days_back)).replace(hour=hour,
-                                                            minute=minute,
-                                                            second=0,
-                                                            microsecond=0)
+        if weekday >= 5: last = (now-timedelta(days=weekday-4)).replace(hour=hour,minute=minute,second=0,microsecond=0)
         elif now < scheduled:
-            # Before today's run → use yesterday (or Fri if today is Mon)
-            if weekday == 0:  # Monday
-                last = (now - timedelta(days=3)).replace(hour=hour,
-                                                         minute=minute,
-                                                         second=0,
-                                                         microsecond=0)
-            else:
-                last = (now - timedelta(days=1)).replace(hour=hour,
-                                                         minute=minute,
-                                                         second=0,
-                                                         microsecond=0)
-        else:
-            # It’s on or after today’s scheduled time
-            last = scheduled
-
-        return last       
+            last = (now-timedelta(days=3)).replace(hour=hour,minute=minute,second=0,microsecond=0) if weekday==0 \
+                else (now-timedelta(days=1)).replace(hour=hour,minute=minute,second=0,microsecond=0)
+        else: last = scheduled
+        return last         
 
 
 ######################################################################
 # Data‐Package & Messages
 ######################################################################
-
 @dataclass
 class Package:
-    id: str
-    filename: str
-    url: str
-    schedule_hour: int = 0
-    schedule_minute: int = 0
+    id: str; filename: str; url: str; schedule_hour: int = 0; schedule_minute: int = 0
 
-class DownloaderMessage:
-    """Base class for status messages."""
-
+class DownloaderMessage: pass
 class StartDownloadMessage(DownloaderMessage):
-    def __init__(self, pkg: Package):
-        self.package = pkg
-
+    def __init__(self, pkg: Package): self.package = pkg
 class UpToDateMessage(DownloaderMessage):
-    def __init__(self, pkg: Package):
-        self.package = pkg
-
+    def __init__(self, pkg: Package): self.package = pkg
 class StaleMessage(DownloaderMessage):
-    def __init__(self, pkg: Package):
-        self.package = pkg
-
+    def __init__(self, pkg: Package): self.package = pkg
 class FinishDownloadMessage(DownloaderMessage):
-    def __init__(self, pkg: Package):
-        self.package = pkg
-
+    def __init__(self, pkg: Package): self.package = pkg
 class ErrorMessage(DownloaderMessage):
-    def __init__(self, pkg: Package, message: str):
-        self.package = pkg
-        self.message = message
+    def __init__(self, pkg: Package, message: str): self.package = pkg; self.message = message
+
 
 ######################################################################
 # Downloader
 ######################################################################
-
+"""
+Manages a collection of Package entries and only downloads
+those whose local copy is missing or stale (per schedule).
+"""
 class Download:
-    """
-    Manages a collection of Package entries and only downloads
-    those whose local copy is missing or stale (per schedule).
-    """
-    def __init__(self,
-                 packages: List[Package],
-                 download_dir=Device.quantsumore_default):                 
-        self.packages: Dict[str,Package] = {p.id: p for p in packages}
-        self.download_dir = download_dir        
+    def __init__(self, packages: List[Package], download_dir=Device.quantsumore_default):
+        self.packages = {p.id: p for p in packages}; self.download_dir = download_dir
         self.inspector = FileInspector(self.download_dir)
-
-    def incr_download(self,
-                      pkg_or_id: Union[str,Package],
-                      force: bool = False,
-                      replace: bool = False):
-        """
-        Yields DownloaderMessage events.  If replace=True, files are
-        written to a temp file and atomically swapped in.
-        """
-        import requests # Third-party library imports (from PyPI or other package sources)        
-
+    def incr_download(self, pkg_or_id: Union[str,Package], force: bool = False, replace: bool = False):
+        import requests
         pkg = pkg_or_id if isinstance(pkg_or_id, Package) else self.packages[pkg_or_id]
         yield StartDownloadMessage(pkg)
-
         try:
-            # 1) Check staleness against Mon–Fri @ hour:minute
-            threshold = self.inspector.last_scheduled_update(
-                pkg.schedule_hour, pkg.schedule_minute
-            )
-            info = self.inspector.inspect(
-                pkg.filename, threshold_dt=threshold
-            )[pkg.filename]
-
-            # Already fresh?
+            threshold = self.inspector.last_scheduled_update(pkg.schedule_hour, pkg.schedule_minute)
+            info = self.inspector.inspect(pkg.filename, threshold_dt=threshold)[pkg.filename]
             if not force and info.exists and not info.is_older_than:
-                yield UpToDateMessage(pkg)
-                yield FinishDownloadMessage(pkg)
-                return
-
-            # Stale (or missing)
-            if info.exists:
-                yield StaleMessage(pkg)
-
-            # 2) Download new content
-            resp = requests.get(pkg.url)
-            resp.raise_for_status()
-
-            # 3) Prepare paths
-            dest = self.download_dir / pkg.filename
-            dest.parent.mkdir(parents=True, exist_ok=True)
-
+                yield UpToDateMessage(pkg); yield FinishDownloadMessage(pkg); return
+            if info.exists: yield StaleMessage(pkg)
+            resp = requests.get(pkg.url); resp.raise_for_status()
+            dest = self.download_dir / pkg.filename; dest.parent.mkdir(parents=True, exist_ok=True)
             if replace:
-                # Atomic replacement
                 tmp = dest.with_suffix(dest.suffix + ".tmp")
-                if tmp.exists():
-                    tmp.unlink()               # remove old temp
-                with open(tmp, "wb") as f:
-                    f.write(resp.content)
-                os.replace(tmp, dest)         # atomic swap; new inode, new ctime
+                if tmp.exists(): tmp.unlink()
+                with open(tmp, "wb") as f: f.write(resp.content)
+                os.replace(tmp, dest)
             else:
-                # In-place overwrite
-                with open(dest, "wb") as f:
-                    f.write(resp.content)
-
+                with open(dest, "wb") as f: f.write(resp.content)
             yield FinishDownloadMessage(pkg)
-
         except Exception as e:
             yield ErrorMessage(pkg, str(e))
-        
-    def download(self,
-                 pkg_or_id: Union[str,Package],
-                 force: bool = False,
-                 quiet: bool = False,
-                 replace: bool = False):
-        """
-        Consume the incr_download generator, printing status as we go.
-        """
+    def download(self, pkg_or_id: Union[str,Package], force: bool = False, quiet: bool = False, replace: bool = False):
         for msg in self.incr_download(pkg_or_id, force, replace):
-            if quiet:
-                continue
-
-            if isinstance(msg, StartDownloadMessage):
-                # no print here—will only announce on stale
-                pass
-
-            elif isinstance(msg, UpToDateMessage):
-                print(f"`{msg.package.id}` is up-to-date.")
-
+            if quiet: continue
+            if isinstance(msg, UpToDateMessage): print(f"`{msg.package.id}` is up-to-date.")
             elif isinstance(msg, StaleMessage):
                 print(f"Downloading `{msg.package.id}` …")
                 print(f"`{msg.package.id}` is stale. Refreshing…")
-
-            elif isinstance(msg, FinishDownloadMessage):
-                print(f"Finished `{msg.package.id}` at {datetime.now()}.")
-
+            elif isinstance(msg, FinishDownloadMessage): print(f"Finished `{msg.package.id}` at {datetime.now()}.")
             elif isinstance(msg, ErrorMessage):
-                print(f"Error downloading `{msg.package.id}`: {msg.message}")
-                break
-
-    def update(self,
-               quiet: bool = False,
-               replace: bool = False):
-        """
-        Iterate over all packages and download/replace as needed.
-        Pass replace=True to force an atomic, new‐file creation.
-        """
+                print(f"Error downloading `{msg.package.id}`: {msg.message}"); break
+    def update(self, quiet: bool = False, replace: bool = False):
         for pkg_id in self.packages:
             self.download(pkg_id, force=False, quiet=quiet, replace=replace)
             
 def __dir__():
     return __all__
-
-
-
