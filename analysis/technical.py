@@ -294,12 +294,13 @@ class tAnalyze:
                 raise ValueError(f"Missing required columns: {missing}")
                
         def rename_cols(self):
-        # —— ADDITION: if the very first column is "Timestamp", treat it as Date —— #
-        cols = list(self.df.columns)
-        if cols and cols[0].lower() == 'timestamp':
-            # rename Timestamp → Date so that the rest of your logic picks it up
-            self.df = self.df.rename(columns={cols[0]: 'Date'})
-        # —— end —— #        	
+            # —— ADDITION: if the very first column is "Timestamp", treat it as Date —— #
+            cols = list(self.df.columns)
+            if cols and cols[0].lower() == 'timestamp':
+                # rename Timestamp → Date so that the rest of your logic picks it up
+                self.df = self.df.rename(columns={cols[0]: 'Date'})
+            # —— end —— #  
+          
             def find_best_matches(df):
                 keyword_map = {
                     'Symbol': ['ticker', 'symbol'],
@@ -314,13 +315,14 @@ class tAnalyze:
                 for standard_name, keywords in keyword_map.items():
                     for keyword in keywords:
                         pattern = re.compile(r'^' + keyword + r'|' + keyword, re.IGNORECASE)
-                        best_matches = sorted([col for col in df.columns if pattern.search(col)],
-                                              key=lambda x: not x.lower().startswith(keyword))
+                        best_matches = sorted(
+                            [col for col in df.columns if pattern.search(col)],
+                            key=lambda x: not x.lower().startswith(keyword)
+                        )
                         if best_matches:
                             column_renames[best_matches[0]] = standard_name
                             break
                 return column_renames
-
             column_map = find_best_matches(self.df)
             if not column_map:
                 raise ValueError("Failed to match critical columns based on keywords.")
@@ -1419,3 +1421,4 @@ class tAnalyze:
 
 def __dir__():
     return __all__
+
