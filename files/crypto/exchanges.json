@@ -9550,6 +9550,11 @@
             "exchangeName": "SwapX Algebra",
             "exchangeSlug": "swapx-sonic"
         },
+        "11598": {
+            "exchangeId": "11598",
+            "exchangeName": "Moonit",
+            "exchangeSlug": "moonit"
+        },
         "11608": {
             "exchangeId": "11608",
             "exchangeName": "CEEX exchange",
@@ -9823,7 +9828,7 @@
         "12322": {
             "exchangeId": "12322",
             "exchangeName": "Meteora DBC",
-            "exchangeSlug": "meteora-dbcs"
+            "exchangeSlug": "meteora-dbc-solana"
         },
         "12325": {
             "exchangeId": "12325",
@@ -9939,6 +9944,11 @@
             "exchangeId": "12715",
             "exchangeName": "PancakeSwap v4 LBAMM(BSC)",
             "exchangeSlug": "pancakeswap-v4-lbamm-bsc"
+        },
+        "12761": {
+            "exchangeId": "12761",
+            "exchangeName": "1DEX",
+            "exchangeSlug": "1dex"
         }
     }
 }
