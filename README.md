@@ -216,7 +216,7 @@ from quantsumore.api import equity
 
 ```python
 # Fetch company bio for Apple Inc.
-company_bio = equity.Profile.bio(ticker="AAPL")
+company_bio = equity.Profile.bio(ticker="AAPL", api_key=None)
 print(company_bio)
 ```
 
@@ -224,7 +224,7 @@ print(company_bio)
 
 ```python
 # Fetch the latest stock price for Apple Inc.
-latest_price = equity.Latest(ticker="AAPL")
+latest_price = equity.Latest(ticker="AAPL", api_key=None)
 print(f"Latest stock price for AAPL: {latest_price}")
 ```
 
@@ -232,7 +232,7 @@ print(f"Latest stock price for AAPL: {latest_price}")
 
 ```python
 # Fetch historical stock price data for Apple from January 1, 2024, to January 10, 2024
-historical_data = equity.Historical(ticker="AAPL", start="2024-01-01", end="2024-01-10")
+historical_data = equity.Historical(ticker="AAPL", start="2024-01-01", end="2024-01-10", api_key=None)
 print(historical_data)
 ```
 
@@ -251,7 +251,7 @@ from quantsumore.api import forex
 
 ```python
 # Convert 100 Euros to USD based on the latest conversion rates
-conversion_data = forex.CurrencyConversion(currency_pair="EURUSD", conversion_amount=100)
+conversion_data = forex.CurrencyConversion(currency_pair="EURUSD", conversion_amount=100, api_key=None)
 print(conversion_data)
 ```
 
@@ -260,7 +260,7 @@ print(conversion_data)
 
 ```python
 # Fetch historical exchange rates for EUR/USD from January 1, 2024, to January 10, 2024
-historical_data = forex.Historical(currency_pair="EURUSD", start="2024-01-01", end="2024-01-10")
+historical_data = forex.Historical(currency_pair="EURUSD", start="2024-01-01", end="2024-01-10", api_key=None)
 print(historical_data)
 ```
 
@@ -474,5 +474,6 @@ atr = analyze.AverageTrueRange()
 atr.plot_atr()
 ```
 ---
+
 
 
