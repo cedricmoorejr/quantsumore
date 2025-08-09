@@ -96,22 +96,32 @@ The `quantsumore` library is a comprehensive Python package designed for retriev
 3. **Set your API key globally** (recommended for most users):
 
    ```python
-   from quantsumore.api import APIKey, equity
+    from quantsumore.api import APIKey, equity
 
-   # Set your API key once (recommended)
-   APIKey("YOUR_API_KEY_HERE")
+    # Set your API key once (recommended)
+    APIKey("YOUR_API_KEY_HERE")
 
-   # Now you can make requests
-   company_bio = equity.CompanyBio(ticker="META")
+    # OR
+
+    APIKey("YOUR_API_KEY_HERE", persist=True)   # validates -> sets -> saves (keyring + file fallback)
+
+    # Can Use this later so that you dont have to supply the key manually
+    # APIKey.auto()   # loads from env/keyring/file, re-validates, sets Connection.APIKey
+
+    # Now you can make requests
+    company_bio = equity.Profile.bio(
+        ticker, 
+        api_key=None
+    )
    ```
-
+   
 4. **Or, pass your API key per request** (useful for multi-user or multi-key setups):
 
    ```python
    from quantsumore.api import equity
 
    # Pass your API key directly to the method
-   company_bio = equity.CompanyBio(
+   company_bio = equity.Profile.bio(
        ticker="META",
        api_key="YOUR_API_KEY_HERE"
    )
@@ -464,4 +474,5 @@ atr = analyze.AverageTrueRange()
 atr.plot_atr()
 ```
 ---
+
 
