@@ -51,3 +51,94 @@
 ## │                    permissions and limitations under the License.                           │
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
+
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
+from ..proxy import Proxy
+
+__all__ = ['MovingAveragesAndBollingerBands']
+
+
+
+        
+# ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This segment delineates the functional backbone of the module.
+# It comprises the abstractions and behaviors essential for runtime
+# execution—if applicable—encapsulated in class and function constructs.
+# In minimal implementations, this may simply define constants, metadata,
+# or serve as an interface placeholder.
+
+# Lazily load the entire modules; actual imports occurs on first use.
+# pd = Proxy("pandas", None)  # Third-party library imports (from PyPI or other package sources)  
+plt = Proxy("matplotlib.pyplot")  # Third-party library imports (from PyPI or other package sources)  
+np = Proxy("numpy")  # Third-party library imports (from PyPI or other package sources)  
+
+
+class MovingAveragesAndBollingerBands:
+    def __init__(self, parent, sma_period=20, ema_period=20, bb_period=20, bb_std=2):
+        self.parent = parent
+        self.df = self.parent.df
+        self.sma_period = sma_period
+        self.ema_period = ema_period
+        self.bb_period = bb_period
+        self.bb_std = bb_std
+
+        # Verify sufficient data before proceeding
+        max_period = max(self.sma_period, self.ema_period, self.bb_period)
+        self.parent.verify_period_sufficiency(max_period)
+
+        # Calculate indicators and signals
+        self._calculate_sma()
+        self._calculate_ema()
+        self._calculate_bollinger_bands()
+        self._detect_crossovers()
+
+    def _calculate_sma(self):
+        self.df['SMA'] = self.df['Close'].rolling(window=self.sma_period).mean()
+
+    def _calculate_ema(self):
+        self.df['EMA'] = self.df['Close'].ewm(span=self.ema_period, adjust=False).mean()
+
+    def _calculate_bollinger_bands(self):
+        self.df['BB_Middle'] = self.df['Close'].rolling(window=self.bb_period).mean()
+        self.df['BB_Upper'] = self.df['BB_Middle'] + (self.bb_std * self.df['Close'].rolling(window=self.bb_period).std())
+        self.df['BB_Lower'] = self.df['BB_Middle'] - (self.bb_std * self.df['Close'].rolling(window=self.bb_period).std())
+
+    def _detect_crossovers(self):
+        self.df['Signal'] = 'None'
+
+        # Detect when EMA crosses above SMA (Bullish Crossover)
+        self.df['Signal'] = np.where((self.df['EMA'] > self.df['SMA']) & (self.df['EMA'].shift(1) <= self.df['SMA'].shift(1)),
+                                     'Buy', self.df['Signal'])
+
+        # Detect when EMA crosses below SMA (Bearish Crossover)
+        self.df['Signal'] = np.where((self.df['EMA'] < self.df['SMA']) & (self.df['EMA'].shift(1) >= self.df['SMA'].shift(1)),
+                                     'Sell', self.df['Signal'])
+
+    def get_indicators(self):
+        return self.df[['Date', 'Close', 'SMA', 'EMA', 'BB_Middle', 'BB_Upper', 'BB_Lower', 'Signal']]
+
+    def plot_indicators(self):
+        plt.figure(figsize=(14, 8))
+        plt.plot(self.df['Date'], self.df['Close'], label='Close Price', color='black')
+        plt.plot(self.df['Date'], self.df['SMA'], label=f'SMA {self.sma_period}', color='blue')
+        plt.plot(self.df['Date'], self.df['EMA'], label=f'EMA {self.ema_period}', color='red')
+        plt.plot(self.df['Date'], self.df['BB_Middle'], label='Bollinger Middle Band', color='green')
+        plt.plot(self.df['Date'], self.df['BB_Upper'], label='Bollinger Upper Band', color='orange')
+        plt.plot(self.df['Date'], self.df['BB_Lower'], label='Bollinger Lower Band', color='orange')
+        plt.fill_between(self.df['Date'], self.df['BB_Upper'], self.df['BB_Lower'], color='orange', alpha=0.1)
+
+        # Highlight Buy and Sell signals
+        plt.scatter(self.df[self.df['Signal'] == 'Buy']['Date'],
+                    self.df[self.df['Signal'] == 'Buy']['Close'], color='green', label='Buy Signal', marker='^')
+        plt.scatter(self.df[self.df['Signal'] == 'Sell']['Date'],
+                    self.df[self.df['Signal'] == 'Sell']['Close'], color='red', label='Sell Signal', marker='v')
+
+        plt.title('SMA, EMA, Bollinger Bands, and Signals')
+        plt.xlabel('Date')
+        plt.ylabel('Price')
+        plt.legend(loc='upper left')
+        plt.grid(True)
+        plt.show()
+
+def __dir__():
+    return __all__

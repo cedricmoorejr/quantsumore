@@ -145,9 +145,16 @@ from ..exceptions import (
     DividendHistoryUnavailableError,
     FinancialStatementUnavailableError,
     FinancialDataNotLoadedError,
+    APIQuotaError,    
+    APIKeyRequiredError,
+    APIRequestError,    
 )
+from ..__relaytable__ import __API_BASE__
 
-__all__ = ['process']
+__all__ = [
+    # 'process',
+    'get_process'
+    ]    
 
 
 # ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -156,7 +163,53 @@ __all__ = ['process']
 # execution—if applicable—encapsulated in class and function constructs.
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
+def fetch_financials_dividends_pair(pairs, api_key=None, base_url=None, timeout=20):
+    """
+    Special case: hit /relay/pair with two (base, endpoint) tuples, but
+    borrow API key handling & error semantics from Connection (_httpClient).
+    """
+    import requests    
+    # --- validate inputs
+    if len(pairs) != 2:
+        raise ValueError("Provide exactly two (base, endpoint) tuples")
 
+    # --- borrow stored API key if none was passed
+    if api_key is None:
+        api_key = getattr(Connection, "api_key", None)
+        if not api_key:
+            raise APIKeyRequiredError(
+                "API key is required. Use APIKey() first or pass api_key."
+            )
+
+    # --- default to the same base URL as your normal relay uplink
+    if base_url is None:
+        try:
+            # reuse Connection's base_url if set
+            base_url = getattr(Connection, "base_url", None)
+            if not base_url:
+                base_url = __API_BASE__
+        except AttributeError:
+            base_url = __API_BASE__
+
+    payload = {"items": [{"base": b, "endpoint": e} for (b, e) in pairs]}
+    headers = {
+        "X-API-Key": api_key,
+        "Content-Type": "application/json",
+        "User-Agent": "APIClient/1.0"
+    }
+    url = f"{base_url.rstrip('/')}/relay/pair"
+
+    try:
+        # if you want to reuse the same session as Connection for keep-alive headers:
+        session = getattr(Connection, "_get_session")()
+        r = session.post(url, json=payload, headers=headers, timeout=timeout)
+        r.raise_for_status()
+        return r.json()
+    except requests.exceptions.HTTPError as e:
+        raise APIRequestError(e)
+    except requests.RequestException as e:
+        raise APIRequestError(requests.exceptions.HTTPError(str(e)))  
+       
 class APIClient:
     """
     Unified Fetcher for Equity Financial Statements and Dividend Data
@@ -230,8 +283,19 @@ class APIClient:
         content : list of dict
             Raw response payload(s) as returned by the `Connection.Request` proxy.
         """    	
-        return Connection.RequestBatch(urls=url, api_key=api_key)
+        base = url[0].decode() if isinstance(url[0], bytes) else url[0]
+        endpoint = url[1]
+        content = Connection.Request(
+            url=(base, endpoint),
+            api_key=api_key,
+            params=None,
+            return_url=True
+        )      
+        return content
     
+    def _make_pair(self, pairs, api_key=None):
+        return fetch_financials_dividends_pair(pairs, api_key)
+       
     def _urls(self, ticker, period):
         """
         Construct all required endpoint URLs for both financials and dividends.
@@ -287,24 +351,31 @@ class APIClient:
         Categorization is based on URL patterns; endpoints containing 'dividend' are
         grouped separately from those containing 'financials'.
         """    	
-        categorized_content = {'dividend': [], 'financial_statements': []}
+        categorized = {'dividend': [], 'financial_statements': []}
         url_pattern = re.compile(
             r"""
-            ^                                   # Start of string
-            [\w+/=.-]+                          # Opaque part (letters, digits, _, /, +, =, ., -)
-            /                                   # Slash separating the base from route
-            [\w.-]+                             # Route (letters, digits, _, ., -)
-            (?:\?[\w=&%.-]*)?                   # Optional query string
-            $                                   # End of string
+            ^[\w+/=.-]+/[\w.-]+(?:\?[\w=&%.-]*)?$
             """,
             re.VERBOSE
-        )    
+        )  
+                    
+        # Flatten: accept list[dict] or list[list[dict]]
+        flat = []
         for entry in content:
+            if isinstance(entry, dict):
+                flat.append(entry)
+            elif isinstance(entry, list):
+                flat.extend(d for d in entry if isinstance(d, dict))
+
+        for entry in flat:
             for url, data in entry.items():
-                if url_pattern.search(url):
-                    if "dividend" in url: categorized_content['dividend'].append({url: data})
-                    elif "financials" in url: categorized_content['financial_statements'].append({url: data})
-        return categorized_content     
+                if url_pattern.fullmatch(url):           
+                    u = url.lower()
+                    if "dividend" in u:                   
+                        categorized['dividend'].append({url: data})
+                    elif "financials" in u:
+                        categorized['financial_statements'].append({url: data})
+        return categorized     
 
     def Process(self, ticker, period="Q", api_key=None):
         """
@@ -332,8 +403,22 @@ class APIClient:
         downstream consumers are responsible for error handling and messaging.
         """    	
         urls = self._urls(ticker=ticker, period=period)
-        content = self._make_request(urls, api_key=api_key)
-        categorized = self._categorize_content(content)
+        try:
+            Connection._anyquota(needed=1, api_key=api_key, force=True)
+        except QuotaError as e:
+            return {
+                "error": "INSUFFICIENT_QUOTA",
+                "detail": str(e),
+                "needed": 2,
+                "available": e.available,
+            }        
+        
+        try:
+            responses = fetch_financials_dividends_pair(urls, api_key=api_key)
+        except APIRequestError as e:
+            return {"error": "REQUEST_FAILED", "detail": str(e)}        
+        categorized = self._categorize_content(responses)
+        
         results = {'financial_statements': [], 'dividend': []}
         fin_content = categorized.get('financial_statements', [])
         if fin_content:
@@ -348,8 +433,12 @@ class APIClient:
                 results['dividend'] = [(dv_obj.DividendReport, dv_obj.DividendData)]
             except (DividendHistoryNoDataError, DividendHistoryUnavailableError): pass
         return results
-       
-process = APIClient(equity_adapter)
+
+
+# process = APIClient(equity_adapter)
+def get_process():
+    from quantsumore.api.prep import equity_adapter
+    return APIClient(equity_adapter)
 
 def __dir__():
     return __all__

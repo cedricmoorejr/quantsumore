@@ -53,45 +53,6 @@
 #
 
 """
-External Data Attribution & Obfuscation Policy
-══════════════════════════════════════════════════════════════════════════════
-NOTE ON DATA PROVIDERS & ABSTRACT LABELS
-──────────────────────────────────────────────────────────────────────────────
-This codebase integrates with multiple upstream financial data providers for
-equities, FX, and cryptocurrency data. To avoid any implication of
-partnership, endorsement, or official affiliation — and to comply with
-licensing restrictions — **all external sources are referenced by abstract
-labels only** (e.g., EquityProviderA, ForexProviderB).
-
-Key Practices:
-- Real provider names, domains, and API details are **intentionally obfuscated**
-  and managed centrally in an internal registry.
-- These abstract labels are used consistently across all modules, docstrings,
-  and UI elements.
-- This structure ensures **vendor neutrality**, **legal clarity**, and easier
-  provider substitution.
-
-Provider Label Registry (Partial)
-──────────────────────────────────────────────────────────────────────────────
-Abstract Label   | Encoded Provider       | Purpose / Description
----------------- | ---------------------- | -------------------------------------------------------
-EquityProviderA  | WWFob28gRmluYW5jZQ==   | Widely-used financial data aggregator
-                 | WWFob28gRmluYW5jZQ==   | Same as A; historical price chart API
-                 | WWFob28gRmluYW5jZQ==   | Same as A; real-time prices (Spark API)
-EquityProviderD  | TmFzZGFx               | Major US-based stock exchange
-                 | TmFzZGFx               | Same as D; dividend payout history
-                 | TmFzZGFx               | Same as D; IPO calendar feed
-ForexProviderA   | QmFyY2hhcnQ=           | Financial data & analytics platform
-ForexProviderB   | TVRGWCBHcm91cA==       | International FX rates specialist
-                 | TVRGWCBHcm91cA==       | Same as B; historical exchange rates
-ForexProviderD   | TmFzZGFx               | Same as D; bid/ask FX pricing data
-CryptoProviderA  | Q29pbk1hcmtldENhcA==   | Crypto market data aggregator
-                 | Q29pbk1hcmtldENhcA==   | Same as A; historical crypto price/time series
-
-* The full registry is kept in restricted/internal documentation.
-"""
-
-"""
 fAnalyze: Unified Engine for Financial Statement Analysis, Ratio Computation, and Excel Export
 ────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -504,12 +465,15 @@ class fAnalyze:
         """ Return a copy of the DataFrame with all missing values (NaN/NA) replaced by empty strings."""    	
         df = deepcopy(df)
         return df.fillna("")
+       
+    def is_loaded(self, df):
+        return df is not None and not df.empty      
            
-    def __call__(self, ticker, period):
-        """ Calls the instance as a function to fetch and process financial data for a specified ticker and period."""     	
-        self.get_financial_data(ticker, period)
+    def __call__(self, ticker, period, api_key=None):
+        """ Calls the instance as a function to fetch and process financial data for a specified ticker and period."""    	
+        self.get_financial_data(ticker, period, api_key=api_key)    
         
-    def get_financial_data(self, ticker, period):
+    def get_financial_data(self, ticker, period, api_key=None):    
         """
         Fetch and load all available financial statements and dividend data for a specified ticker and period.
 
@@ -567,7 +531,7 @@ class fAnalyze:
             self.dividend_report = cached_data.get('dividend_report', None)
         else:
             # 1. Attempt to Load Financial Statements
-            data = self.engine.Process(self.ticker, period)
+            data = self.engine.Process(self.ticker, period, api_key=api_key)   
             statements = data.get('financial_statements', [])
 
             # 1a. No statements returned at all
@@ -607,16 +571,19 @@ class fAnalyze:
                 }
 
                 # 1b-iii. Reporting: check if all were loaded, or note which are missing
-                if all([loaded_income, loaded_balance, loaded_cashflow]):
+                if self.is_loaded(loaded_income) and self.is_loaded(loaded_balance) and self.is_loaded(loaded_cashflow):
                     print(f"Financial Statements successfully loaded for {self.ticker}.")
                 else:
                     missing = []
-                    if loaded_income is None:    missing.append("Income Statement")
-                    if loaded_balance is None:   missing.append("Balance Sheet")
-                    if loaded_cashflow is None:  missing.append("Cash Flow Statement")
+                    if loaded_income is None or loaded_income.empty:
+                        missing.append("Income Statement")
+                    if loaded_balance is None or loaded_balance.empty:
+                        missing.append("Balance Sheet")
+                    if loaded_cashflow is None or loaded_cashflow.empty:
+                        missing.append("Cash Flow Statement")
 
                     print(f"Financial Statements loaded for {self.ticker}.")
-                    print(f"  • Missing: {', '.join(missing)}")
+                    print(f"  • Missing: {', '.join(missing)}")                
 
             # 2. Attempt to Load Dividend Data
             divs = data.get('dividend', [])

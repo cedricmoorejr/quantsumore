@@ -180,6 +180,17 @@ from copy import deepcopy
 from ..date_parser import dtparse
 from ..proxy import Proxy
 from ..exceptions import DataInitializationError
+from .indicators import (
+    DirectionalMovementIndex as _DirectionalMovementIndex,
+    AroonIndicator as _AroonIndicator,
+    OnBalanceVolume as _OnBalanceVolume,
+    AccumulationDistributionLine as _AccumulationDistributionLine,
+    MACD as _MACD,
+    RelativeStrengthIndex as _RelativeStrengthIndex,
+    FastStochasticOscillator as _FastStochasticOscillator,
+    MovingAveragesAndBollingerBands as _MovingAveragesAndBollingerBands,
+    AverageTrueRange as _AverageTrueRange,
+)
 
 __all__ = ['tAnalyze']
 
@@ -200,51 +211,80 @@ np = Proxy("numpy")  # Third-party library imports (from PyPI or other package s
 
 class tAnalyze:
     """
-    tAnalyze class to handle and preprocess financial data, and compute various technical indicators.
+    Central interface for preprocessing historical price data and computing technical indicators,
+    providing a unified, object-oriented API for trend, momentum, volume, and volatility analysis.
+
+    Purpose:
+    --------
+        The `tAnalyze` class orchestrates the end-to-end workflow for technical analysis.
+        It standardizes raw price data (cryptocurrency or equity), validates structure, and
+        exposes a suite of methods for generating industry-standard technical indicators.
+
+    Workflows:
+    ----------
+        - Data preprocessing: Load and standardize OHLCV data for a single symbol, with automatic
+          column mapping and type conversion.
+        - Indicator calculation: Compute trend, momentum, volume, and volatility metrics using
+          specialized indicator classes.
+        - Symbol consistency: Ensure all operations are performed on a single, validated symbol.
 
     Attributes:
-        dataframe (Dataframe): An instance of the Dataframe class that handles data preprocessing.
-        df (pd.DataFrame): The processed DataFrame containing financial data.
-        ticker (str): The ticker symbol of the stock or asset being analyzed, extracted from the DataFrame.
+    -----------
+        dataframe : Dataframe
+            Helper object responsible for preprocessing, validating, and structuring the input data.
+        df : pandas.DataFrame
+            Standardized OHLCV data for the selected symbol, with consistent column names and data types.
+        ticker : str
+            The ticker symbol or asset identifier for the loaded data.
 
     Methods:
-        DirectionalMovementIndex(period=14, adx_threshold=25):
-            Creates an instance of the _DirectionalMovementIndex class to compute the DMI and ADX indicators.
-        
-        AroonIndicator(period=25):
-            Creates an instance of the _AroonIndicator class to compute Aroon Up and Aroon Down indicators.
-        
-        OnBalanceVolume():
-            Creates an instance of the _OnBalanceVolume class to compute the OBV indicator.
-        
-        AccumulationDistributionLine():
-            Creates an instance of the _AccumulationDistributionLine class to compute the A/D Line indicator.
-        
-        MACD(short_window=12, long_window=26, signal_window=9):
-            Creates an instance of the _MACD class to compute the MACD line, Signal line, and MACD Histogram.
-        
-        RelativeStrengthIndex(period=14):
-            Creates an instance of the _RelativeStrengthIndex class to compute the RSI indicator.
-        
-        FastStochasticOscillator(k_period=14, d_period=3):
-            Creates an instance of the _FastStochasticOscillator class to compute the Stochastic Oscillator (%K and %D lines).
-        
-        MovingAveragesAndBollingerBands(sma_period=20, ema_period=20, bb_period=20, bb_std=2):
-            Creates an instance of the _MovingAveragesAndBollingerBands class to compute SMA, EMA, and Bollinger Bands.
-        
-        AverageTrueRange(atr_period=14):
-            Creates an instance of the _AverageTrueRange class to compute the ATR indicator.
+    --------
+        DirectionalMovementIndex(period=14, adx_threshold=25)
+            Compute the DMI and ADX indicators to measure directional strength and trend quality.
 
-    Example Usage:
+        AroonIndicator(period=25)
+            Compute the Aroon Up and Aroon Down indicators to identify emerging trends.
+
+        OnBalanceVolume()
+            Compute the OBV indicator to analyze price-volume relationships.
+
+        AccumulationDistributionLine()
+            Compute the A/D Line to assess the cumulative flow of volume.
+
+        MACD(short_window=12, long_window=26, signal_window=9)
+            Compute MACD, Signal line, and MACD Histogram for momentum analysis.
+
+        RelativeStrengthIndex(period=14)
+            Compute the RSI to identify overbought and oversold conditions.
+
+        FastStochasticOscillator(k_period=14, d_period=3)
+            Compute %K and %D lines for stochastic momentum evaluation.
+
+        MovingAveragesAndBollingerBands(sma_period=20, ema_period=20, bb_period=20, bb_std=2)
+            Compute SMA, EMA, and Bollinger Bands for trend and volatility analysis.
+
+        AverageTrueRange(atr_period=14)
+            Compute the ATR to measure market volatility.
+
+    Notes:
+    ------
+        - Automatically detects and renames columns for standard OHLCV format if column_map is not provided.
+        - Supports generating 'Symbol' column from a provided `ticker` when missing from data.
+        - Ensures that only one unique symbol is present in the dataset for consistent analysis.
+        - Date values are normalized to 'YYYY-MM-DD' format.
+        - Raises detailed errors for missing columns, type conversion failures, or insufficient data length.
+
+    Example:
+    --------
         >>> data = pd.DataFrame({
-                'Date': pd.date_range(start='2020-01-01', periods=100),
-                'High': np.random.rand(100) * 100 + 150,
-                'Low': np.random.rand(100) * 100 + 100,
-                'Open': np.random.rand(100) * 100 + 125,
-                'Close': np.random.rand(100) * 100 + 130,
-                'Volume': np.random.randint(100, 1000, size=100),
-                'Symbol': ['AAPL'] * 100
-            })
+        ...     'Date': pd.date_range(start='2020-01-01', periods=100),
+        ...     'High': np.random.rand(100) * 100 + 150,
+        ...     'Low': np.random.rand(100) * 100 + 100,
+        ...     'Open': np.random.rand(100) * 100 + 125,
+        ...     'Close': np.random.rand(100) * 100 + 130,
+        ...     'Volume': np.random.randint(100, 1000, size=100),
+        ...     'Symbol': ['AAPL'] * 100
+        ... })
         >>> analyze = tAnalyze(data)
         >>> dmi = analyze.DirectionalMovementIndex(period=14, adx_threshold=25)
         >>> aroon = analyze.AroonIndicator(period=25)
@@ -255,18 +295,65 @@ class tAnalyze:
         >>> fast_stochastic = analyze.FastStochasticOscillator()
         >>> moving_avg_bb = analyze.MovingAveragesAndBollingerBands()
         >>> atr = analyze.AverageTrueRange()
-    """	
-    def __init__(self, df):
+    """
+    def __init__(self, df, column_map=None, ticker=None, require_all=True):
+        """
+        Initialize a `tAnalyze` instance with validated and standardized historical price data.
+
+        Parameters:
+        -----------
+            df : pandas.DataFrame
+                Source OHLCV data containing columns for symbol, date, open, high, low, close, and volume.
+                Column names can be in any format; mapping and auto-detection will be applied.
+
+            column_map : dict or None, optional
+                Explicit mapping from the DataFrame’s existing column names to the required
+                standard names: {'Symbol','Date','Open','High','Low','Close','Volume'}.
+                Example: {'date_time':'Date', 'open_price':'Open', ...}.
+                Can be partial; any unmapped columns will be auto-detected.
+                Default is None.
+
+            ticker : str or None, optional
+                Symbol to assign if the input DataFrame has no 'Symbol' column.
+                Used to synthesize the column when missing. Default is None.
+
+            require_all : bool, optional
+                If True (default), all required columns must be present after mapping.
+                If False, only critical columns are required, and 'Symbol' may be generated from `ticker`.
+
+        Initializes:
+        -----------
+            dataframe : Dataframe
+                Preprocessing helper instance containing validated and standardized OHLCV data.
+            df : pandas.DataFrame
+                The standardized OHLCV DataFrame ready for technical analysis.
+            ticker : str
+                The symbol for the loaded dataset, taken from the first row of 'Symbol'.
+
+        Raises:
+        -------
+            DataInitializationError
+                If preprocessing fails due to missing columns, invalid types, or empty data.
+
+        Notes:
+        ------
+            - Automatically detects standard column names if not fully specified in `column_map`.
+            - Ensures only a single symbol is present in the dataset.
+            - Dates are normalized to 'YYYY-MM-DD' format before analysis.
+            - Prints a success message with the loaded symbol if initialization completes successfully.
+        """    	
         self.dataframe = None
         self.df = None
         self.ticker = None
         try:
-            self.dataframe = self.Dataframe(df)
-            self.df = self.dataframe.df  
-            self.ticker = self.df['Symbol'].iloc[0] 
+            self.dataframe = self.Dataframe(df, column_map=column_map, ticker=ticker, require_all=require_all)
+            self.df = self.dataframe.df
+            self.ticker = self.df['Symbol'].iloc[0]
             print(f"Historical prices successfully loaded for {self.ticker}.")
         except Exception as e:
-            raise DataInitializationError(f"Historical prices could not be loaded for {self.ticker or 'ticker symbol'}. Error: {e}")
+            raise DataInitializationError(
+                f"Historical prices could not be loaded for {self.ticker or 'ticker symbol'}. Error: {e}"
+            )
 
     def __dir__(self):
         return [
@@ -281,54 +368,88 @@ class tAnalyze:
         A class to preprocess and validate data for technical analysis. This class is 
         designed to handle and standardize data for both cryptocurrency and equity datasets.
         """	
-        def __init__(self, df: pd.DataFrame):
+        def __init__(self, df: pd.DataFrame, column_map=None, ticker=None, require_all=True):
             if df.empty:
                 raise ValueError("DataFrame is empty")
             self.df = deepcopy(df)
+            self._user_map = column_map or {}
+            self._ticker = ticker
+            self._require_all = require_all
+
             self.rename_cols()
+            self._maybe_add_symbol_from_ticker()
             self.convert_to_floats()
             self.filter_to_single_symbol()
             self.normalize_date()
+
             has_columns, missing = self.check_columns()
             if not has_columns:
                 raise ValueError(f"Missing required columns: {missing}")
-               
+
         def rename_cols(self):
-            # —— ADDITION: if the very first column is "Timestamp", treat it as Date —— #
-            cols = list(self.df.columns)
-            if cols and cols[0].lower() == 'timestamp':
-                # rename Timestamp → Date so that the rest of your logic picks it up
-                self.df = self.df.rename(columns={cols[0]: 'Date'})
-            # —— end —— #  
-          
+            original_cols = list(self.df.columns)
+            final_map = {}
+            allowed_targets = {'Symbol','Date','High','Low','Open','Close','Volume'}
+            bad_targets = [t for t in self._user_map.values() if t not in allowed_targets]
+            if bad_targets:
+                raise ValueError(f"Invalid target names in column_map: {bad_targets}. Allowed: {sorted(allowed_targets)}")
+            missing_sources = [s for s in self._user_map if s not in original_cols]
+            if missing_sources:
+                raise ValueError(f"column_map refers to columns not in DataFrame: {missing_sources}")
+            final_map.update(self._user_map)
+            if 'Date' not in final_map.values() and 'Timestamp' in self.df.columns:
+                final_map['Timestamp'] = 'Date'
+
+            # Auto-detect the rest
             def find_best_matches(df):
                 keyword_map = {
                     'Symbol': ['ticker', 'symbol'],
-                    'Date': ['date'],
-                    'High': ['high'],
-                    'Low': ['low'],
-                    'Open': ['open'],
-                    'Close': ['close'],
-                    'Volume': ['volume']
+                    'Date':   ['date'],
+                    'High':   ['high','h'],
+                    'Low':    ['low','l'],
+                    'Open':   ['open','o'],
+                    'Close':  ['close','c','adjclose','adj_close','adjustedclose'],
+                    'Volume': ['volume','vol','qty','quantity']
                 }
                 column_renames = {}
                 for standard_name, keywords in keyword_map.items():
+                    if standard_name in final_map.values():
+                        continue
                     for keyword in keywords:
                         pattern = re.compile(r'^' + keyword + r'|' + keyword, re.IGNORECASE)
-                        best_matches = sorted(
-                            [col for col in df.columns if pattern.search(col)],
-                            key=lambda x: not x.lower().startswith(keyword)
-                        )
-                        if best_matches:
-                            column_renames[best_matches[0]] = standard_name
-                            break
+                        best = sorted([c for c in df.columns if pattern.search(c)],
+                                      key=lambda x: not x.lower().startswith(keyword))
+                        if best:
+                            src = best[0]
+                            if src not in final_map:
+                                column_renames[src] = standard_name
+                                break
                 return column_renames
-            column_map = find_best_matches(self.df)
-            if not column_map:
-                raise ValueError("Failed to match critical columns based on keywords.")
-            self.df = self.df.rename(columns=column_map, inplace=False)
-            if set(column_map.values()) != set(self.df.columns):
-                self.df = self.df[list(column_map.values())]
+
+            auto_map = find_best_matches(self.df)
+            for src, tgt in auto_map.items():
+                if tgt not in self._user_map.values() and src not in final_map:
+                    final_map[src] = tgt
+
+            if not final_map:
+                raise ValueError("Failed to match critical columns based on user mapping and keywords.")
+
+            self.df = self.df.rename(columns=final_map, inplace=False)
+
+            required = ['Symbol','Date','Open','High','Low','Close','Volume']
+            present_required = [c for c in required if c in self.df.columns]
+            if self._require_all:
+                self.df = self.df[present_required]
+
+        def _maybe_add_symbol_from_ticker(self):
+            required = ['Symbol', 'Date', 'Open', 'High', 'Low', 'Close', 'Volume']
+            if 'Symbol' not in self.df.columns:
+                if self._ticker:
+                    self.df['Symbol'] = str(self._ticker)
+                elif self._require_all:
+                    raise ValueError("Symbol column is missing and no `ticker` was provided to synthesize it.")
+            if all(col in self.df.columns for col in required):
+                self.df = self.df[required + [c for c in self.df.columns if c not in required]]
 
         def convert_to_floats(self):
             float_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
@@ -352,780 +473,19 @@ class tAnalyze:
             required_cols = ['Symbol', 'Date', 'Open', 'High', 'Low', 'Close', 'Volume']
             missing_columns = [col for col in required_cols if col not in self.df.columns]
             return (not missing_columns, missing_columns)
-           
+
         def filter_to_single_symbol(self):
             if 'Symbol' not in self.df.columns:
                 raise ValueError("Symbol column is missing for filtering")
             first_symbol = self.df['Symbol'].iloc[0]
             self.df = self.df[self.df['Symbol'] == first_symbol]
-           
+
     def verify_period_sufficiency(self, period):
-        """Verify if the DataFrame has a sufficient number of unique dates in the 'Date' column to support the specified period for rolling calculations."""
         unique_dates = self.df['Date'].nunique()
         if unique_dates < period:
-            raise ValueError(f"Insufficient data: The DataFrame contains only {unique_dates} unique dates, but at least {period} unique dates are required.")        
-
-    ## Indicators
-    ##--------------------------------------------------------------------------------------------------
-    class _DirectionalMovementIndex:
-        def __init__(self, parent, period=14, adx_threshold=25):
-            self.parent = parent
-            self.df = self.parent.df
-            self.period = period
-            self.adx_threshold = adx_threshold
-
-            # Verify sufficient data before proceeding
-            self.parent.verify_period_sufficiency(self.period)
-
-            # Calculate indicators and signals
-            self._calculate_indicators()
-            self._calculate_signals()
-            
-        def _calculate_indicators(self):
-            """Calculate the necessary indicators: TR, +DM, -DM, ATR, +DI, -DI, DX, and ADX."""
-            # Calculate True Range (TR)
-            self.df['High-Low'] = self.df['High'] - self.df['Low']
-            self.df['High-PrevClose'] = abs(self.df['High'] - self.df['Close'].shift(1))
-            self.df['Low-PrevClose'] = abs(self.df['Low'] - self.df['Close'].shift(1))
-            self.df['TR'] = self.df[['High-Low', 'High-PrevClose', 'Low-PrevClose']].max(axis=1)
-
-            # Calculate Directional Movement (+DM and -DM)
-            self.df['+DM'] = np.where((self.df['High'] - self.df['High'].shift(1)) > (self.df['Low'].shift(1) - self.df['Low']), 
-                                      np.maximum(self.df['High'] - self.df['High'].shift(1), 0), 0)
-            self.df['-DM'] = np.where((self.df['Low'].shift(1) - self.df['Low']) > (self.df['High'] - self.df['High'].shift(1)), 
-                                      np.maximum(self.df['Low'].shift(1) - self.df['Low'], 0), 0)
-
-            # Calculate Smoothed ATR, +DM, and -DM
-            self.df['ATR'] = self.df['TR'].rolling(window=self.period).mean()
-            self.df['+DM_smooth'] = self.df['+DM'].rolling(window=self.period).mean()
-            self.df['-DM_smooth'] = self.df['-DM'].rolling(window=self.period).mean()
-
-            # Calculate +DI and -DI
-            self.df['+DI'] = 100 * (self.df['+DM_smooth'] / self.df['ATR'])
-            self.df['-DI'] = 100 * (self.df['-DM_smooth'] / self.df['ATR'])
-
-            # Calculate DX
-            self.df['DX'] = 100 * (abs(self.df['+DI'] - self.df['-DI']) / (self.df['+DI'] + self.df['-DI']))
-
-            # Calculate ADX
-            self.df['ADX'] = self.df['DX'].rolling(window=self.period).mean()
-
-        def _calculate_signals(self):
-            """Determine Buy/Sell signals and their strength based on ADX."""
-            # Determine Buy and Sell Signals
-            self.df['Buy_Signal'] = np.where((self.df['+DI'] > self.df['-DI']) & 
-                                             (self.df['+DI'].shift(1) <= self.df['-DI'].shift(1)), 1, 0)
-
-            self.df['Sell_Signal'] = np.where((self.df['-DI'] > self.df['+DI']) & 
-                                              (self.df['-DI'].shift(1) <= self.df['+DI'].shift(1)), 1, 0)
-
-            # Strong Buy and Sell Signals based on ADX
-            self.df['Strong_Buy'] = np.where((self.df['Buy_Signal'] == 1) & 
-                                             (self.df['ADX'] >= self.adx_threshold), 1, 0)
-
-            self.df['Strong_Sell'] = np.where((self.df['Sell_Signal'] == 1) & 
-                                              (self.df['ADX'] >= self.adx_threshold), 1, 0)
-
-        def get_signals(self):
-            """Return the DataFrame with the calculated indicators and signals."""
-            return self.df[['Date', '+DI', '-DI', 'ADX', 'Buy_Signal', 'Sell_Signal', 'Strong_Buy', 'Strong_Sell']]
-
-        def get_trend_strength(self):
-            """
-            Classify the trend based on ADX values.
-
-            :return: A DataFrame with trend strength interpretation:
-                     'Strong Trend', 'Weak Trend', or 'Trendless Market'
-            """
-            conditions = [
-                (self.df['ADX'] >= 25),
-                (self.df['ADX'] < 25) & (self.df['ADX'] >= 20),
-                (self.df['ADX'] < 20)
-            ]
-            choices = ['Strong Trend', 'Weak Trend', 'Trendless Market']
-
-            self.df['Trend_Strength'] = np.select(conditions, choices, default='Unknown')
-
-            return self.df[['Date', 'ADX', 'Trend_Strength']]
-
-        def plot_indicators(self):
-            """Plot +DI, -DI, and ADX to visualize trend signals."""
-            plt.figure(figsize=(14, 8))
-
-            # Plot +DI and -DI
-            plt.plot(self.df['Date'], self.df['+DI'], label='+DI', color='green')
-            plt.plot(self.df['Date'], self.df['-DI'], label='-DI', color='red')
-
-            # Plot ADX
-            plt.plot(self.df['Date'], self.df['ADX'], label='ADX', color='blue')
-
-            # Highlight areas of strong trend
-            plt.fill_between(self.df['Date'], 0, self.df['ADX'], where=self.df['ADX'] >= 25, color='blue', alpha=0.1)
-
-            plt.title('DMI and ADX Indicators')
-            plt.xlabel('Date')
-            plt.ylabel('Indicator Value')
-            plt.legend(loc='upper right')
-            plt.grid(True)
-            plt.show()
-
-        def plot_trend_strength(self):
-            """Plot the ADX and trend strength classification."""
-            trend_df = self.get_trend_strength()
-
-            plt.figure(figsize=(14, 8))
-
-            # Plot ADX
-            plt.plot(trend_df['Date'], trend_df['ADX'], label='ADX', color='blue')
-
-            # Highlight areas of strong trend
-            plt.fill_between(trend_df['Date'], 0, trend_df['ADX'], where=trend_df['Trend_Strength'] == 'Strong Trend', color='blue', alpha=0.1, label='Strong Trend')
-
-            # Highlight areas of trendless market
-            plt.fill_between(trend_df['Date'], 0, trend_df['ADX'], where=trend_df['Trend_Strength'] == 'Trendless Market', color='gray', alpha=0.1, label='Trendless Market')
-
-            plt.title('ADX and Trend Strength')
-            plt.xlabel('Date')
-            plt.ylabel('ADX Value')
-            plt.legend(loc='upper right')
-            plt.grid(True)
-            plt.show()
-
-    class _AroonIndicator:
-        def __init__(self, parent, period=25):
-            self.parent = parent
-            self.df = self.parent.df
-            self.period = period
-
-            # Verify sufficient data before proceeding
-            self.parent.verify_period_sufficiency(self.period)
-
-            # Calculate
-            self._calculate_aroon()
-            self._detect_trends()
-            
-        def _calculate_aroon(self):
-            """Calculate the Aroon Up and Aroon Down indicators and store them in the DataFrame."""
-            # Calculate Aroon Up
-            self.df['Aroon_Up'] = self.df['High'].rolling(window=self.period).apply(
-                lambda x: ((self.period - x[::-1].argmax()) / self.period) * 100, raw=True
-            )
-
-            # Calculate Aroon Down
-            self.df['Aroon_Down'] = self.df['Low'].rolling(window=self.period).apply(
-                lambda x: ((self.period - x[::-1].argmin()) / self.period) * 100, raw=True
-            )
-
-        def _detect_trends(self):
-            """Detect trends and consolidations based on Aroon Up and Aroon Down interactions."""
-            self.df['Trend_Signal'] = 'None'
-
-            # Detect Aroon-Up crossing above Aroon-Down (Potential Uptrend Start)
-            self.df['Trend_Signal'] = np.where(
-                (self.df['Aroon_Up'] > self.df['Aroon_Down']) & (self.df['Aroon_Up'].shift(1) <= self.df['Aroon_Down'].shift(1)),
-                'Uptrend Start',
-                self.df['Trend_Signal']
-            )
-
-            # Detect Aroon-Down crossing above Aroon-Up (Potential Downtrend Start)
-            self.df['Trend_Signal'] = np.where(
-                (self.df['Aroon_Down'] > self.df['Aroon_Up']) & (self.df['Aroon_Down'].shift(1) <= self.df['Aroon_Up'].shift(1)),
-                'Downtrend Start',
-                self.df['Trend_Signal']
-            )
-
-            # Strong Uptrend: Aroon-Up between 70 and 100, Aroon-Down between 0 and 30
-            self.df['Trend_Signal'] = np.where(
-                (self.df['Aroon_Up'] >= 70) & (self.df['Aroon_Up'] <= 100) &
-                (self.df['Aroon_Down'] >= 0) & (self.df['Aroon_Down'] <= 30),
-                'Strong Uptrend',
-                self.df['Trend_Signal']
-            )
-
-            # Strong Downtrend: Aroon-Down between 70 and 100, Aroon-Up between 0 and 30
-            self.df['Trend_Signal'] = np.where(
-                (self.df['Aroon_Down'] >= 70) & (self.df['Aroon_Down'] <= 100) &
-                (self.df['Aroon_Up'] >= 0) & (self.df['Aroon_Up'] <= 30),
-                'Strong Downtrend',
-                self.df['Trend_Signal']
-            )
-
-            # Range Trading/Consolidation: Aroon-Up and Aroon-Down moving in parallel
-            self.df['Trend_Signal'] = np.where(
-                abs(self.df['Aroon_Up'] - self.df['Aroon_Down']) <= 10, # Adjust this threshold as needed
-                'Range Trading/Consolidation',
-                self.df['Trend_Signal']
-            )
-
-        def get_aroon(self):
-            """Return the DataFrame with the Aroon Up, Aroon Down, and Trend Signal columns."""
-            return self.df[['Date', 'Close', 'Aroon_Up', 'Aroon_Down', 'Trend_Signal']]
-
-        def plot_aroon(self):
-            """Plot the Aroon Up and Aroon Down indicators, highlighting trend signals."""
-            plt.figure(figsize=(14, 8))
-            plt.plot(self.df['Date'], self.df['Aroon_Up'], label='Aroon Up', color='green')
-            plt.plot(self.df['Date'], self.df['Aroon_Down'], label='Aroon Down', color='red')
-            plt.axhline(50, color='gray', linestyle='--', label='50 level')
-
-            # Highlight areas of detected trend signals
-            trend_signal_dates = self.df[self.df['Trend_Signal'] != 'None']['Date']
-            for trend in ['Uptrend Start', 'Downtrend Start', 'Strong Uptrend', 'Strong Downtrend', 'Range Trading/Consolidation']:
-                plt.scatter(self.df[self.df['Trend_Signal'] == trend]['Date'], 
-                            self.df[self.df['Trend_Signal'] == trend]['Aroon_Up'],
-                            label=trend, s=50, alpha=0.7)
-
-            plt.title('Aroon Indicator with Trend Signals')
-            plt.xlabel('Date')
-            plt.ylabel('Aroon Value')
-            plt.legend(loc='upper right')
-            plt.grid(True)
-            plt.show()
-
-    class _OnBalanceVolume:
-        def __init__(self, parent):
-            self.parent = parent
-            self.df = self.parent.df
-
-            # Calculate indicators and signals
-            self._calculate_obv()
-
-        def _calculate_obv(self):
-            """Calculate the On-Balance Volume (OBV) and store it in the DataFrame."""
-            self.df['OBV'] = 0
-            
-            # Calculate OBV
-            self.df['OBV'] = self.df['Volume'].where(self.df['Close'] > self.df['Close'].shift(1), -self.df['Volume'])
-            self.df['OBV'] = self.df['OBV'].fillna(0).cumsum()
-
-        def get_obv(self):
-            """Return the DataFrame with the OBV column."""
-            return self.df[['Date', 'Close', 'Volume', 'OBV']]
-
-        def detect_divergence(self):
-            """
-            Detect divergence between OBV and price.
-            
-            :return: DataFrame with detected divergence points.
-            """
-            self.df['Price_Trend'] = np.where(self.df['Close'] > self.df['Close'].shift(1), 'up', 
-                                              np.where(self.df['Close'] < self.df['Close'].shift(1), 'down', 'flat'))
-            self.df['OBV_Trend'] = np.where(self.df['OBV'] > self.df['OBV'].shift(1), 'up', 
-                                            np.where(self.df['OBV'] < self.df['OBV'].shift(1), 'down', 'flat'))
-            
-            # Divergence occurs when price and OBV trends differ
-            self.df['Divergence'] = np.where((self.df['Price_Trend'] == 'up') & (self.df['OBV_Trend'] == 'down'), 'bearish',
-                                             np.where((self.df['Price_Trend'] == 'down') & (self.df['OBV_Trend'] == 'up'), 'bullish', 'none'))
-            
-            divergence_df = self.df[self.df['Divergence'] != 'none'][['Date', 'Close', 'OBV', 'Divergence']]
-            
-            if divergence_df.empty:
-                print("No divergence detected between OBV and price.")      
-            return divergence_df
-
-        def plot_obv_with_divergence(self):
-            """Plot OBV and closing price with highlighted divergence points."""
-            fig, ax1 = plt.subplots(figsize=(14, 8))
-
-            ax1.set_xlabel('Date')
-            ax1.set_ylabel('Close Price', color='tab:blue')
-            ax1.plot(self.df['Date'], self.df['Close'], color='tab:blue', label='Close Price')
-            ax1.tick_params(axis='y', labelcolor='tab:blue')
-
-            ax2 = ax1.twinx()
-            ax2.set_ylabel('On-Balance Volume (OBV)', color='tab:orange')
-            ax2.plot(self.df['Date'], self.df['OBV'], color='tab:orange', label='OBV')
-            ax2.tick_params(axis='y', labelcolor='tab:orange')
-
-            # Highlight divergence points
-            divergence_points = self.df[self.df['Divergence'] != 'none']
-            ax1.scatter(divergence_points['Date'], divergence_points['Close'], color='red', label='Divergence', zorder=5)
-
-            fig.tight_layout()
-            plt.title('On-Balance Volume (OBV) and Close Price with Divergence')
-            plt.legend(loc='upper left')
-            plt.grid(True)
-            plt.show()
-
-    class _AccumulationDistributionLine:
-        def __init__(self, parent):
-            self.parent = parent
-            self.df = self.parent.df
-
-            # Calculate
-            self._calculate_ad_line()
-            
-        def _calculate_ad_line(self):
-            """Calculate the Accumulation/Distribution (A/D) Line and store it in the DataFrame."""
-            # Calculate the Money Flow Multiplier (MFM)
-            self.df['MFM'] = ((self.df['Close'] - self.df['Low']) - (self.df['High'] - self.df['Close'])) / (self.df['High'] - self.df['Low'])
-            
-            # Ensure there are no division by zero errors in case of High == Low
-            self.df['MFM'] = self.df['MFM'].fillna(0)
-            
-            # Calculate the Money Flow Volume (MFV)
-            self.df['MFV'] = self.df['MFM'] * self.df['Volume']
-            
-            # Calculate the Accumulation/Distribution Line (A/D Line)
-            self.df['AD_Line'] = self.df['MFV'].cumsum()
-
-        def get_ad_line(self):
-            """Return the DataFrame with the A/D Line column."""
-            return self.df[['Date', 'Close', 'Volume', 'AD_Line']]
-
-        def detect_divergence(self):
-            """
-            Detect divergence between the A/D Line and price.
-            
-            :return: DataFrame with detected divergence points.
-            """
-            self.df['Price_Trend'] = np.where(self.df['Close'] > self.df['Close'].shift(1), 'up', 
-                                              np.where(self.df['Close'] < self.df['Close'].shift(1), 'down', 'flat'))
-            self.df['AD_Trend'] = np.where(self.df['AD_Line'] > self.df['AD_Line'].shift(1), 'up', 
-                                           np.where(self.df['AD_Line'] < self.df['AD_Line'].shift(1), 'down', 'flat'))
-            
-            # Divergence occurs when price and A/D Line trends differ
-            self.df['Divergence'] = np.where((self.df['Price_Trend'] == 'up') & (self.df['AD_Trend'] == 'down'), 'bearish',
-                                             np.where((self.df['Price_Trend'] == 'down') & (self.df['AD_Trend'] == 'up'), 'bullish', 'none'))
-            
-            divergence_df = self.df[self.df['Divergence'] != 'none'][['Date', 'Close', 'AD_Line', 'Divergence']]
-            
-            if divergence_df.empty:
-                print("No divergence detected between A/D Line and price.")                      
-            return divergence_df
-
-        def plot_ad_line_with_divergence(self):
-            """Plot the A/D Line and closing price with highlighted divergence points."""
-            fig, ax1 = plt.subplots(figsize=(14, 8))
-
-            ax1.set_xlabel('Date')
-            ax1.set_ylabel('Close Price', color='tab:blue')
-            ax1.plot(self.df['Date'], self.df['Close'], color='tab:blue', label='Close Price')
-            ax1.tick_params(axis='y', labelcolor='tab:blue')
-
-            ax2 = ax1.twinx()
-            ax2.set_ylabel('Accumulation/Distribution Line (A/D Line)', color='tab:green')
-            ax2.plot(self.df['Date'], self.df['AD_Line'], color='tab:green', label='A/D Line')
-            ax2.tick_params(axis='y', labelcolor='tab:green')
-
-            # Highlight divergence points
-            divergence_points = self.df[self.df['Divergence'] != 'none']
-            ax1.scatter(divergence_points['Date'], divergence_points['Close'], color='red', label='Divergence', zorder=5)
-
-            fig.tight_layout()
-            plt.title('Accumulation/Distribution Line (A/D Line) and Close Price with Divergence')
-            plt.legend(loc='upper left')
-            plt.grid(True)
-            plt.show()
-
-    class _MACD:
-        def __init__(self, parent, short_window=12, long_window=26, signal_window=9):
-            self.parent = parent
-            self.df = self.parent.df
-            self.short_window = short_window
-            self.long_window = long_window
-            self.signal_window = signal_window
-            
-            # Calculate indicators and signals            
-            self._calculate_macd()
-            self._detect_crossovers()
-
-        def _calculate_macd(self):
-            """Calculate the MACD, Signal line, and MACD Histogram."""
-            # Calculate the Short-term EMA (12 periods by default)
-            self.df['EMA_12'] = self.df['Close'].ewm(span=self.short_window, adjust=False).mean()
-
-            # Calculate the Long-term EMA (26 periods by default)
-            self.df['EMA_26'] = self.df['Close'].ewm(span=self.long_window, adjust=False).mean()
-
-            # Calculate the MACD Line
-            self.df['MACD_Line'] = self.df['EMA_12'] - self.df['EMA_26']
-
-            # Calculate the Signal Line (9 periods by default)
-            self.df['Signal_Line'] = self.df['MACD_Line'].ewm(span=self.signal_window, adjust=False).mean()
-
-            # Calculate the MACD Histogram
-            self.df['MACD_Histogram'] = self.df['MACD_Line'] - self.df['Signal_Line']
-
-        def _detect_crossovers(self):
-            """Detect crossovers between the MACD line and the Signal line, and the significance of the zero line."""
-            self.df['MACD_Signal'] = 'None'
-
-            # Detect when MACD crosses above the Signal line (Bullish Signal)
-            self.df['MACD_Signal'] = np.where(
-                (self.df['MACD_Line'] > self.df['Signal_Line']) & (self.df['MACD_Line'].shift(1) <= self.df['Signal_Line'].shift(1)),
-                'Bullish Crossover',
-                self.df['MACD_Signal']
-            )
-
-            # Detect when MACD crosses below the Signal line (Bearish Signal)
-            self.df['MACD_Signal'] = np.where(
-                (self.df['MACD_Line'] < self.df['Signal_Line']) & (self.df['MACD_Line'].shift(1) >= self.df['Signal_Line'].shift(1)),
-                'Bearish Crossover',
-                self.df['MACD_Signal']
-            )
-
-            # Highlight signals depending on the MACD line's position relative to the zero line
-            self.df['MACD_Signal'] = np.where(
-                (self.df['MACD_Signal'] == 'Bullish Crossover') & (self.df['MACD_Line'] > 0),
-                'Bullish Crossover (Above Zero)',
-                self.df['MACD_Signal']
-            )
-
-            self.df['MACD_Signal'] = np.where(
-                (self.df['MACD_Signal'] == 'Bearish Crossover') & (self.df['MACD_Line'] < 0),
-                'Bearish Crossover (Below Zero)',
-                self.df['MACD_Signal']
-            )
-
-        def get_macd(self):
-            """Return the DataFrame with the MACD, Signal line, Histogram, and Crossover signals."""
-            return self.df[['Date', 'Close', 'MACD_Line', 'Signal_Line', 'MACD_Histogram', 'MACD_Signal']]
-
-        def plot_macd(self):
-            """Plot the MACD, Signal line, and Histogram, highlighting crossover signals."""
-            plt.figure(figsize=(14, 8))
-
-            # Plot MACD Line and Signal Line
-            plt.plot(self.df['Date'], self.df['MACD_Line'], label='MACD Line', color='blue')
-            plt.plot(self.df['Date'], self.df['Signal_Line'], label='Signal Line', color='red')
-
-            # Plot MACD Histogram
-            plt.bar(self.df['Date'], self.df['MACD_Histogram'], label='MACD Histogram', color='gray', alpha=0.5)
-
-            # Highlight crossover points
-            crossover_dates = self.df[self.df['MACD_Signal'] != 'None']['Date']
-            for signal in ['Bullish Crossover (Above Zero)', 'Bearish Crossover (Below Zero)']:
-                plt.scatter(self.df[self.df['MACD_Signal'] == signal]['Date'], 
-                            self.df[self.df['MACD_Signal'] == signal]['MACD_Line'],
-                            label=signal, s=50, alpha=0.7)
-
-            plt.axhline(0, color='black', linestyle='--', label='Zero Line')
-
-            plt.title('MACD (Moving Average Convergence Divergence) with Crossovers')
-            plt.xlabel('Date')
-            plt.ylabel('Value')
-            plt.legend(loc='upper left')
-            plt.grid(True)
-            plt.show()
-
-    class _RelativeStrengthIndex:
-        def __init__(self, parent, period=14):
-            self.parent = parent
-            self.df = self.parent.df
-            self.period = period
-
-            # Verify sufficient data before proceeding
-            self.parent.verify_period_sufficiency(self.period)
-
-            # Calculate indicators and signals
-            self._detect_overbought_oversold()
-            self._detect_divergence()
-            self._detect_support_resistance()
-
-        def _calculate_rsi(self):
-            """Calculate the RSI based on the specified period."""
-            delta = self.df['Close'].diff(1)
-            gain = np.where(delta > 0, delta, 0)
-            loss = np.where(delta < 0, -delta, 0)
-
-            avg_gain = pd.Series(gain).rolling(window=self.period, min_periods=1).mean()
-            avg_loss = pd.Series(loss).rolling(window=self.period, min_periods=1).mean()
-
-            rs = avg_gain / avg_loss
-            self.df['RSI'] = 100 - (100 / (1 + rs))
-
-        def _detect_overbought_oversold(self):
-            """Detect overbought and oversold conditions."""
-            self.df['Overbought'] = np.where(self.df['RSI'] > 70, 'Overbought', 'None')
-            self.df['Oversold'] = np.where(self.df['RSI'] < 30, 'Oversold', 'None')
-
-            # Additional logic for waiting for RSI to cross below 70 or above 30
-            self.df['Sell_Signal'] = np.where((self.df['RSI'] > 70) & (self.df['RSI'].shift(1) <= 70), 'Sell Signal', 'None')
-            self.df['Buy_Signal'] = np.where((self.df['RSI'] < 30) & (self.df['RSI'].shift(1) >= 30), 'Buy Signal', 'None')
-
-        def _detect_divergence(self):
-            """Detect divergence between RSI and price."""
-            self.df['Price_Trend'] = np.where(self.df['Close'] > self.df['Close'].shift(1), 'up',
-                                              np.where(self.df['Close'] < self.df['Close'].shift(1), 'down', 'flat'))
-            self.df['RSI_Trend'] = np.where(self.df['RSI'] > self.df['RSI'].shift(1), 'up',
-                                            np.where(self.df['RSI'] < self.df['RSI'].shift(1), 'down', 'flat'))
-
-            # Divergence occurs when price and RSI trends differ
-            self.df['Divergence'] = np.where((self.df['Price_Trend'] == 'up') & (self.df['RSI_Trend'] == 'down'), 'Bearish Divergence',
-                                             np.where((self.df['Price_Trend'] == 'down') & (self.df['RSI_Trend'] == 'up'), 'Bullish Divergence', 'None'))
-
-        def _detect_support_resistance(self):
-            """Detect support and resistance levels using RSI."""
-            self.df['Support_Resistance'] = 'None'
-
-            # During uptrends, RSI typically holds above 30 and reaches 70 or above
-            self.df['Support_Resistance'] = np.where((self.df['RSI'] >= 70) & (self.df['RSI'].shift(1) < 70), 'Resistance',
-                                                     self.df['Support_Resistance'])
-            self.df['Support_Resistance'] = np.where((self.df['RSI'] <= 30) & (self.df['RSI'].shift(1) > 30), 'Support',
-                                                     self.df['Support_Resistance'])
-
-        def get_rsi(self):
-            """Return the DataFrame with the RSI and detected signals."""
-            return self.df[['Date', 'Close', 'RSI', 'Overbought', 'Oversold', 'Sell_Signal', 'Buy_Signal', 'Divergence', 'Support_Resistance']]
-
-        def plot_rsi(self):
-            """Plot the RSI with overbought/oversold levels, divergence, and support/resistance levels."""
-            plt.figure(figsize=(14, 8))
-
-            # Plot RSI
-            plt.plot(self.df['Date'], self.df['RSI'], label='RSI', color='blue')
-            plt.axhline(70, color='red', linestyle='--', label='Overbought (70)')
-            plt.axhline(30, color='green', linestyle='--', label='Oversold (30)')
-
-            # Highlight overbought and oversold signals
-            plt.scatter(self.df[self.df['Overbought'] == 'Overbought']['Date'],
-                        self.df[self.df['Overbought'] == 'Overbought']['RSI'], color='red', label='Overbought Signal', marker='v')
-            plt.scatter(self.df[self.df['Oversold'] == 'Oversold']['Date'],
-                        self.df[self.df['Oversold'] == 'Oversold']['RSI'], color='green', label='Oversold Signal', marker='^')
-
-            # Highlight divergence points
-            for div_type in ['Bearish Divergence', 'Bullish Divergence']:
-                plt.scatter(self.df[self.df['Divergence'] == div_type]['Date'],
-                            self.df[self.df['Divergence'] == div_type]['RSI'], label=div_type, marker='o', alpha=0.7)
-
-            plt.title('Relative Strength Index (RSI)')
-            plt.xlabel('Date')
-            plt.ylabel('RSI Value')
-            plt.legend(loc='upper left')
-            plt.grid(True)
-            plt.show()
-
-    class _FastStochasticOscillator:
-        def __init__(self, parent, k_period=14, d_period=3):
-            self.parent = parent
-            self.df = self.parent.df
-            self.k_period = k_period
-            self.d_period = d_period
-
-            # Verify sufficient data before proceeding
-            max_period = max(self.k_period, self.d_period)
-            self.parent.verify_period_sufficiency(max_period)
-
-            # Calculate indicators and signals
-            self._calculate_stochastic()
-            self._detect_overbought_oversold()
-            self._detect_crosses()
-            self._detect_divergence()
-
-        def _calculate_stochastic(self):
-            """Calculate the %K and %D lines of the Stochastic Oscillator."""
-            # Calculate the Lowest Low and Highest High over the K period
-            self.df['Lowest_Low'] = self.df['Low'].rolling(window=self.k_period).min()
-            self.df['Highest_High'] = self.df['High'].rolling(window=self.k_period).max()
-
-            # Calculate the %K line
-            self.df['%K'] = 100 * ((self.df['Close'] - self.df['Lowest_Low']) / (self.df['Highest_High'] - self.df['Lowest_Low']))
-
-            # Calculate the %D line as a 3-period moving average of %K
-            self.df['%D'] = self.df['%K'].rolling(window=self.d_period).mean()
-
-        def _detect_overbought_oversold(self):
-            """Detect overbought and oversold conditions."""
-            self.df['Overbought'] = np.where(self.df['%K'] > 80, 'Overbought', 'None')
-            self.df['Oversold'] = np.where(self.df['%K'] < 20, 'Oversold', 'None')
-
-        def _detect_crosses(self):
-            """Detect intersections of %K and %D lines, signaling potential momentum shifts."""
-            self.df['Cross'] = 'None'
-
-            # Detect when %K crosses above %D (Bullish Signal)
-            self.df['Cross'] = np.where(
-                (self.df['%K'] > self.df['%D']) & (self.df['%K'].shift(1) <= self.df['%D'].shift(1)),
-                'Bullish Cross',
-                self.df['Cross']
-            )
-
-            # Detect when %K crosses below %D (Bearish Signal)
-            self.df['Cross'] = np.where(
-                (self.df['%K'] < self.df['%D']) & (self.df['%K'].shift(1) >= self.df['%D'].shift(1)),
-                'Bearish Cross',
-                self.df['Cross']
-            )
-
-        def _detect_divergence(self):
-            """Detect divergence between the Stochastic Oscillator and price."""
-            self.df['Price_Trend'] = np.where(self.df['Close'] > self.df['Close'].shift(1), 'up',
-                                              np.where(self.df['Close'] < self.df['Close'].shift(1), 'down', 'flat'))
-            self.df['Stoch_Trend'] = np.where(self.df['%K'] > self.df['%K'].shift(1), 'up',
-                                              np.where(self.df['%K'] < self.df['%K'].shift(1), 'down', 'flat'))
-
-            # Divergence occurs when price and Stochastic trends differ
-            self.df['Divergence'] = np.where((self.df['Price_Trend'] == 'up') & (self.df['Stoch_Trend'] == 'down'), 'Bearish Divergence',
-                                             np.where((self.df['Price_Trend'] == 'down') & (self.df['Stoch_Trend'] == 'up'), 'Bullish Divergence', 'None'))
-
-        def get_stochastic(self):
-            """Return the DataFrame with the Stochastic Oscillator %K, %D lines, and detected signals."""
-            return self.df[['Date', 'Close', '%K', '%D', 'Overbought', 'Oversold', 'Cross', 'Divergence']]
-
-        def plot_stochastic(self):
-            """Plot the Stochastic Oscillator %K and %D lines, highlighting overbought/oversold conditions, crosses, and divergence."""
-            plt.figure(figsize=(14, 8))
-
-            # Plot %K and %D lines
-            plt.plot(self.df['Date'], self.df['%K'], label='%K Line', color='blue')
-            plt.plot(self.df['Date'], self.df['%D'], label='%D Line', color='red')
-
-            # Add overbought and oversold lines
-            plt.axhline(80, color='red', linestyle='--', label='Overbought (80)')
-            plt.axhline(20, color='green', linestyle='--', label='Oversold (20)')
-
-            # Highlight overbought and oversold signals
-            plt.scatter(self.df[self.df['Overbought'] == 'Overbought']['Date'],
-                        self.df[self.df['Overbought'] == 'Overbought']['%K'], color='red', label='Overbought Signal', marker='v')
-            plt.scatter(self.df[self.df['Oversold'] == 'Oversold']['Date'],
-                        self.df[self.df['Oversold'] == 'Oversold']['%K'], color='green', label='Oversold Signal', marker='^')
-
-            # Highlight cross signals
-            plt.scatter(self.df[self.df['Cross'] == 'Bullish Cross']['Date'],
-                        self.df[self.df['Cross'] == 'Bullish Cross']['%K'], color='green', label='Bullish Cross', marker='o')
-            plt.scatter(self.df[self.df['Cross'] == 'Bearish Cross']['Date'],
-                        self.df[self.df['Cross'] == 'Bearish Cross']['%K'], color='red', label='Bearish Cross', marker='o')
-
-            # Highlight divergence points
-            for div_type in ['Bearish Divergence', 'Bullish Divergence']:
-                plt.scatter(self.df[self.df['Divergence'] == div_type]['Date'],
-                            self.df[self.df['Divergence'] == div_type]['%K'], label=div_type, marker='x', alpha=0.7)
-
-            plt.title('Stochastic Oscillator with Overbought/Oversold, Crosses, and Divergence')
-            plt.xlabel('Date')
-            plt.ylabel('Stochastic Value')
-            plt.legend(loc='upper left')
-            plt.grid(True)
-            plt.show()
-
-    class _MovingAveragesAndBollingerBands:
-        def __init__(self, parent, sma_period=20, ema_period=20, bb_period=20, bb_std=2):
-            self.parent = parent
-            self.df = self.parent.df
-            self.sma_period = sma_period
-            self.ema_period = ema_period
-            self.bb_period = bb_period
-            self.bb_std = bb_std
-
-            # Verify sufficient data before proceeding
-            max_period = max(self.sma_period, self.ema_period, self.bb_period)
-            self.parent.verify_period_sufficiency(max_period)
-
-            # Calculate indicators and signals
-            self._calculate_sma()
-            self._calculate_ema()
-            self._calculate_bollinger_bands()
-            self._detect_crossovers()
-
-        def _calculate_sma(self):
-            self.df['SMA'] = self.df['Close'].rolling(window=self.sma_period).mean()
-
-        def _calculate_ema(self):
-            self.df['EMA'] = self.df['Close'].ewm(span=self.ema_period, adjust=False).mean()
-
-        def _calculate_bollinger_bands(self):
-            self.df['BB_Middle'] = self.df['Close'].rolling(window=self.bb_period).mean()
-            self.df['BB_Upper'] = self.df['BB_Middle'] + (self.bb_std * self.df['Close'].rolling(window=self.bb_period).std())
-            self.df['BB_Lower'] = self.df['BB_Middle'] - (self.bb_std * self.df['Close'].rolling(window=self.bb_period).std())
-
-        def _detect_crossovers(self):
-            self.df['Signal'] = 'None'
-
-            # Detect when EMA crosses above SMA (Bullish Crossover)
-            self.df['Signal'] = np.where((self.df['EMA'] > self.df['SMA']) & (self.df['EMA'].shift(1) <= self.df['SMA'].shift(1)),
-                                         'Buy', self.df['Signal'])
-
-            # Detect when EMA crosses below SMA (Bearish Crossover)
-            self.df['Signal'] = np.where((self.df['EMA'] < self.df['SMA']) & (self.df['EMA'].shift(1) >= self.df['SMA'].shift(1)),
-                                         'Sell', self.df['Signal'])
-
-        def get_indicators(self):
-            return self.df[['Date', 'Close', 'SMA', 'EMA', 'BB_Middle', 'BB_Upper', 'BB_Lower', 'Signal']]
-
-        def plot_indicators(self):
-            plt.figure(figsize=(14, 8))
-            plt.plot(self.df['Date'], self.df['Close'], label='Close Price', color='black')
-            plt.plot(self.df['Date'], self.df['SMA'], label=f'SMA {self.sma_period}', color='blue')
-            plt.plot(self.df['Date'], self.df['EMA'], label=f'EMA {self.ema_period}', color='red')
-            plt.plot(self.df['Date'], self.df['BB_Middle'], label='Bollinger Middle Band', color='green')
-            plt.plot(self.df['Date'], self.df['BB_Upper'], label='Bollinger Upper Band', color='orange')
-            plt.plot(self.df['Date'], self.df['BB_Lower'], label='Bollinger Lower Band', color='orange')
-            plt.fill_between(self.df['Date'], self.df['BB_Upper'], self.df['BB_Lower'], color='orange', alpha=0.1)
-
-            # Highlight Buy and Sell signals
-            plt.scatter(self.df[self.df['Signal'] == 'Buy']['Date'],
-                        self.df[self.df['Signal'] == 'Buy']['Close'], color='green', label='Buy Signal', marker='^')
-            plt.scatter(self.df[self.df['Signal'] == 'Sell']['Date'],
-                        self.df[self.df['Signal'] == 'Sell']['Close'], color='red', label='Sell Signal', marker='v')
-
-            plt.title('SMA, EMA, Bollinger Bands, and Signals')
-            plt.xlabel('Date')
-            plt.ylabel('Price')
-            plt.legend(loc='upper left')
-            plt.grid(True)
-            plt.show()
-
-    class _AverageTrueRange:
-        def __init__(self, parent, atr_period=14):
-            self.parent = parent
-            self.df = self.parent.df
-            self.atr_period = atr_period
-
-            # Verify sufficient data before proceeding
-            self.parent.verify_period_sufficiency(self.atr_period)
-
-            # Calculate indicators and signals
-            self._calculate_atr()
-
-        def _calculate_tr(self):
-            """Calculate the True Range (TR) for each period."""
-            self.df['High-Low'] = self.df['High'] - self.df['Low']
-            self.df['High-PrevClose'] = abs(self.df['High'] - self.df['Close'].shift(1))
-            self.df['Low-PrevClose'] = abs(self.df['Low'] - self.df['Close'].shift(1))
-            self.df['TR'] = self.df[['High-Low', 'High-PrevClose', 'Low-PrevClose']].max(axis=1)
-
-        def _calculate_atr(self):
-            """Calculate the Average True Range (ATR) based on the True Range."""
-            self._calculate_tr()
-            self.df['ATR'] = self.df['TR'].rolling(window=self.atr_period).mean()
-
-        def get_atr(self):
-            """Return the DataFrame with the ATR."""
-            return self.df[['Date', 'Close', 'ATR']]
-
-        def plot_atr(self):
-            """Plot the ATR alongside the closing price."""
-            plt.figure(figsize=(14, 8))
-
-            # Plot Close Price
-            plt.plot(self.df['Date'], self.df['Close'], label='Close Price', color='black')
-
-            # Plot ATR
-            plt.plot(self.df['Date'], self.df['ATR'], label=f'ATR {self.atr_period}', color='blue')
-
-            plt.title('Average True Range (ATR)')
-            plt.xlabel('Date')
-            plt.ylabel('Value')
-            plt.legend(loc='upper left')
-            plt.grid(True)
-            plt.show()
-
-        def identify_volatility_shifts(self):
-            """Identify and print periods of expanding or contracting volatility based on ATR changes."""
-            self.df['ATR_Change'] = self.df['ATR'].diff()
-
-            expanding_volatility = self.df[self.df['ATR_Change'] > 0]
-            contracting_volatility = self.df[self.df['ATR_Change'] < 0]
-
-            print("Expanding Volatility Periods:")
-            print(expanding_volatility[['Date', 'Close', 'ATR', 'ATR_Change']].tail(10))
-
-            print("\nContracting Volatility Periods:")
-            print(contracting_volatility[['Date', 'Close', 'ATR', 'ATR_Change']].tail(10))
-
-    ## Call Indicators
-    ##--------------------------------------------------------------------------------------------------
+            raise ValueError(f"Insufficient data: The DataFrame contains only {unique_dates} unique dates, but at least {period} unique dates are required.")
+      
+    # ────────── Call Indicators ──── 
     def DirectionalMovementIndex(self, period=14, adx_threshold=25):
         """
         Calculate and analyze the Directional Movement Index (DMI) and Average Directional Index (ADX)
@@ -1159,7 +519,8 @@ class tAnalyze:
         plot_trend_strength():
             Plots the ADX values along with trend strength classifications, highlighting areas of strong trends.
         """        
-        return self._DirectionalMovementIndex(self, period, adx_threshold)
+        # return self._DirectionalMovementIndex(self, period, adx_threshold)
+        return _DirectionalMovementIndex(self, period, adx_threshold)        
        
     def AroonIndicator(self, period=25):
         """
@@ -1188,7 +549,7 @@ class tAnalyze:
             plot_aroon():
                 Plots the Aroon Up and Aroon Down indicators, highlighting areas of detected trend signals.
         """	        
-        return self._AroonIndicator(self, period)
+        return _AroonIndicator(self, period)
        
     def OnBalanceVolume(self):
         """
@@ -1217,7 +578,7 @@ class tAnalyze:
             plot_obv_with_divergence():
                 Plots the OBV and closing price, highlighting points where divergence between OBV and price occurs.
         """        
-        return self._OnBalanceVolume(self)
+        return _OnBalanceVolume(self)
 
     def AccumulationDistributionLine(self):
         """
@@ -1245,7 +606,7 @@ class tAnalyze:
             plot_ad_line_with_divergence():
                 Plots the A/D Line and closing price, highlighting points where divergence between the A/D Line and price occurs.
         """        
-        return self._AccumulationDistributionLine(self)
+        return _AccumulationDistributionLine(self)
 
     def MACD(self, short_window=12, long_window=26, signal_window=9):
         """
@@ -1277,7 +638,7 @@ class tAnalyze:
             plot_macd():
                 Plots the MACD line, Signal line, and MACD Histogram, highlighting crossover signals.
         """        
-        return self._MACD(self, short_window, long_window, signal_window)
+        return _MACD(self, short_window, long_window, signal_window)
 
     def RelativeStrengthIndex(self, period=14):
         """
@@ -1312,7 +673,7 @@ class tAnalyze:
             plot_rsi():
                 Plots the RSI with overbought/oversold levels, divergence points, and support/resistance levels.
         """        
-        return self._RelativeStrengthIndex(self, period)
+        return _RelativeStrengthIndex(self, period)
        
     def FastStochasticOscillator(self, k_period=14, d_period=3):
         """
@@ -1348,7 +709,7 @@ class tAnalyze:
             plot_stochastic():
                 Plots the %K and %D lines of the Stochastic Oscillator, highlighting overbought/oversold conditions, crosses, and divergence.
         """        
-        return self._FastStochasticOscillator(self, k_period, d_period)
+        return _FastStochasticOscillator(self, k_period, d_period)
 
     def MovingAveragesAndBollingerBands(self, sma_period=20, ema_period=20, bb_period=20, bb_std=2):
         """
@@ -1386,7 +747,7 @@ class tAnalyze:
             plot_indicators():
                 Plots the Close price, SMA, EMA, Bollinger Bands, and highlights Buy and Sell signals on a chart.
         """        
-        return self._MovingAveragesAndBollingerBands(self, sma_period, ema_period, bb_period, bb_std)
+        return _MovingAveragesAndBollingerBands(self, sma_period, ema_period, bb_period, bb_std)
 
     def AverageTrueRange(self, atr_period=14):
         """
@@ -1416,9 +777,7 @@ class tAnalyze:
             identify_volatility_shifts():
                 Identifies and prints periods of expanding or contracting volatility based on changes in ATR.
         """        
-        return self._AverageTrueRange(self, atr_period)
-
+        return _AverageTrueRange(self, atr_period)
 
 def __dir__():
     return __all__
-

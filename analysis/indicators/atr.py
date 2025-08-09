@@ -51,3 +51,85 @@
 ## │                    permissions and limitations under the License.                           │
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
+
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
+from ..proxy import Proxy
+
+__all__ = ['AverageTrueRange']
+
+
+
+        
+# ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This segment delineates the functional backbone of the module.
+# It comprises the abstractions and behaviors essential for runtime
+# execution—if applicable—encapsulated in class and function constructs.
+# In minimal implementations, this may simply define constants, metadata,
+# or serve as an interface placeholder.
+
+# Lazily load the entire modules; actual imports occurs on first use.
+# pd = Proxy("pandas", None)  # Third-party library imports (from PyPI or other package sources)  
+plt = Proxy("matplotlib.pyplot")  # Third-party library imports (from PyPI or other package sources)  
+np = Proxy("numpy")  # Third-party library imports (from PyPI or other package sources)  
+
+
+class AverageTrueRange:
+    def __init__(self, parent, atr_period=14):
+        self.parent = parent
+        self.df = self.parent.df
+        self.atr_period = atr_period
+
+        # Verify sufficient data before proceeding
+        self.parent.verify_period_sufficiency(self.atr_period)
+
+        # Calculate indicators and signals
+        self._calculate_atr()
+
+    def _calculate_tr(self):
+        """Calculate the True Range (TR) for each period."""
+        self.df['High-Low'] = self.df['High'] - self.df['Low']
+        self.df['High-PrevClose'] = abs(self.df['High'] - self.df['Close'].shift(1))
+        self.df['Low-PrevClose'] = abs(self.df['Low'] - self.df['Close'].shift(1))
+        self.df['TR'] = self.df[['High-Low', 'High-PrevClose', 'Low-PrevClose']].max(axis=1)
+
+    def _calculate_atr(self):
+        """Calculate the Average True Range (ATR) based on the True Range."""
+        self._calculate_tr()
+        self.df['ATR'] = self.df['TR'].rolling(window=self.atr_period).mean()
+
+    def get_atr(self):
+        """Return the DataFrame with the ATR."""
+        return self.df[['Date', 'Close', 'ATR']]
+
+    def plot_atr(self):
+        """Plot the ATR alongside the closing price."""
+        plt.figure(figsize=(14, 8))
+
+        # Plot Close Price
+        plt.plot(self.df['Date'], self.df['Close'], label='Close Price', color='black')
+
+        # Plot ATR
+        plt.plot(self.df['Date'], self.df['ATR'], label=f'ATR {self.atr_period}', color='blue')
+
+        plt.title('Average True Range (ATR)')
+        plt.xlabel('Date')
+        plt.ylabel('Value')
+        plt.legend(loc='upper left')
+        plt.grid(True)
+        plt.show()
+
+    def identify_volatility_shifts(self):
+        """Identify and print periods of expanding or contracting volatility based on ATR changes."""
+        self.df['ATR_Change'] = self.df['ATR'].diff()
+
+        expanding_volatility = self.df[self.df['ATR_Change'] > 0]
+        contracting_volatility = self.df[self.df['ATR_Change'] < 0]
+
+        print("Expanding Volatility Periods:")
+        print(expanding_volatility[['Date', 'Close', 'ATR', 'ATR_Change']].tail(10))
+
+        print("\nContracting Volatility Periods:")
+        print(contracting_volatility[['Date', 'Close', 'ATR', 'ATR_Change']].tail(10))
+
+def __dir__():
+    return __all__

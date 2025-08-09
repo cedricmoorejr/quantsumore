@@ -578,7 +578,7 @@ class APIClient:
             If no API key is provided and none has been set using `APIKey()`.
         """
         make_method = getattr(self.adapter, 'make')
-        url = make_method(query='stats', ticker=ticker)
+        url = make_method(query='stats', ticker='NVDA')
         base = url[0].decode() if isinstance(url[0], bytes) else url[0]
         endpoint = url[1]
         content = Connection.Request(
@@ -1056,6 +1056,5 @@ engine = APIClient(equity_adapter)
 
 def __dir__():
     return __all__
-
 
 

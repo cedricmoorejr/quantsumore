@@ -54,12 +54,18 @@
 
 
 __all__              = [
+                        '__API_BASE__', 	
                         '__RELAY_UPLINK__', 
-                        '__KEYCHECK_UPLINK__'
+                        '__KEYCHECK_UPLINK__',
+                        '__QUOTA_UPLINK__',                        
                         ]
 
-__RELAY_UPLINK__     = 'https://api.doydl.studio/relay'
-__KEYCHECK_UPLINK__  = 'https://api.doydl.studio/check-key'
+                        
+__API_BASE__         = "https://api.doydl.studio"
+
+__RELAY_UPLINK__     = f"{__API_BASE__.rstrip('/')}/relay"
+__KEYCHECK_UPLINK__  = f"{__API_BASE__.rstrip('/')}/check-key"
+__QUOTA_UPLINK__     = f"{__API_BASE__}/quota"
 
 def __dir__():
     return __all__

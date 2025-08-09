@@ -66,6 +66,7 @@ from ..exceptions import (
     CoinSlugNotFoundError,
     CoinSlugIdMismatchError,
 )
+from ..strata_utils import IterDict
 
 __all__ = [
     "_normalize_dates",

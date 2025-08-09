@@ -61,6 +61,7 @@ __all__ = [
     "APIKeyError",
     "APIKeyRequiredError",
     "APIRequestError",    
+    "APIQuotaError",   
 
     # CPI (Consumer Price Index) 
     "CPIError",
@@ -210,6 +211,14 @@ class APIRequestError(RuntimeError):
         super().__init__(full_msg)
         self.__cause__ = original_exception
         self.status_code = status
+        
+# ├── Quota Error
+class APIQuotaError(Exception):
+    """Raised when the current API key does not have enough quota for the requested operation."""
+    def __init__(self, needed: int, available: int):
+        self.needed = needed
+        self.available = available
+        super().__init__(f"Insufficient quota: need {needed}, have {available}.")
         
 # ══════════════════════════════════════
 #  Financials Exceptions

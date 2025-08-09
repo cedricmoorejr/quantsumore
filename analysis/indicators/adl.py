@@ -51,3 +51,97 @@
 ## │                    permissions and limitations under the License.                           │
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
+
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
+from ..proxy import Proxy
+
+__all__ = ['AccumulationDistributionLine']
+
+
+        
+# ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This segment delineates the functional backbone of the module.
+# It comprises the abstractions and behaviors essential for runtime
+# execution—if applicable—encapsulated in class and function constructs.
+# In minimal implementations, this may simply define constants, metadata,
+# or serve as an interface placeholder.
+
+# Lazily load the entire modules; actual imports occurs on first use.
+# pd = Proxy("pandas", None)  # Third-party library imports (from PyPI or other package sources)  
+plt = Proxy("matplotlib.pyplot")  # Third-party library imports (from PyPI or other package sources)  
+np = Proxy("numpy")  # Third-party library imports (from PyPI or other package sources)  
+
+
+class AccumulationDistributionLine:
+    def __init__(self, parent):
+        self.parent = parent
+        self.df = self.parent.df
+
+        # Calculate
+        self._calculate_ad_line()
+        
+    def _calculate_ad_line(self):
+        """Calculate the Accumulation/Distribution (A/D) Line and store it in the DataFrame."""
+        # Calculate the Money Flow Multiplier (MFM)
+        self.df['MFM'] = ((self.df['Close'] - self.df['Low']) - (self.df['High'] - self.df['Close'])) / (self.df['High'] - self.df['Low'])
+        
+        # Ensure there are no division by zero errors in case of High == Low
+        self.df['MFM'] = self.df['MFM'].fillna(0)
+        
+        # Calculate the Money Flow Volume (MFV)
+        self.df['MFV'] = self.df['MFM'] * self.df['Volume']
+        
+        # Calculate the Accumulation/Distribution Line (A/D Line)
+        self.df['AD_Line'] = self.df['MFV'].cumsum()
+
+    def get_ad_line(self):
+        """Return the DataFrame with the A/D Line column."""
+        return self.df[['Date', 'Close', 'Volume', 'AD_Line']]
+
+    def detect_divergence(self):
+        """
+        Detect divergence between the A/D Line and price.
+        
+        :return: DataFrame with detected divergence points.
+        """
+        self.df['Price_Trend'] = np.where(self.df['Close'] > self.df['Close'].shift(1), 'up', 
+                                          np.where(self.df['Close'] < self.df['Close'].shift(1), 'down', 'flat'))
+        self.df['AD_Trend'] = np.where(self.df['AD_Line'] > self.df['AD_Line'].shift(1), 'up', 
+                                       np.where(self.df['AD_Line'] < self.df['AD_Line'].shift(1), 'down', 'flat'))
+        
+        # Divergence occurs when price and A/D Line trends differ
+        self.df['Divergence'] = np.where((self.df['Price_Trend'] == 'up') & (self.df['AD_Trend'] == 'down'), 'bearish',
+                                         np.where((self.df['Price_Trend'] == 'down') & (self.df['AD_Trend'] == 'up'), 'bullish', 'none'))
+        
+        divergence_df = self.df[self.df['Divergence'] != 'none'][['Date', 'Close', 'AD_Line', 'Divergence']]
+        
+        if divergence_df.empty:
+            print("No divergence detected between A/D Line and price.")                      
+        return divergence_df
+
+    def plot_ad_line_with_divergence(self):
+        """Plot the A/D Line and closing price with highlighted divergence points."""
+        fig, ax1 = plt.subplots(figsize=(14, 8))
+
+        ax1.set_xlabel('Date')
+        ax1.set_ylabel('Close Price', color='tab:blue')
+        ax1.plot(self.df['Date'], self.df['Close'], color='tab:blue', label='Close Price')
+        ax1.tick_params(axis='y', labelcolor='tab:blue')
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('Accumulation/Distribution Line (A/D Line)', color='tab:green')
+        ax2.plot(self.df['Date'], self.df['AD_Line'], color='tab:green', label='A/D Line')
+        ax2.tick_params(axis='y', labelcolor='tab:green')
+
+        # Highlight divergence points
+        divergence_points = self.df[self.df['Divergence'] != 'none']
+        ax1.scatter(divergence_points['Date'], divergence_points['Close'], color='red', label='Divergence', zorder=5)
+
+        fig.tight_layout()
+        plt.title('Accumulation/Distribution Line (A/D Line) and Close Price with Divergence')
+        plt.legend(loc='upper left')
+        plt.grid(True)
+        plt.show()
+
+def __dir__():
+    return __all__

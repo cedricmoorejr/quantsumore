@@ -51,3 +51,91 @@
 ## │                    permissions and limitations under the License.                           │
 ## ╰────────────────────────────────────────────────────────────────────────────────────────────╯
 #
+
+# ────────── Project-specific imports (directly from this project's source code) ─────────────────────────────
+from ..proxy import Proxy
+
+__all__ = ['OnBalanceVolume']
+
+
+     
+# ━━━━━━━━━━━━━━ Core Module Implementation ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This segment delineates the functional backbone of the module.
+# It comprises the abstractions and behaviors essential for runtime
+# execution—if applicable—encapsulated in class and function constructs.
+# In minimal implementations, this may simply define constants, metadata,
+# or serve as an interface placeholder.
+
+# Lazily load the entire modules; actual imports occurs on first use.
+# pd = Proxy("pandas", None)  # Third-party library imports (from PyPI or other package sources)  
+plt = Proxy("matplotlib.pyplot")  # Third-party library imports (from PyPI or other package sources)  
+np = Proxy("numpy")  # Third-party library imports (from PyPI or other package sources)  
+
+
+class OnBalanceVolume:
+    def __init__(self, parent):
+        self.parent = parent
+        self.df = self.parent.df
+
+        # Calculate indicators and signals
+        self._calculate_obv()
+
+    def _calculate_obv(self):
+        """Calculate the On-Balance Volume (OBV) and store it in the DataFrame."""
+        self.df['OBV'] = 0
+        
+        # Calculate OBV
+        self.df['OBV'] = self.df['Volume'].where(self.df['Close'] > self.df['Close'].shift(1), -self.df['Volume'])
+        self.df['OBV'] = self.df['OBV'].fillna(0).cumsum()
+
+    def get_obv(self):
+        """Return the DataFrame with the OBV column."""
+        return self.df[['Date', 'Close', 'Volume', 'OBV']]
+
+    def detect_divergence(self):
+        """
+        Detect divergence between OBV and price.
+        
+        :return: DataFrame with detected divergence points.
+        """
+        self.df['Price_Trend'] = np.where(self.df['Close'] > self.df['Close'].shift(1), 'up', 
+                                          np.where(self.df['Close'] < self.df['Close'].shift(1), 'down', 'flat'))
+        self.df['OBV_Trend'] = np.where(self.df['OBV'] > self.df['OBV'].shift(1), 'up', 
+                                        np.where(self.df['OBV'] < self.df['OBV'].shift(1), 'down', 'flat'))
+        
+        # Divergence occurs when price and OBV trends differ
+        self.df['Divergence'] = np.where((self.df['Price_Trend'] == 'up') & (self.df['OBV_Trend'] == 'down'), 'bearish',
+                                         np.where((self.df['Price_Trend'] == 'down') & (self.df['OBV_Trend'] == 'up'), 'bullish', 'none'))
+        
+        divergence_df = self.df[self.df['Divergence'] != 'none'][['Date', 'Close', 'OBV', 'Divergence']]
+        
+        if divergence_df.empty:
+            print("No divergence detected between OBV and price.")      
+        return divergence_df
+
+    def plot_obv_with_divergence(self):
+        """Plot OBV and closing price with highlighted divergence points."""
+        fig, ax1 = plt.subplots(figsize=(14, 8))
+
+        ax1.set_xlabel('Date')
+        ax1.set_ylabel('Close Price', color='tab:blue')
+        ax1.plot(self.df['Date'], self.df['Close'], color='tab:blue', label='Close Price')
+        ax1.tick_params(axis='y', labelcolor='tab:blue')
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('On-Balance Volume (OBV)', color='tab:orange')
+        ax2.plot(self.df['Date'], self.df['OBV'], color='tab:orange', label='OBV')
+        ax2.tick_params(axis='y', labelcolor='tab:orange')
+
+        # Highlight divergence points
+        divergence_points = self.df[self.df['Divergence'] != 'none']
+        ax1.scatter(divergence_points['Date'], divergence_points['Close'], color='red', label='Divergence', zorder=5)
+
+        fig.tight_layout()
+        plt.title('On-Balance Volume (OBV) and Close Price with Divergence')
+        plt.legend(loc='upper left')
+        plt.grid(True)
+        plt.show()
+
+def __dir__():
+    return __all__

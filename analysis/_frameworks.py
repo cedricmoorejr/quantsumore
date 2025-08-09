@@ -233,7 +233,7 @@ class WriteExcel:
     def __exit__(self, *a): self.wb.close()
 
     def __which_statement(self, financial_statement):
-        a = list(df.index.values)
+        a = list(financial_statement.index.values)
         if "Research and Development" in a: return "Income Statement"
         if "Goodwill" in a: return "Balance Sheet"
         if "Depreciation" in a: return "Cash Flow Statement"
@@ -253,54 +253,82 @@ class WriteExcel:
                 
     def __apply_styles(self, sheet_name, font_style="Calibri Light", font_size=10):
         from openpyxl.styles import NamedStyle, Font
-        size = self.__coerce_numeric_min(size)
-        s = lambda n, **k: NamedStyle(name=n, font=Font(**k, name=font, size=size), number_format="_(* #,##0.00_);_(* (#,##0.00);_(* \"-\"??_);_(@_)")
+        size = self.__coerce_numeric_min(font_size)
+
+        def s(n, **k):
+            return NamedStyle(
+                name=n,
+                font=Font(name=font_style, size=size, **k),
+                number_format="_(* #,##0.00_);_(* (#,##0.00);_(* \"-\"??_);_(@_)"
+            )
+
         styles = [
-            NamedStyle(name=f"data_font_style_{sheet}", font=Font(bold=False, name=font, size=size), number_format="@"),
-            NamedStyle(name=f"header_font_style_{sheet}", font=Font(bold=True, name=font, size=size), number_format="@"),
-            s(f"number_format_style_{sheet}", bold=False),
-            s(f"bold_font_style_{sheet}", bold=True),
-            s(f"bold_number_format_style_{sheet}", bold=True)
+            NamedStyle(name=f"data_font_style_{sheet_name}",
+                    font=Font(bold=False, name=font_style, size=size),
+                    number_format="@"),
+            NamedStyle(name=f"header_font_style_{sheet_name}",
+                    font=Font(bold=True, name=font_style, size=size),
+                    number_format="@"),
+            s(f"number_format_style_{sheet_name}"),
+            s(f"bold_font_style_{sheet_name}", bold=True),
+            s(f"bold_number_format_style_{sheet_name}", bold=True),
         ]
+        existing = {getattr(ns, "name", ns) for ns in self.wb.named_styles}
         for style in styles:
-            if style.name not in self.wb.named_styles: self.wb.add_named_style(style)
-                
+            if style.name not in existing:
+                self.wb.add_named_style(style)
+
     def __create_or_replace_sheet(self, sheet_name, overwrite=True):
-        if name in self.wb.sheetnames:
-            if overwrite: del self.wb[name]
+        if sheet_name in self.wb.sheetnames:
+            if overwrite:
+                del self.wb[sheet_name]
             else:
-                s, new = 1, f"{name}_1"
-                while new in self.wb.sheetnames: s += 1; new = f"{name}_{s}"
-                name = new
-        return self.wb.create_sheet(title=name)
+                s, new = 1, f"{sheet_name}_1"
+                while new in self.wb.sheetnames:
+                    s += 1
+                    new = f"{sheet_name}_{s}"
+                sheet_name = new
+        return self.wb.create_sheet(title=sheet_name)
         
     def write_statement(self, df, reporting_structure=_STATEMENT_LAYOUTS):
         from openpyxl.styles import Alignment, PatternFill, Border, Side
-        sheet = self.__which_statement(df)
+
+        if reporting_structure is None:
+            raise ValueError("reporting_structure is required")
+
+        sheet = self.__which_statement(df) or "Statement"
         ws = self.__create_or_replace_sheet(sheet, overwrite=True)
         self.__apply_styles(sheet)
+
         ra = Alignment(horizontal="right")
         fill = PatternFill(start_color='DADADA', end_color='DADADA', fill_type='solid')
+
         ws.cell(row=1, column=1, value=df.index.name or "Ending:").style = f"header_font_style_{sheet}"
         ws.cell(row=1, column=1).fill = fill
+
         inds = reporting_structure[sheet]["indentation_levels"]
         parents = reporting_structure[sheet]["parent_accounts"]
         totals = reporting_structure[sheet]["subtotal_total_accounts"]
+
         for ci, col in enumerate(df.columns, 2):
             cell = ws.cell(row=1, column=ci, value=col)
             cell.style, cell.alignment = f"header_font_style_{sheet}", ra
+
         for ri, (idx, row) in enumerate(df.iterrows(), 2):
             ind = inds.get(idx.strip(), 0)
             is_bold = idx in parents or idx in totals
             rn = f"{'    '*ind}{idx}"
             ncell = ws.cell(row=ri, column=1, value=rn)
             ncell.style = f"bold_font_style_{sheet}" if is_bold else f"data_font_style_{sheet}"
+
             for ci, val in enumerate(row, 2):
                 c = ws.cell(row=ri, column=ci, value=val)
                 c.style = f"bold_number_format_style_{sheet}" if is_bold else f"number_format_style_{sheet}"
                 c.alignment = ra
-                if idx in totals[:-1]: c.border = Border(bottom=Side(style="thin"))
-                elif idx in totals[-1]: c.border = Border(bottom=Side(style="double"))
+                if idx in totals[:-1]:
+                    c.border = Border(bottom=Side(style="thin"))
+                elif totals and idx == totals[-1]:
+                    c.border = Border(bottom=Side(style="double"))
         self.__autofit_column_width(ws, df)
 
     def save(self, filename=None, overwrite=True):
