@@ -163,31 +163,30 @@ __all__ = [
 # execution—if applicable—encapsulated in class and function constructs.
 # In minimal implementations, this may simply define constants, metadata,
 # or serve as an interface placeholder.
+def _normalize_base_url(u):
+    if isinstance(u, (list, tuple)) and u:
+        u = u[0]
+    if isinstance(u, (bytes, bytearray)):
+        u = u.decode()
+    return str(u).rstrip('/')
+   
 def fetch_financials_dividends_pair(pairs, api_key=None, base_url=None, timeout=20):
     """
     Special case: hit /relay/pair with two (base, endpoint) tuples, but
     borrow API key handling & error semantics from Connection (_httpClient).
     """
     import requests    
-    # --- validate inputs
     if len(pairs) != 2:
         raise ValueError("Provide exactly two (base, endpoint) tuples")
-
-    # --- borrow stored API key if none was passed
     if api_key is None:
         api_key = getattr(Connection, "api_key", None)
         if not api_key:
             raise APIKeyRequiredError(
                 "API key is required. Use APIKey() first or pass api_key."
             )
-
-    # --- default to the same base URL as your normal relay uplink
     if base_url is None:
         try:
-            # reuse Connection's base_url if set
-            base_url = getattr(Connection, "base_url", None)
-            if not base_url:
-                base_url = __API_BASE__
+            base_url = getattr(Connection, "base_url", None) or __API_BASE__
         except AttributeError:
             base_url = __API_BASE__
 
@@ -198,9 +197,7 @@ def fetch_financials_dividends_pair(pairs, api_key=None, base_url=None, timeout=
         "User-Agent": "APIClient/1.0"
     }
     url = f"{base_url.rstrip('/')}/relay/pair"
-
     try:
-        # if you want to reuse the same session as Connection for keep-alive headers:
         session = getattr(Connection, "_get_session")()
         r = session.post(url, json=payload, headers=headers, timeout=timeout)
         r.raise_for_status()
