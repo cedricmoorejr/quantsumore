@@ -9922,8 +9922,8 @@
         },
         "12590": {
             "exchangeId": "12590",
-            "exchangeName": "LetsBonk",
-            "exchangeSlug": "letsbonk"
+            "exchangeName": "Raydium LaunchLab",
+            "exchangeSlug": "raydium-launchlab"
         },
         "12596": {
             "exchangeId": "12596",
@@ -9949,6 +9949,11 @@
             "exchangeId": "12761",
             "exchangeName": "1DEX",
             "exchangeSlug": "1dex"
+        },
+        "12779": {
+            "exchangeId": "12779",
+            "exchangeName": "Cofinex",
+            "exchangeSlug": "cofinex"
         }
     }
 }
