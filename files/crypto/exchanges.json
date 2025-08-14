@@ -9815,6 +9815,11 @@
             "exchangeName": "BlockFin",
             "exchangeSlug": "blockfin"
         },
+        "12304": {
+            "exchangeId": "12304",
+            "exchangeName": "Quickswap v4 (Base)",
+            "exchangeSlug": "quickswap-v4-base"
+        },
         "12313": {
             "exchangeId": "12313",
             "exchangeName": "Meteora DAMM v2",
@@ -9844,6 +9849,11 @@
             "exchangeId": "12330",
             "exchangeName": "EllipX",
             "exchangeSlug": "ellipx"
+        },
+        "12331": {
+            "exchangeId": "12331",
+            "exchangeName": "Quickswap v2 (Base)",
+            "exchangeSlug": "quickswap-v2-base"
         },
         "12336": {
             "exchangeId": "12336",
