@@ -9245,6 +9245,11 @@
             "exchangeName": "LFJ v2.2 (Arbitrum)",
             "exchangeSlug": "trader-joe-v2-2-arbitrum"
         },
+        "10357": {
+            "exchangeId": "10357",
+            "exchangeName": "Velodrome v3 (Optimism)",
+            "exchangeSlug": "velodrome-v3-optimism"
+        },
         "10361": {
             "exchangeId": "10361",
             "exchangeName": "CoinUp.io",
@@ -9665,6 +9670,11 @@
             "exchangeName": "LFJ v0 (Avalanche)",
             "exchangeSlug": "lfj-v0-avalanche"
         },
+        "11894": {
+            "exchangeId": "11894",
+            "exchangeName": "Velodrome v3 (Unichain)",
+            "exchangeSlug": "velodrome-v3-unichain"
+        },
         "11910": {
             "exchangeId": "11910",
             "exchangeName": "HyperSwap v2",
@@ -9890,6 +9900,11 @@
             "exchangeName": "Nivex",
             "exchangeSlug": "nivex"
         },
+        "12451": {
+            "exchangeId": "12451",
+            "exchangeName": "Project-X",
+            "exchangeSlug": "project-x"
+        },
         "12456": {
             "exchangeId": "12456",
             "exchangeName": "BitbabyExchange",
@@ -9964,6 +9979,11 @@
             "exchangeId": "12779",
             "exchangeName": "Cofinex",
             "exchangeSlug": "cofinex"
+        },
+        "12803": {
+            "exchangeId": "12803",
+            "exchangeName": "DeriW",
+            "exchangeSlug": "deriw"
         }
     }
 }
