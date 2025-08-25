@@ -9937,7 +9937,7 @@
         },
         "12544": {
             "exchangeId": "12544",
-            "exchangeName": "Yex",
+            "exchangeName": "YEX",
             "exchangeSlug": "yex"
         },
         "12578": {
@@ -9984,6 +9984,11 @@
             "exchangeId": "12803",
             "exchangeName": "DeriW",
             "exchangeSlug": "deriw"
+        },
+        "12855": {
+            "exchangeId": "12855",
+            "exchangeName": "All InX",
+            "exchangeSlug": "all-inx"
         }
     }
 }
