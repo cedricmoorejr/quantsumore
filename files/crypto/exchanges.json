@@ -8095,6 +8095,11 @@
             "exchangeName": "Retro",
             "exchangeSlug": "retro"
         },
+        "7520": {
+            "exchangeId": "7520",
+            "exchangeName": "SunSwap V3",
+            "exchangeSlug": "47-tthjt8zajzjmhcesch7zwknp5buvzqys9x"
+        },
         "7526": {
             "exchangeId": "7526",
             "exchangeName": "PancakeSwap v2 (zkEVM)",
@@ -9815,6 +9820,11 @@
             "exchangeName": "Figure Markets",
             "exchangeSlug": "figure-markets"
         },
+        "12159": {
+            "exchangeId": "12159",
+            "exchangeName": "zkSWAP V3 AMM",
+            "exchangeSlug": "zkswap-v3-amm"
+        },
         "12218": {
             "exchangeId": "12218",
             "exchangeName": "XXKK",
@@ -9930,6 +9940,11 @@
             "exchangeName": "Binance Alpha",
             "exchangeSlug": "binance-alpha"
         },
+        "12530": {
+            "exchangeId": "12530",
+            "exchangeName": "Omni Exchange V3",
+            "exchangeSlug": "omni-exchange-v3"
+        },
         "12541": {
             "exchangeId": "12541",
             "exchangeName": "Steamm",
@@ -9989,6 +10004,11 @@
             "exchangeId": "12855",
             "exchangeName": "All InX",
             "exchangeSlug": "all-inx"
+        },
+        "12893": {
+            "exchangeId": "12893",
+            "exchangeName": "DeepBook Protocol",
+            "exchangeSlug": "deepbook-protocol"
         }
     }
 }
