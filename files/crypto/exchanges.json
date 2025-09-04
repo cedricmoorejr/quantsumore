@@ -1023,7 +1023,7 @@
         "440": {
             "exchangeId": "440",
             "exchangeName": "Tothemoon",
-            "exchangeSlug": "cryptology"
+            "exchangeSlug": "tothemoon"
         },
         "442": {
             "exchangeId": "442",
@@ -10009,6 +10009,11 @@
             "exchangeId": "12893",
             "exchangeName": "DeepBook Protocol",
             "exchangeSlug": "deepbook-protocol"
+        },
+        "12943": {
+            "exchangeId": "12943",
+            "exchangeName": "Ondo Global Markets",
+            "exchangeSlug": "ondo-global-markets"
         }
     }
 }
