@@ -9362,8 +9362,8 @@
         },
         "10962": {
             "exchangeId": "10962",
-            "exchangeName": "Skybit",
-            "exchangeSlug": "skybit"
+            "exchangeName": "Ekbit",
+            "exchangeSlug": "ekbit"
         },
         "10963": {
             "exchangeId": "10963",
@@ -10019,6 +10019,11 @@
             "exchangeId": "12984",
             "exchangeName": "IVYTEST",
             "exchangeSlug": "ivytestexchangeslug"
+        },
+        "28370": {
+            "exchangeId": "28370",
+            "exchangeName": "CRMClick",
+            "exchangeSlug": "crmclick"
         }
     }
 }
