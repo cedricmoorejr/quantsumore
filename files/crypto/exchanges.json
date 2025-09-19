@@ -10024,6 +10024,16 @@
             "exchangeId": "28370",
             "exchangeName": "CRMClick",
             "exchangeSlug": "crmclick"
+        },
+        "32396": {
+            "exchangeId": "32396",
+            "exchangeName": "Ring Exchange (Ethereum)",
+            "exchangeSlug": "ring-exchange-ethereum"
+        },
+        "32397": {
+            "exchangeId": "32397",
+            "exchangeName": "Microchain",
+            "exchangeSlug": "microchain"
         }
     }
 }
