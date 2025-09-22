@@ -9237,7 +9237,7 @@
         },
         "10331": {
             "exchangeId": "10331",
-            "exchangeName": "Zeddex Exchange",
+            "exchangeName": "Zeddex Exchange (BSC)",
             "exchangeSlug": "zeddex-exchange"
         },
         "10348": {
@@ -9807,8 +9807,8 @@
         },
         "12143": {
             "exchangeId": "12143",
-            "exchangeName": "Superp (Formerly Vanilla Finance)",
-            "exchangeSlug": "vanilla-finance"
+            "exchangeName": "Superp",
+            "exchangeSlug": "superp"
         },
         "12144": {
             "exchangeId": "12144",
@@ -10020,6 +10020,11 @@
             "exchangeName": "IVYTEST",
             "exchangeSlug": "ivytestexchangeslug"
         },
+        "13125": {
+            "exchangeId": "13125",
+            "exchangeName": "Zeddex Exchange (Zedxion)",
+            "exchangeSlug": "zeddex-exchange-zedxion"
+        },
         "28370": {
             "exchangeId": "28370",
             "exchangeName": "CRMClick",
@@ -10034,6 +10039,11 @@
             "exchangeId": "32397",
             "exchangeName": "Microchain",
             "exchangeSlug": "microchain"
+        },
+        "32415": {
+            "exchangeId": "32415",
+            "exchangeName": "Hyperion",
+            "exchangeSlug": "hyperion"
         }
     }
 }
