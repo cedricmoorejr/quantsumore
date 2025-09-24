@@ -10044,6 +10044,11 @@
             "exchangeId": "32415",
             "exchangeName": "Hyperion",
             "exchangeSlug": "hyperion"
+        },
+        "32437": {
+            "exchangeId": "32437",
+            "exchangeName": "Bybit EU",
+            "exchangeSlug": "bybit-eu"
         }
     }
 }
