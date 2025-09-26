@@ -6705,6 +6705,11 @@
             "exchangeName": "Minswap",
             "exchangeSlug": "minswap"
         },
+        "1678": {
+            "exchangeId": "1678",
+            "exchangeName": "Sunswap v1",
+            "exchangeSlug": "sunswap-v1"
+        },
         "1679": {
             "exchangeId": "1679",
             "exchangeName": "BIT.TEAM",
