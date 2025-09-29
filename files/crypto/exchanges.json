@@ -9267,7 +9267,7 @@
         },
         "10363": {
             "exchangeId": "10363",
-            "exchangeName": "Dragonswap",
+            "exchangeName": "Dragonswap v1",
             "exchangeSlug": "dragonswap"
         },
         "10403": {
@@ -10054,6 +10054,11 @@
             "exchangeId": "32437",
             "exchangeName": "Bybit EU",
             "exchangeSlug": "bybit-eu"
+        },
+        "32465": {
+            "exchangeId": "32465",
+            "exchangeName": "Antarctic Exchange",
+            "exchangeSlug": "antarctic-exchange"
         }
     }
 }
