@@ -9532,7 +9532,7 @@
         },
         "11512": {
             "exchangeId": "11512",
-            "exchangeName": "DYORSwap",
+            "exchangeName": "DYORSwap (Sonic)",
             "exchangeSlug": "dyorswap-sonic"
         },
         "11514": {
@@ -10059,6 +10059,21 @@
             "exchangeId": "32465",
             "exchangeName": "Antarctic Exchange",
             "exchangeSlug": "antarctic-exchange"
+        },
+        "32475": {
+            "exchangeId": "32475",
+            "exchangeName": "Bittworld",
+            "exchangeSlug": "bittworld"
+        },
+        "32477": {
+            "exchangeId": "32477",
+            "exchangeName": "DYORSwap (Plasma)",
+            "exchangeSlug": "dyorswap-plasma"
+        },
+        "32478": {
+            "exchangeId": "32478",
+            "exchangeName": "Uniswap v2 (Plasma)",
+            "exchangeSlug": "uniswap-v2-plasma"
         }
     }
 }
