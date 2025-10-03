@@ -10084,6 +10084,11 @@
             "exchangeId": "32482",
             "exchangeName": "JAMM Trading",
             "exchangeSlug": "jamm-trading"
+        },
+        "32491": {
+            "exchangeId": "32491",
+            "exchangeName": "CZR Exchange",
+            "exchangeSlug": "czr-exchange"
         }
     }
 }
