@@ -10089,6 +10089,21 @@
             "exchangeId": "32491",
             "exchangeName": "CZR Exchange",
             "exchangeSlug": "czr-exchange"
+        },
+        "32520": {
+            "exchangeId": "32520",
+            "exchangeName": "EdgeX",
+            "exchangeSlug": "edgex"
+        },
+        "32521": {
+            "exchangeId": "32521",
+            "exchangeName": "Lighter",
+            "exchangeSlug": "ligher"
+        },
+        "32522": {
+            "exchangeId": "32522",
+            "exchangeName": "Grvt",
+            "exchangeSlug": "grvt"
         }
     }
 }
