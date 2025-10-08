@@ -9405,6 +9405,11 @@
             "exchangeName": "VOOX Exchange",
             "exchangeSlug": "voox-exchange"
         },
+        "11092": {
+            "exchangeId": "11092",
+            "exchangeName": "SparkDEX V3.1",
+            "exchangeSlug": "174-0x8a2578d23d4c532cc9a98fad91c0523f5efde652"
+        },
         "11106": {
             "exchangeId": "11106",
             "exchangeName": "UPTX",
@@ -9805,6 +9810,11 @@
             "exchangeName": "Bluefin",
             "exchangeSlug": "bluefin-dex"
         },
+        "12120": {
+            "exchangeId": "12120",
+            "exchangeName": "Oku Trade (XDC Network)",
+            "exchangeSlug": "oku-trade-xdc"
+        },
         "12131": {
             "exchangeId": "12131",
             "exchangeName": "BitradeX",
@@ -9975,6 +9985,11 @@
             "exchangeName": "NovaEx",
             "exchangeSlug": "novaex"
         },
+        "12668": {
+            "exchangeId": "12668",
+            "exchangeName": "Etherex CL",
+            "exchangeSlug": "etherex-cl"
+        },
         "12682": {
             "exchangeId": "12682",
             "exchangeName": "ADEN",
@@ -10104,6 +10119,11 @@
             "exchangeId": "32522",
             "exchangeName": "Grvt",
             "exchangeSlug": "grvt"
+        },
+        "32534": {
+            "exchangeId": "32534",
+            "exchangeName": "Gate US",
+            "exchangeSlug": "gate-us"
         }
     }
 }
