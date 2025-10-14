@@ -10124,6 +10124,31 @@
             "exchangeId": "32534",
             "exchangeName": "Gate US",
             "exchangeSlug": "gate-us"
+        },
+        "32597": {
+            "exchangeId": "32597",
+            "exchangeName": "Reya",
+            "exchangeSlug": "reya"
+        },
+        "32598": {
+            "exchangeId": "32598",
+            "exchangeName": "Avantisfi",
+            "exchangeSlug": "avantisfi"
+        },
+        "32600": {
+            "exchangeId": "32600",
+            "exchangeName": "Pacifica",
+            "exchangeSlug": "pacifica"
+        },
+        "32601": {
+            "exchangeId": "32601",
+            "exchangeName": "Satori",
+            "exchangeSlug": "satori"
+        },
+        "32602": {
+            "exchangeId": "32602",
+            "exchangeName": "Insilico Terminal",
+            "exchangeSlug": "insilico-terminal"
         }
     }
 }
