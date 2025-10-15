@@ -10149,6 +10149,11 @@
             "exchangeId": "32602",
             "exchangeName": "Insilico Terminal",
             "exchangeSlug": "insilico-terminal"
+        },
+        "32603": {
+            "exchangeId": "32603",
+            "exchangeName": "Momentum",
+            "exchangeSlug": "momentum"
         }
     }
 }
