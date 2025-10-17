@@ -10154,6 +10154,16 @@
             "exchangeId": "32603",
             "exchangeName": "Momentum",
             "exchangeSlug": "momentum"
+        },
+        "32625": {
+            "exchangeId": "32625",
+            "exchangeName": "Extended",
+            "exchangeSlug": "extended"
+        },
+        "32626": {
+            "exchangeId": "32626",
+            "exchangeName": "Phantom",
+            "exchangeSlug": "phantom"
         }
     }
 }
