@@ -10050,6 +10050,11 @@
             "exchangeName": "CRMClick",
             "exchangeSlug": "crmclick"
         },
+        "32230": {
+            "exchangeId": "32230",
+            "exchangeName": "PancakeSwap (Solana)",
+            "exchangeSlug": "pancakeswap-solana"
+        },
         "32396": {
             "exchangeId": "32396",
             "exchangeName": "Ring Exchange (Ethereum)",
@@ -10164,6 +10169,41 @@
             "exchangeId": "32626",
             "exchangeName": "Phantom",
             "exchangeSlug": "phantom"
+        },
+        "32627": {
+            "exchangeId": "32627",
+            "exchangeName": "BasedApp",
+            "exchangeSlug": "basedapp"
+        },
+        "32629": {
+            "exchangeId": "32629",
+            "exchangeName": "Curve (XDC Network)",
+            "exchangeSlug": "curve-xdc"
+        },
+        "32630": {
+            "exchangeId": "32630",
+            "exchangeName": "SunPerp",
+            "exchangeSlug": "sunperp"
+        },
+        "32631": {
+            "exchangeId": "32631",
+            "exchangeName": "Axiom Pro",
+            "exchangeSlug": "axiom-pro"
+        },
+        "32633": {
+            "exchangeId": "32633",
+            "exchangeName": "NEAR Intents",
+            "exchangeSlug": "near-intents"
+        },
+        "32640": {
+            "exchangeId": "32640",
+            "exchangeName": "Dmex",
+            "exchangeSlug": "dmex"
+        },
+        "32643": {
+            "exchangeId": "32643",
+            "exchangeName": "Somnex",
+            "exchangeSlug": "somnex"
         }
     }
 }
