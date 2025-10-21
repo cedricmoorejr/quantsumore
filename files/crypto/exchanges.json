@@ -10085,6 +10085,11 @@
             "exchangeName": "Bittworld",
             "exchangeSlug": "bittworld"
         },
+        "32476": {
+            "exchangeId": "32476",
+            "exchangeName": "Oku (Plasma)",
+            "exchangeSlug": "oku-plasma"
+        },
         "32477": {
             "exchangeId": "32477",
             "exchangeName": "DYORSwap (Plasma)",
