@@ -10209,6 +10209,11 @@
             "exchangeId": "32643",
             "exchangeName": "Somnex",
             "exchangeSlug": "somnex"
+        },
+        "32648": {
+            "exchangeId": "32648",
+            "exchangeName": "GMX (Botanix)",
+            "exchangeSlug": "gmx-botanix"
         }
     }
 }
