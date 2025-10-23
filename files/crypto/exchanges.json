@@ -8442,8 +8442,8 @@
         },
         "8105": {
             "exchangeId": "8105",
-            "exchangeName": "KiloEx",
-            "exchangeSlug": "kiloex"
+            "exchangeName": "KiloEx (BSC)",
+            "exchangeSlug": "kiloex-bsc"
         },
         "8107": {
             "exchangeId": "8107",
@@ -10214,6 +10214,56 @@
             "exchangeId": "32648",
             "exchangeName": "GMX (Botanix)",
             "exchangeSlug": "gmx-botanix"
+        },
+        "32656": {
+            "exchangeId": "32656",
+            "exchangeName": "Derive",
+            "exchangeSlug": "derive"
+        },
+        "32657": {
+            "exchangeId": "32657",
+            "exchangeName": "Vest Exchange",
+            "exchangeSlug": "vest-exchange"
+        },
+        "32661": {
+            "exchangeId": "32661",
+            "exchangeName": "Ostium",
+            "exchangeSlug": "ostium"
+        },
+        "32662": {
+            "exchangeId": "32662",
+            "exchangeName": "EnclaveX",
+            "exchangeSlug": "enclavex"
+        },
+        "32663": {
+            "exchangeId": "32663",
+            "exchangeName": "Levana Perps (Osmosis)",
+            "exchangeSlug": "levana-perps-osmosis"
+        },
+        "32664": {
+            "exchangeId": "32664",
+            "exchangeName": "KiloEx (Base)",
+            "exchangeSlug": "kiloex-base"
+        },
+        "32665": {
+            "exchangeId": "32665",
+            "exchangeName": "KiloEx (opBNB)",
+            "exchangeSlug": "kiloex-opbnb"
+        },
+        "32666": {
+            "exchangeId": "32666",
+            "exchangeName": "KiloEx (Manta)",
+            "exchangeSlug": "kiloex-manta"
+        },
+        "32674": {
+            "exchangeId": "32674",
+            "exchangeName": "EVEDEX",
+            "exchangeSlug": "evedex"
+        },
+        "32675": {
+            "exchangeId": "32675",
+            "exchangeName": "Defx",
+            "exchangeSlug": "defx"
         }
     }
 }
