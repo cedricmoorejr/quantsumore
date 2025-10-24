@@ -1180,11 +1180,6 @@
             "exchangeName": "BHEX (BlueHelix Exchange)",
             "exchangeSlug": "bhex-bluehelix"
         },
-        "479": {
-            "exchangeId": "479",
-            "exchangeName": "Dcoin",
-            "exchangeSlug": "dcoin"
-        },
         "480": {
             "exchangeId": "480",
             "exchangeName": "Cat.Ex",
@@ -10264,6 +10259,11 @@
             "exchangeId": "32675",
             "exchangeName": "Defx",
             "exchangeSlug": "defx"
+        },
+        "32686": {
+            "exchangeId": "32686",
+            "exchangeName": "SunX",
+            "exchangeSlug": "sunx"
         }
     }
 }
