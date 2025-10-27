@@ -9487,8 +9487,8 @@
         },
         "11339": {
             "exchangeId": "11339",
-            "exchangeName": "SAFEX",
-            "exchangeSlug": "safex-exchange"
+            "exchangeName": "YUBIT",
+            "exchangeSlug": "yubit"
         },
         "11356": {
             "exchangeId": "11356",
@@ -10264,6 +10264,11 @@
             "exchangeId": "32686",
             "exchangeName": "SunX",
             "exchangeSlug": "sunx"
+        },
+        "32688": {
+            "exchangeId": "32688",
+            "exchangeName": "OnebullEx",
+            "exchangeSlug": "onebullex"
         }
     }
 }
