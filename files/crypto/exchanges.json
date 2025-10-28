@@ -10269,6 +10269,11 @@
             "exchangeId": "32688",
             "exchangeName": "OnebullEx",
             "exchangeSlug": "onebullex"
+        },
+        "32713": {
+            "exchangeId": "32713",
+            "exchangeName": "Uniswap v4 (Unichain)",
+            "exchangeSlug": "uniswap-v4-unichain"
         }
     }
 }
