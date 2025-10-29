@@ -10160,6 +10160,11 @@
             "exchangeName": "Momentum",
             "exchangeSlug": "momentum"
         },
+        "32618": {
+            "exchangeId": "32618",
+            "exchangeName": "MYX Finance",
+            "exchangeSlug": "myx-finance"
+        },
         "32625": {
             "exchangeId": "32625",
             "exchangeName": "Extended",
