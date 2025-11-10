@@ -10279,6 +10279,11 @@
             "exchangeId": "32713",
             "exchangeName": "Uniswap v4 (Unichain)",
             "exchangeSlug": "uniswap-v4-unichain"
+        },
+        "32784": {
+            "exchangeId": "32784",
+            "exchangeName": "Picol",
+            "exchangeSlug": "picol"
         }
     }
 }
