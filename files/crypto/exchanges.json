@@ -10284,6 +10284,21 @@
             "exchangeId": "32784",
             "exchangeName": "Picol",
             "exchangeSlug": "picol"
+        },
+        "32785": {
+            "exchangeId": "32785",
+            "exchangeName": "Sushiswap v3 (Katana)",
+            "exchangeSlug": "sushiswap-v3-katana"
+        },
+        "32786": {
+            "exchangeId": "32786",
+            "exchangeName": "Reactor DEX",
+            "exchangeSlug": "reactor-dex"
+        },
+        "32787": {
+            "exchangeId": "32787",
+            "exchangeName": "Curve (BSC)",
+            "exchangeSlug": "curve-bsc"
         }
     }
 }
