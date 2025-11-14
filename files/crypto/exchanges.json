@@ -10299,6 +10299,11 @@
             "exchangeId": "32787",
             "exchangeName": "Curve (BSC)",
             "exchangeSlug": "curve-bsc"
+        },
+        "32803": {
+            "exchangeId": "32803",
+            "exchangeName": "Curve (Plasma)",
+            "exchangeSlug": "curve-plasma"
         }
     }
 }
