@@ -1987,7 +1987,7 @@
         },
         "653": {
             "exchangeId": "653",
-            "exchangeName": "BITEXLIVE",
+            "exchangeName": "BitexLive",
             "exchangeSlug": "bitexlive"
         },
         "654": {
@@ -10272,7 +10272,7 @@
         },
         "32688": {
             "exchangeId": "32688",
-            "exchangeName": "OnebullEx",
+            "exchangeName": "OneBullEx",
             "exchangeSlug": "onebullex"
         },
         "32713": {
