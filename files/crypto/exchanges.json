@@ -9262,7 +9262,7 @@
         },
         "10363": {
             "exchangeId": "10363",
-            "exchangeName": "Dragonswap v1",
+            "exchangeName": "Dragonswap",
             "exchangeSlug": "dragonswap"
         },
         "10403": {
@@ -9599,6 +9599,11 @@
             "exchangeId": "11665",
             "exchangeName": "Dzengi.com",
             "exchangeSlug": "dzengi-com"
+        },
+        "11714": {
+            "exchangeId": "11714",
+            "exchangeName": "SquadSwap Dynamo v2",
+            "exchangeSlug": "squadswap-dynamo-v2"
         },
         "11742": {
             "exchangeId": "11742",
