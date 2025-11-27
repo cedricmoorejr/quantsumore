@@ -942,7 +942,7 @@
         },
         "421": {
             "exchangeId": "421",
-            "exchangeName": "Klickl",
+            "exchangeName": "KlicklX",
             "exchangeSlug": "idcm"
         },
         "422": {
@@ -9510,6 +9510,11 @@
             "exchangeName": "BitKan",
             "exchangeSlug": "bitkan"
         },
+        "11388": {
+            "exchangeId": "11388",
+            "exchangeName": "Katana v3",
+            "exchangeSlug": "katana-v3"
+        },
         "11419": {
             "exchangeId": "11419",
             "exchangeName": "Shido Dex",
@@ -10319,6 +10324,31 @@
             "exchangeId": "32853",
             "exchangeName": "DYORSwap (Monad)",
             "exchangeSlug": "dyorswap-monad"
+        },
+        "32860": {
+            "exchangeId": "32860",
+            "exchangeName": "Uniswap v2(Monad)",
+            "exchangeSlug": "uniswap-v2-monad"
+        },
+        "32866": {
+            "exchangeId": "32866",
+            "exchangeName": "PancakeSwap v3 (Monad)",
+            "exchangeSlug": "pancakeswap-v3-monad"
+        },
+        "32874": {
+            "exchangeId": "32874",
+            "exchangeName": "Madness Finance",
+            "exchangeSlug": "madness-finance"
+        },
+        "32876": {
+            "exchangeId": "32876",
+            "exchangeName": "LFJ v2.2 (Monad)",
+            "exchangeSlug": "traderjoe-v2-2-monad"
+        },
+        "32907": {
+            "exchangeId": "32907",
+            "exchangeName": "Velodrome v3 (Ink)",
+            "exchangeSlug": "velodrome-v3-ink"
         }
     }
 }
