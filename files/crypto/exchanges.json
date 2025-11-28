@@ -10349,6 +10349,16 @@
             "exchangeId": "32907",
             "exchangeName": "Velodrome v3 (Ink)",
             "exchangeSlug": "velodrome-v3-ink"
+        },
+        "32919": {
+            "exchangeId": "32919",
+            "exchangeName": "BTDUex",
+            "exchangeSlug": "btduex"
+        },
+        "32920": {
+            "exchangeId": "32920",
+            "exchangeName": "O2 Exchange",
+            "exchangeSlug": "o2-exchange"
         }
     }
 }
