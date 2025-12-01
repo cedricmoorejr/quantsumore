@@ -10359,6 +10359,16 @@
             "exchangeId": "32920",
             "exchangeName": "O2 Exchange",
             "exchangeSlug": "o2-exchange"
+        },
+        "32928": {
+            "exchangeId": "32928",
+            "exchangeName": "EagleX",
+            "exchangeSlug": "eaglex"
+        },
+        "32929": {
+            "exchangeId": "32929",
+            "exchangeName": "Tebbit",
+            "exchangeSlug": "tebbit"
         }
     }
 }
