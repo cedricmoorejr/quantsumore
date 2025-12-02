@@ -357,7 +357,7 @@
         },
         "228": {
             "exchangeId": "228",
-            "exchangeName": "BTC-Alpha",
+            "exchangeName": "ALP.COM",
             "exchangeSlug": "btc-alpha"
         },
         "232": {
@@ -9207,12 +9207,12 @@
         },
         "10241": {
             "exchangeId": "10241",
-            "exchangeName": "BitSwap v2",
+            "exchangeName": "BounceBit Swap V2",
             "exchangeSlug": "bitswap-v2"
         },
         "10242": {
             "exchangeId": "10242",
-            "exchangeName": "BitSwap v3",
+            "exchangeName": "BounceBit Swap V3",
             "exchangeSlug": "bitswap-v3"
         },
         "10253": {
