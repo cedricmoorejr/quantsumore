@@ -10280,6 +10280,11 @@
             "exchangeName": "SunX",
             "exchangeSlug": "sunx"
         },
+        "32687": {
+            "exchangeId": "32687",
+            "exchangeName": "Aerodrome Slipstream 2",
+            "exchangeSlug": "199-0xade65c38cd4849adba595a4323a8c7ddfe89716a"
+        },
         "32688": {
             "exchangeId": "32688",
             "exchangeName": "OneBullEx",
