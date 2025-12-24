@@ -10374,6 +10374,16 @@
             "exchangeId": "32929",
             "exchangeName": "Tebbit",
             "exchangeSlug": "tebbit"
+        },
+        "33078": {
+            "exchangeId": "33078",
+            "exchangeName": "Krown Dex",
+            "exchangeSlug": "krown-dex"
+        },
+        "33080": {
+            "exchangeId": "33080",
+            "exchangeName": "OneEx",
+            "exchangeSlug": "oneex"
         }
     }
 }
