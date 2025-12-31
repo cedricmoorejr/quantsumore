@@ -10384,6 +10384,11 @@
             "exchangeId": "33080",
             "exchangeName": "OneEx",
             "exchangeSlug": "oneex"
+        },
+        "33113": {
+            "exchangeId": "33113",
+            "exchangeName": "KTX",
+            "exchangeSlug": "ktx"
         }
     }
 }
