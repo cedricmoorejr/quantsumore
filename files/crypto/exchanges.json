@@ -10355,6 +10355,11 @@
             "exchangeName": "Velodrome v3 (Ink)",
             "exchangeSlug": "velodrome-v3-ink"
         },
+        "32908": {
+            "exchangeId": "32908",
+            "exchangeName": "Fluid (Arbitrum)",
+            "exchangeSlug": "fluid-arbitrum"
+        },
         "32919": {
             "exchangeId": "32919",
             "exchangeName": "BTDUex",
@@ -10375,6 +10380,11 @@
             "exchangeName": "Tebbit",
             "exchangeSlug": "tebbit"
         },
+        "32988": {
+            "exchangeId": "32988",
+            "exchangeName": "Fluid (Polygon)",
+            "exchangeSlug": "fluid-polygon"
+        },
         "33078": {
             "exchangeId": "33078",
             "exchangeName": "Krown Dex",
@@ -10389,6 +10399,21 @@
             "exchangeId": "33113",
             "exchangeName": "KTX",
             "exchangeSlug": "ktx"
+        },
+        "33115": {
+            "exchangeId": "33115",
+            "exchangeName": "Fluid (Ethereum)",
+            "exchangeSlug": "fluid-ethereum"
+        },
+        "33116": {
+            "exchangeId": "33116",
+            "exchangeName": "Fluid (Plasma)",
+            "exchangeSlug": "fluid-plasma"
+        },
+        "33117": {
+            "exchangeId": "33117",
+            "exchangeName": "Fluid (Base)",
+            "exchangeSlug": "fluid-base"
         }
     }
 }
