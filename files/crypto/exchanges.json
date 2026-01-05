@@ -5455,16 +5455,6 @@
             "exchangeName": "XcelToken Exchange",
             "exchangeSlug": "xceltoken-exchange"
         },
-        "1400": {
-            "exchangeId": "1400",
-            "exchangeName": "THORChain (BEP20)",
-            "exchangeSlug": "thorchain-bep20"
-        },
-        "1401": {
-            "exchangeId": "1401",
-            "exchangeName": "THORChain (BTC)",
-            "exchangeSlug": "thorchain-btc"
-        },
         "1402": {
             "exchangeId": "1402",
             "exchangeName": "BXH",
@@ -10414,6 +10404,16 @@
             "exchangeId": "33117",
             "exchangeName": "Fluid (Base)",
             "exchangeSlug": "fluid-base"
+        },
+        "33128": {
+            "exchangeId": "33128",
+            "exchangeName": "MYBX",
+            "exchangeSlug": "mybx"
+        },
+        "33129": {
+            "exchangeId": "33129",
+            "exchangeName": "Uniswap v4 (Monad)",
+            "exchangeSlug": "uniswap-v4-monad"
         }
     }
 }
