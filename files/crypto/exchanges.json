@@ -10414,6 +10414,11 @@
             "exchangeId": "33129",
             "exchangeName": "Uniswap v4 (Monad)",
             "exchangeSlug": "uniswap-v4-monad"
+        },
+        "33178": {
+            "exchangeId": "33178",
+            "exchangeName": "ASTX",
+            "exchangeSlug": "astx"
         }
     }
 }
