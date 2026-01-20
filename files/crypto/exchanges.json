@@ -10419,6 +10419,16 @@
             "exchangeId": "33178",
             "exchangeName": "ASTX",
             "exchangeSlug": "astx"
+        },
+        "33200": {
+            "exchangeId": "33200",
+            "exchangeName": "Byreal",
+            "exchangeSlug": "byreal"
+        },
+        "33201": {
+            "exchangeId": "33201",
+            "exchangeName": "GudangKripto",
+            "exchangeSlug": "gudangkripto"
         }
     }
 }
