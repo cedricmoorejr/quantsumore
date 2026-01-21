@@ -10429,6 +10429,11 @@
             "exchangeId": "33201",
             "exchangeName": "GudangKripto",
             "exchangeSlug": "gudangkripto"
+        },
+        "33206": {
+            "exchangeId": "33206",
+            "exchangeName": "CrypFine",
+            "exchangeSlug": "crypfine"
         }
     }
 }
