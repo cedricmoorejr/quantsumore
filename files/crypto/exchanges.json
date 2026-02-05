@@ -10444,6 +10444,11 @@
             "exchangeId": "33228",
             "exchangeName": "WHXEX",
             "exchangeSlug": "whxex"
+        },
+        "33260": {
+            "exchangeId": "33260",
+            "exchangeName": "BitGW Exchange",
+            "exchangeSlug": "bitgw-exchange"
         }
     }
 }
