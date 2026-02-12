@@ -9197,12 +9197,12 @@
         },
         "10241": {
             "exchangeId": "10241",
-            "exchangeName": "BounceBit Swap V2",
+            "exchangeName": "BounceBit Swap v2",
             "exchangeSlug": "bitswap-v2"
         },
         "10242": {
             "exchangeId": "10242",
-            "exchangeName": "BounceBit Swap V3",
+            "exchangeName": "BounceBit Swap v3",
             "exchangeSlug": "bitswap-v3"
         },
         "10253": {
@@ -9392,7 +9392,7 @@
         },
         "11092": {
             "exchangeId": "11092",
-            "exchangeName": "SparkDEX V3.1",
+            "exchangeName": "SparkDEX v3.1",
             "exchangeSlug": "sparkdex-v3-1"
         },
         "11106": {
@@ -9627,7 +9627,7 @@
         },
         "11761": {
             "exchangeId": "11761",
-            "exchangeName": "Kyo Finance V2",
+            "exchangeName": "Kyo Finance v2",
             "exchangeSlug": "kyo-finance-v2"
         },
         "11804": {
@@ -9952,7 +9952,7 @@
         },
         "12530": {
             "exchangeId": "12530",
-            "exchangeName": "Omni Exchange V3",
+            "exchangeName": "Omni Exchange v3",
             "exchangeSlug": "omni-exchange-v3"
         },
         "12541": {
