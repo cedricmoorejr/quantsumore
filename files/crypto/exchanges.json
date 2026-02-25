@@ -9992,12 +9992,12 @@
         },
         "12714": {
             "exchangeId": "12714",
-            "exchangeName": "PancakeSwap v4 CLAMM(BSC)",
+            "exchangeName": "PancakeSwap Infinity CLAMM",
             "exchangeSlug": "pancakeswap-v4-clamm-bsc"
         },
         "12715": {
             "exchangeId": "12715",
-            "exchangeName": "PancakeSwap v4 LBAMM(BSC)",
+            "exchangeName": "PancakeSwap Infinity LBAMM",
             "exchangeSlug": "pancakeswap-v4-lbamm-bsc"
         },
         "12761": {
@@ -10449,6 +10449,11 @@
             "exchangeId": "33260",
             "exchangeName": "BitGW Exchange",
             "exchangeSlug": "bitgw-exchange"
+        },
+        "33326": {
+            "exchangeId": "33326",
+            "exchangeName": "Ulink",
+            "exchangeSlug": "ulink"
         }
     }
 }
