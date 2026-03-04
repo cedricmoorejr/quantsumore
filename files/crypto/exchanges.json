@@ -10454,6 +10454,11 @@
             "exchangeId": "33326",
             "exchangeName": "Ulink",
             "exchangeSlug": "ulink"
+        },
+        "33355": {
+            "exchangeId": "33355",
+            "exchangeName": "idax exchange",
+            "exchangeSlug": "idax-exchange"
         }
     }
 }
