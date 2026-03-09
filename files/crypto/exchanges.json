@@ -10459,6 +10459,11 @@
             "exchangeId": "33355",
             "exchangeName": "idax exchange",
             "exchangeSlug": "idax-exchange"
+        },
+        "33378": {
+            "exchangeId": "33378",
+            "exchangeName": "YELLOW",
+            "exchangeSlug": "yellow"
         }
     }
 }
