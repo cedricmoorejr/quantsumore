@@ -6675,11 +6675,6 @@
             "exchangeName": "Platypus Finance",
             "exchangeSlug": "platypus-finance"
         },
-        "1675": {
-            "exchangeId": "1675",
-            "exchangeName": "WOOFi",
-            "exchangeSlug": "woofi"
-        },
         "1676": {
             "exchangeId": "1676",
             "exchangeName": "OccamX",
@@ -9252,7 +9247,7 @@
         },
         "10363": {
             "exchangeId": "10363",
-            "exchangeName": "Dragonswap",
+            "exchangeName": "Saphyre",
             "exchangeSlug": "dragonswap"
         },
         "10403": {
@@ -10349,6 +10344,11 @@
             "exchangeId": "32908",
             "exchangeName": "Fluid (Arbitrum)",
             "exchangeSlug": "fluid-arbitrum"
+        },
+        "32910": {
+            "exchangeId": "32910",
+            "exchangeName": "WOOFi (Arbitrum)",
+            "exchangeSlug": "woofi-arbitrum"
         },
         "32919": {
             "exchangeId": "32919",
