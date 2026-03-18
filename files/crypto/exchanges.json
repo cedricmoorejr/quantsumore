@@ -10464,6 +10464,11 @@
             "exchangeId": "33378",
             "exchangeName": "YELLOW",
             "exchangeSlug": "yellow"
+        },
+        "33422": {
+            "exchangeId": "33422",
+            "exchangeName": "TONCO",
+            "exchangeSlug": "tonco"
         }
     }
 }
