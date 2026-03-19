@@ -10469,6 +10469,11 @@
             "exchangeId": "33422",
             "exchangeName": "TONCO",
             "exchangeSlug": "tonco"
+        },
+        "33429": {
+            "exchangeId": "33429",
+            "exchangeName": "Forte DEX",
+            "exchangeSlug": "forte-dex"
         }
     }
 }
