@@ -10474,6 +10474,11 @@
             "exchangeId": "33429",
             "exchangeName": "Forte DEX",
             "exchangeSlug": "forte-dex"
+        },
+        "33450": {
+            "exchangeId": "33450",
+            "exchangeName": "IMBX",
+            "exchangeSlug": "imbx"
         }
     }
 }
