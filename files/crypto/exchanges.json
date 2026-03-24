@@ -9922,7 +9922,7 @@
         },
         "12456": {
             "exchangeId": "12456",
-            "exchangeName": "BitbabyExchange",
+            "exchangeName": "Bitbaby",
             "exchangeSlug": "bitbabyexchange"
         },
         "12461": {
@@ -10479,6 +10479,11 @@
             "exchangeId": "33450",
             "exchangeName": "IMBX",
             "exchangeSlug": "imbx"
+        },
+        "33458": {
+            "exchangeId": "33458",
+            "exchangeName": "Glide",
+            "exchangeSlug": "glide"
         }
     }
 }
