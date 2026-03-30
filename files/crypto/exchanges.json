@@ -10457,7 +10457,7 @@
         },
         "33378": {
             "exchangeId": "33378",
-            "exchangeName": "YELLOW",
+            "exchangeName": "Yellow",
             "exchangeSlug": "yellow"
         },
         "33422": {
@@ -10479,6 +10479,16 @@
             "exchangeId": "33458",
             "exchangeName": "Glide",
             "exchangeSlug": "glide"
+        },
+        "33485": {
+            "exchangeId": "33485",
+            "exchangeName": "Fillx",
+            "exchangeSlug": "fillx"
+        },
+        "33490": {
+            "exchangeId": "33490",
+            "exchangeName": "Coinbase Derivatives Exchange",
+            "exchangeSlug": "coinbase-derivatives-exchange"
         }
     }
 }
