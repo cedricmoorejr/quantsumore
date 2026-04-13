@@ -10489,6 +10489,11 @@
             "exchangeId": "33490",
             "exchangeName": "Coinbase Derivatives Exchange",
             "exchangeSlug": "coinbase-derivatives-exchange"
+        },
+        "33551": {
+            "exchangeId": "33551",
+            "exchangeName": "MSX",
+            "exchangeSlug": "msx"
         }
     }
 }
