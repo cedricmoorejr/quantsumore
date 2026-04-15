@@ -10494,6 +10494,11 @@
             "exchangeId": "33551",
             "exchangeName": "MSX",
             "exchangeSlug": "msx"
+        },
+        "33569": {
+            "exchangeId": "33569",
+            "exchangeName": "CoinMy",
+            "exchangeSlug": "coinmy"
         }
     }
 }
