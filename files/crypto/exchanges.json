@@ -10210,11 +10210,6 @@
             "exchangeName": "Derive",
             "exchangeSlug": "derive"
         },
-        "32657": {
-            "exchangeId": "32657",
-            "exchangeName": "Vest Exchange",
-            "exchangeSlug": "vest-exchange"
-        },
         "32661": {
             "exchangeId": "32661",
             "exchangeName": "Ostium",
