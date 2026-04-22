@@ -10494,6 +10494,11 @@
             "exchangeId": "33569",
             "exchangeName": "CoinMy",
             "exchangeSlug": "coinmy"
+        },
+        "33595": {
+            "exchangeId": "33595",
+            "exchangeName": "AEGET",
+            "exchangeSlug": "aeget"
         }
     }
 }
