@@ -3875,11 +3875,6 @@
             "exchangeName": "Opium Network",
             "exchangeSlug": "opium-network"
         },
-        "1052": {
-            "exchangeId": "1052",
-            "exchangeName": "1inch Exchange",
-            "exchangeSlug": "1inch-exchange"
-        },
         "1053": {
             "exchangeId": "1053",
             "exchangeName": "Lupbit",
@@ -10499,6 +10494,11 @@
             "exchangeId": "33595",
             "exchangeName": "AEGET",
             "exchangeSlug": "aeget"
+        },
+        "33596": {
+            "exchangeId": "33596",
+            "exchangeName": "Deluthium",
+            "exchangeSlug": "deluthium"
         }
     }
 }
