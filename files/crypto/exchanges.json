@@ -10499,6 +10499,11 @@
             "exchangeId": "33596",
             "exchangeName": "Deluthium",
             "exchangeSlug": "deluthium"
+        },
+        "33646": {
+            "exchangeId": "33646",
+            "exchangeName": "Temple Digital Group",
+            "exchangeSlug": "temple-digital-group"
         }
     }
 }
