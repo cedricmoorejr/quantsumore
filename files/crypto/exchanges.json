@@ -10480,6 +10480,11 @@
             "exchangeName": "Coinbase Derivatives Exchange",
             "exchangeSlug": "coinbase-derivatives-exchange"
         },
+        "33537": {
+            "exchangeId": "33537",
+            "exchangeName": "Aerodrome Slipstream 3",
+            "exchangeSlug": "aerodrome-slipstream-3"
+        },
         "33551": {
             "exchangeId": "33551",
             "exchangeName": "MSX",
