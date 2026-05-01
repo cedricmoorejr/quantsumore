@@ -10505,10 +10505,20 @@
             "exchangeName": "Deluthium",
             "exchangeSlug": "deluthium"
         },
+        "33602": {
+            "exchangeId": "33602",
+            "exchangeName": "Kumbaya",
+            "exchangeSlug": "kumbaya"
+        },
         "33646": {
             "exchangeId": "33646",
             "exchangeName": "Temple Digital Group",
             "exchangeSlug": "temple-digital-group"
+        },
+        "33662": {
+            "exchangeId": "33662",
+            "exchangeName": "Bitbase",
+            "exchangeSlug": "bitbase-com"
         }
     }
 }
