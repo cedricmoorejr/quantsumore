@@ -10519,6 +10519,11 @@
             "exchangeId": "33662",
             "exchangeName": "Bitbase",
             "exchangeSlug": "bitbase-com"
+        },
+        "33701": {
+            "exchangeId": "33701",
+            "exchangeName": "MemeMax",
+            "exchangeSlug": "mememax"
         }
     }
 }
