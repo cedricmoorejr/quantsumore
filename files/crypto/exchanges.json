@@ -10524,6 +10524,26 @@
             "exchangeId": "33701",
             "exchangeName": "MemeMax",
             "exchangeSlug": "mememax"
+        },
+        "33717": {
+            "exchangeId": "33717",
+            "exchangeName": "Uniswap v3 (Tempo)",
+            "exchangeSlug": "uniswap-v3-tempo"
+        },
+        "33718": {
+            "exchangeId": "33718",
+            "exchangeName": "Tempo Stablecoin DEX",
+            "exchangeSlug": "tempo-stablecoin-dex"
+        },
+        "33719": {
+            "exchangeId": "33719",
+            "exchangeName": "Uniswap v2 (Tempo)",
+            "exchangeSlug": "uniswap-v2-tempo"
+        },
+        "33721": {
+            "exchangeId": "33721",
+            "exchangeName": "Uniswap v4 (Tempo)",
+            "exchangeSlug": "uniswap-v4-tempo"
         }
     }
 }
