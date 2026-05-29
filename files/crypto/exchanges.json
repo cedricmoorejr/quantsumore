@@ -10544,6 +10544,11 @@
             "exchangeId": "33721",
             "exchangeName": "Uniswap v4 (Tempo)",
             "exchangeSlug": "uniswap-v4-tempo"
+        },
+        "33784": {
+            "exchangeId": "33784",
+            "exchangeName": "Rocket Swap (Anubis)",
+            "exchangeSlug": "rocketswap-anubis"
         }
     }
 }
