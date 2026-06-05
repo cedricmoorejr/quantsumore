@@ -10544,6 +10544,11 @@
             "exchangeId": "33784",
             "exchangeName": "Rocket Swap (Anubis)",
             "exchangeSlug": "rocketswap-anubis"
+        },
+        "33803": {
+            "exchangeId": "33803",
+            "exchangeName": "MetaMask",
+            "exchangeSlug": "metamask"
         }
     }
 }
