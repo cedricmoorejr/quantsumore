@@ -10497,7 +10497,7 @@
         },
         "33596": {
             "exchangeId": "33596",
-            "exchangeName": "DE1 Exchange",
+            "exchangeName": "Deluthium",
             "exchangeSlug": "deluthium"
         },
         "33602": {
@@ -10549,6 +10549,11 @@
             "exchangeId": "33803",
             "exchangeName": "MetaMask",
             "exchangeSlug": "metamask"
+        },
+        "33903": {
+            "exchangeId": "33903",
+            "exchangeName": "Onyx Dex",
+            "exchangeSlug": "onyx"
         }
     }
 }
