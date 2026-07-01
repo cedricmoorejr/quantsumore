@@ -10554,6 +10554,21 @@
             "exchangeId": "33903",
             "exchangeName": "Onyx Swap",
             "exchangeSlug": "onyx"
+        },
+        "33923": {
+            "exchangeId": "33923",
+            "exchangeName": "Uniswap V3 (Robinhood)",
+            "exchangeSlug": "uniswap-v3-robinhood"
+        },
+        "33924": {
+            "exchangeId": "33924",
+            "exchangeName": "Uniswap V2 (Robinhood)",
+            "exchangeSlug": "uniswap-v2-robinhood"
+        },
+        "33925": {
+            "exchangeId": "33925",
+            "exchangeName": "TxFlow",
+            "exchangeSlug": "txflow"
         }
     }
 }
