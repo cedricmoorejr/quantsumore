@@ -10007,8 +10007,8 @@
         },
         "12943": {
             "exchangeId": "12943",
-            "exchangeName": "Ondo Global Markets",
-            "exchangeSlug": "ondo-global-markets"
+            "exchangeName": "Ondo Stocks",
+            "exchangeSlug": "ondo-stocks"
         },
         "12984": {
             "exchangeId": "12984",
@@ -10569,6 +10569,16 @@
             "exchangeId": "33925",
             "exchangeName": "TxFlow",
             "exchangeSlug": "txflow"
+        },
+        "33929": {
+            "exchangeId": "33929",
+            "exchangeName": "PancakeSwap v3 (Robinhood)",
+            "exchangeSlug": "pancakeswap-v3-robinhood"
+        },
+        "33930": {
+            "exchangeId": "33930",
+            "exchangeName": "PancakeSwap v2 (Robinhood)",
+            "exchangeSlug": "pancakeswap-v2-robinhood"
         }
     }
 }
