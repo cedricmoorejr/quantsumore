@@ -10550,6 +10550,16 @@
             "exchangeName": "MetaMask",
             "exchangeSlug": "metamask"
         },
+        "33831": {
+            "exchangeId": "33831",
+            "exchangeName": "Native RFQ (BSC)",
+            "exchangeSlug": "native-rfq-bsc"
+        },
+        "33872": {
+            "exchangeId": "33872",
+            "exchangeName": "atomicSwap",
+            "exchangeSlug": "atomicswap"
+        },
         "33903": {
             "exchangeId": "33903",
             "exchangeName": "Onyx Swap",
@@ -10579,6 +10589,16 @@
             "exchangeId": "33930",
             "exchangeName": "PancakeSwap v2 (Robinhood)",
             "exchangeSlug": "pancakeswap-v2-robinhood"
+        },
+        "33933": {
+            "exchangeId": "33933",
+            "exchangeName": "Neptune",
+            "exchangeSlug": "neptune"
+        },
+        "33975": {
+            "exchangeId": "33975",
+            "exchangeName": "TesseraSwap",
+            "exchangeSlug": "tesseraswap"
         }
     }
 }
