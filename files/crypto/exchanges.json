@@ -4837,7 +4837,7 @@
         },
         "1261": {
             "exchangeId": "1261",
-            "exchangeName": "De1",
+            "exchangeName": "De\u00b9",
             "exchangeSlug": "de1"
         },
         "1263": {
@@ -10599,6 +10599,16 @@
             "exchangeId": "33975",
             "exchangeName": "TesseraSwap",
             "exchangeSlug": "tesseraswap"
+        },
+        "34033": {
+            "exchangeId": "34033",
+            "exchangeName": "Binibit",
+            "exchangeSlug": "binibit"
+        },
+        "34039": {
+            "exchangeId": "34039",
+            "exchangeName": "Variational",
+            "exchangeSlug": "variational"
         }
     }
 }
