@@ -10605,6 +10605,11 @@
             "exchangeName": "Binibit",
             "exchangeSlug": "binibit"
         },
+        "34037": {
+            "exchangeId": "34037",
+            "exchangeName": "Uniswap v4 (Robinhood)",
+            "exchangeSlug": "uniswap-v4-robinhood"
+        },
         "34039": {
             "exchangeId": "34039",
             "exchangeName": "Variational",
