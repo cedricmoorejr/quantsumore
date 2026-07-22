@@ -10552,8 +10552,8 @@
         },
         "33831": {
             "exchangeId": "33831",
-            "exchangeName": "Native RFQ (BSC)",
-            "exchangeSlug": "native-rfq-bsc"
+            "exchangeName": "Native (BSC)",
+            "exchangeSlug": "native-bsc"
         },
         "33872": {
             "exchangeId": "33872",
