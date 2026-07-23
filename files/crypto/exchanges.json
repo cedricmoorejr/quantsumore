@@ -10614,6 +10614,16 @@
             "exchangeId": "34039",
             "exchangeName": "Variational",
             "exchangeSlug": "variational"
+        },
+        "34123": {
+            "exchangeId": "34123",
+            "exchangeName": "StableSwap (BSC)",
+            "exchangeSlug": "stableswap-bsc"
+        },
+        "34124": {
+            "exchangeId": "34124",
+            "exchangeName": "listaDao StableSwap",
+            "exchangeSlug": "listadao-stableswap"
         }
     }
 }
