@@ -2383,7 +2383,7 @@
         "739": {
             "exchangeId": "739",
             "exchangeName": "NioTx",
-            "exchangeSlug": "goodexchange"
+            "exchangeSlug": "niotx"
         },
         "740": {
             "exchangeId": "740",
@@ -10559,6 +10559,11 @@
             "exchangeId": "33872",
             "exchangeName": "atomicSwap",
             "exchangeSlug": "atomicswap"
+        },
+        "33897": {
+            "exchangeId": "33897",
+            "exchangeName": "Kalshi",
+            "exchangeSlug": "kalshi"
         },
         "33903": {
             "exchangeId": "33903",
