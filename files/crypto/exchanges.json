@@ -10629,6 +10629,11 @@
             "exchangeId": "34124",
             "exchangeName": "listaDao StableSwap",
             "exchangeSlug": "listadao-stableswap"
+        },
+        "34249": {
+            "exchangeId": "34249",
+            "exchangeName": "Arcus",
+            "exchangeSlug": "arcus"
         }
     }
 }
