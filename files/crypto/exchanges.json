@@ -10634,6 +10634,11 @@
             "exchangeId": "34249",
             "exchangeName": "Arcus",
             "exchangeSlug": "arcus"
+        },
+        "34268": {
+            "exchangeId": "34268",
+            "exchangeName": "Uniswap v3 (Stable)",
+            "exchangeSlug": "uniswap-v3-stable"
         }
     }
 }
