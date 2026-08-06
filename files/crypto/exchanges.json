@@ -10639,6 +10639,11 @@
             "exchangeId": "34268",
             "exchangeName": "Uniswap v3 (Stable)",
             "exchangeSlug": "uniswap-v3-stable"
+        },
+        "34269": {
+            "exchangeId": "34269",
+            "exchangeName": "0x RFQ (Robinhood)",
+            "exchangeSlug": "0x-protocol-robinhood"
         }
     }
 }
