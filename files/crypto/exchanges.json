@@ -10605,6 +10605,11 @@
             "exchangeName": "TesseraSwap",
             "exchangeSlug": "tesseraswap"
         },
+        "34014": {
+            "exchangeId": "34014",
+            "exchangeName": "Lista V3 DEX (BSC)",
+            "exchangeSlug": "listav3-bsc"
+        },
         "34033": {
             "exchangeId": "34033",
             "exchangeName": "Binibit",
