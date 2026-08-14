@@ -10654,6 +10654,11 @@
             "exchangeId": "34276",
             "exchangeName": "Uniswap V3 (Arc)",
             "exchangeSlug": "uniswap-v3-arc"
+        },
+        "34337": {
+            "exchangeId": "34337",
+            "exchangeName": "MetaDAO (Futarchy AMM)",
+            "exchangeSlug": "metadao-futarchy-amm"
         }
     }
 }
