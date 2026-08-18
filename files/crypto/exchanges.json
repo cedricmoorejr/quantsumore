@@ -10659,6 +10659,11 @@
             "exchangeId": "34337",
             "exchangeName": "MetaDAO (Futarchy AMM)",
             "exchangeSlug": "metadao-futarchy-amm"
+        },
+        "34373": {
+            "exchangeId": "34373",
+            "exchangeName": "Bullbit",
+            "exchangeSlug": "bullbit"
         }
     }
 }
