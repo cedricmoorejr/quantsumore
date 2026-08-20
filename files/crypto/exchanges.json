@@ -10664,6 +10664,11 @@
             "exchangeId": "34373",
             "exchangeName": "Bullbit",
             "exchangeSlug": "bullbit"
+        },
+        "34398": {
+            "exchangeId": "34398",
+            "exchangeName": "Revolut X",
+            "exchangeSlug": "revolut-x"
         }
     }
 }
