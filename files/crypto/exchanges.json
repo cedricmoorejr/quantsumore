@@ -10669,6 +10669,16 @@
             "exchangeId": "34398",
             "exchangeName": "Revolut X",
             "exchangeSlug": "revolut-x"
+        },
+        "34405": {
+            "exchangeId": "34405",
+            "exchangeName": "OKX FRQ (ETH)",
+            "exchangeSlug": "okx-rfq-eth"
+        },
+        "34406": {
+            "exchangeId": "34406",
+            "exchangeName": "OKX FRQ (BSC)",
+            "exchangeSlug": "okx-rfq-bsc"
         }
     }
 }
