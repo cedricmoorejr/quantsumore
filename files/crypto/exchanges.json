@@ -9572,7 +9572,7 @@
         },
         "11665": {
             "exchangeId": "11665",
-            "exchangeName": "Dzengi.com",
+            "exchangeName": "Dzengi",
             "exchangeSlug": "dzengi-com"
         },
         "11714": {
@@ -10679,6 +10679,11 @@
             "exchangeId": "34406",
             "exchangeName": "OKX FRQ (BSC)",
             "exchangeSlug": "okx-rfq-bsc"
+        },
+        "34437": {
+            "exchangeId": "34437",
+            "exchangeName": "Feather Exchange",
+            "exchangeSlug": "feather-exchange"
         }
     }
 }
