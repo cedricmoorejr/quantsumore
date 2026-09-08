@@ -10680,6 +10680,11 @@
             "exchangeName": "OKX FRQ (BSC)",
             "exchangeSlug": "okx-rfq-bsc"
         },
+        "34418": {
+            "exchangeId": "34418",
+            "exchangeName": "Uniswap v4 (Arc)",
+            "exchangeSlug": "uniswap-v4-arc"
+        },
         "34437": {
             "exchangeId": "34437",
             "exchangeName": "Feather Exchange",
