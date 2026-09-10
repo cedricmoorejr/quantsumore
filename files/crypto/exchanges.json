@@ -10689,6 +10689,11 @@
             "exchangeId": "34437",
             "exchangeName": "Feather Exchange",
             "exchangeSlug": "feather-exchange"
+        },
+        "34546": {
+            "exchangeId": "34546",
+            "exchangeName": "Macaron Swap",
+            "exchangeSlug": "macaron-bitlayer"
         }
     }
 }
