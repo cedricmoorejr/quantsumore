@@ -8950,6 +8950,11 @@
             "exchangeName": "IceCreamSwap (Blast)",
             "exchangeSlug": "icecreamswap-blast"
         },
+        "9522": {
+            "exchangeId": "9522",
+            "exchangeName": "Cyberblast V3 (Blast)",
+            "exchangeSlug": "cyberblast-v3-blast"
+        },
         "9523": {
             "exchangeId": "9523",
             "exchangeName": "BlastDex",
@@ -10054,6 +10059,11 @@
             "exchangeId": "32465",
             "exchangeName": "Antarctic",
             "exchangeSlug": "antarctic-exchange"
+        },
+        "32471": {
+            "exchangeId": "32471",
+            "exchangeName": "WallFreeX (Conflux)",
+            "exchangeSlug": "wallfreex-conflux"
         },
         "32475": {
             "exchangeId": "32475",
